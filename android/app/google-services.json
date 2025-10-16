@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "371130915379",
+    "project_id": "play-hub02",
+    "storage_bucket": "play-hub02.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:371130915379:android:658084b8df4aab85382146",
+        "android_client_info": {
+          "package_name": "com.example.play_hub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQV3h45Xbx-oEGPJvw874pe6aMY8hN7Io"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:371130915379:android:6267bc9aed54a158382146",
+        "android_client_info": {
+          "package_name": "com.zerolpa.playhub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQV3h45Xbx-oEGPJvw874pe6aMY8hN7Io"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
