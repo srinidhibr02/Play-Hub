@@ -64,6 +64,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '371130915379',
     projectId: 'play-hub02',
     storageBucket: 'play-hub02.firebasestorage.app',
+    iosClientId: '371130915379-070v8gqr2iqhkqkjeqgtsmfg8jpcar0f.apps.googleusercontent.com',
     iosBundleId: 'com.example.playHub',
   );
 
@@ -73,6 +74,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '371130915379',
     projectId: 'play-hub02',
     storageBucket: 'play-hub02.firebasestorage.app',
+    iosClientId: '371130915379-070v8gqr2iqhkqkjeqgtsmfg8jpcar0f.apps.googleusercontent.com',
     iosBundleId: 'com.example.playHub',
   );
 
@@ -85,4 +87,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'play-hub02.firebasestorage.app',
     measurementId: 'G-6X8L6N1H2B',
   );
+
 }

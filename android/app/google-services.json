@@ -12,7 +12,12 @@
           "package_name": "com.example.play_hub"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "371130915379-54ket1adu7iqt2lqdoh4oqhvi3fedlnj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCQV3h45Xbx-oEGPJvw874pe6aMY8hN7Io"
@@ -20,26 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:371130915379:android:6267bc9aed54a158382146",
-        "android_client_info": {
-          "package_name": "com.zerolpa.playhub"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyCQV3h45Xbx-oEGPJvw874pe6aMY8hN7Io"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "371130915379-54ket1adu7iqt2lqdoh4oqhvi3fedlnj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "371130915379-070v8gqr2iqhkqkjeqgtsmfg8jpcar0f.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.playHub"
+              }
+            }
+          ]
         }
       }
     }
