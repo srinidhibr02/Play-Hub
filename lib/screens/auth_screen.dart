@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:play_hub/screens/home_screen.dart';
+import 'package:play_hub/service/auth_service.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -12,6 +14,9 @@ class _AuthPageState extends State<AuthPage>
   late TabController _tabController;
   final _loginFormKey = GlobalKey<FormState>();
   final _registerFormKey = GlobalKey<FormState>();
+
+  // Uncomment this when you import AuthService
+  final _authService = AuthService();
 
   // Login controllers
   final _loginEmailController = TextEditingController();
@@ -27,6 +32,7 @@ class _AuthPageState extends State<AuthPage>
   bool _loginPasswordVisible = false;
   bool _registerPasswordVisible = false;
   bool _confirmPasswordVisible = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -47,9 +53,198 @@ class _AuthPageState extends State<AuthPage>
     super.dispose();
   }
 
+  // Login Handler
+  Future<void> _handleLogin() async {
+    if (!_loginFormKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _authService.loginWithEmail(
+        email: _loginEmailController.text.trim(),
+        password: _loginPasswordController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      if (result.success) {
+        _showMessage(result.message, isError: false);
+        // Navigate to home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      } else {
+        _showMessage(result.message, isError: true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Login failed: $e', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleRegister() async {
+    if (!_registerFormKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _authService.registerWithEmail(
+        email: _registerEmailController.text.trim(),
+        password: _registerPasswordController.text.trim(),
+        fullName: _registerNameController.text.trim(),
+        phoneNumber: _registerPhoneController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      if (result.success) {
+        _showMessage(result.message, isError: false);
+        // Navigate to home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      } else {
+        _showMessage(result.message, isError: true);
+      }
+
+      // Temporary - Remove this when using AuthService
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      _showMessage('Registration successful!', isError: false);
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Registration failed: $e', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // Google Sign In Handler
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // TODO: Uncomment and use AuthService
+      /*
+      final result = await _authService.signInWithGoogle();
+
+      if (!mounted) return;
+
+      if (result.success) {
+        _showMessage(result.message, isError: false);
+        // Navigate to home
+      } else {
+        _showMessage(result.message, isError: true);
+      }
+      */
+
+      // Temporary
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      _showMessage('Google Sign-In successful!', isError: false);
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Google Sign-In failed: $e', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // Forgot Password Handler
+  void _handleForgotPassword() {
+    final emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter your email to receive a password reset link'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                prefixIcon: const Icon(Icons.email_outlined),
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+
+              if (email.isEmpty) {
+                _showMessage('Please enter your email', isError: true);
+                return;
+              }
+
+              Navigator.pop(context);
+
+              // TODO: Uncomment and use AuthService
+              /*
+              final result = await _authService.resetPassword(email: email);
+              _showMessage(result.message, isError: !result.success);
+              */
+
+              // Temporary
+              _showMessage(
+                'Password reset link sent to $email',
+                isError: false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Send Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show message helper
+  void _showMessage(String message, {required bool isError}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(color: Colors.white),
@@ -87,7 +282,7 @@ class _AuthPageState extends State<AuthPage>
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Tab Bar with rounded pill shape
+                // Tab Bar
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
@@ -120,7 +315,7 @@ class _AuthPageState extends State<AuthPage>
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Flexible with TabBarView for overflow safety
+                // Tab Views
                 Flexible(
                   child: TabBarView(
                     controller: _tabController,
@@ -136,217 +331,220 @@ class _AuthPageState extends State<AuthPage>
   }
 
   Widget _buildLoginForm() {
-    return Form(
-      key: _loginFormKey,
-      child: Column(
-        children: [
-          _buildTextField(
-            controller: _loginEmailController,
-            label: 'Email',
-            icon: Icons.email_outlined,
-            keyboardType: TextInputType.emailAddress,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter your email';
-              }
-              if (!RegExp(
-                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-              ).hasMatch(value)) {
-                return 'Please enter a valid email';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 20),
-          _buildTextField(
-            controller: _loginPasswordController,
-            label: 'Password',
-            icon: Icons.lock_outline,
-            obscureText: !_loginPasswordVisible,
-            suffixIcon: IconButton(
-              icon: Icon(
-                _loginPasswordVisible ? Icons.visibility : Icons.visibility_off,
-              ),
-              onPressed: () {
-                setState(() {
-                  _loginPasswordVisible = !_loginPasswordVisible;
-                });
+    return SingleChildScrollView(
+      child: Form(
+        key: _loginFormKey,
+        child: Column(
+          children: [
+            _buildTextField(
+              controller: _loginEmailController,
+              label: 'Email',
+              icon: Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your email';
+                }
+                if (!RegExp(
+                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                ).hasMatch(value)) {
+                  return 'Please enter a valid email';
+                }
+                return null;
               },
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter your password';
-              }
-              if (value.length < 6) {
-                return 'Password must be at least 6 characters';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {
-                // Handle forgot password
+            const SizedBox(height: 20),
+            _buildTextField(
+              controller: _loginPasswordController,
+              label: 'Password',
+              icon: Icons.lock_outline,
+              obscureText: !_loginPasswordVisible,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _loginPasswordVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off,
+                ),
+                onPressed: () {
+                  setState(
+                    () => _loginPasswordVisible = !_loginPasswordVisible,
+                  );
+                },
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your password';
+                }
+                if (value.length < 6) {
+                  return 'Password must be at least 6 characters';
+                }
+                return null;
               },
-              child: Text(
-                'Forgot Password?',
-                style: TextStyle(
-                  color: Colors.teal.shade700,
-                  fontWeight: FontWeight.w600,
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _handleForgotPassword,
+                child: Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    color: Colors.teal.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 30),
-          _buildGradientButton(
-            text: 'Login',
-            onPressed: () {
-              if (_loginFormKey.currentState!.validate()) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Login successful!')),
-                );
-              }
-            },
-          ),
-          const SizedBox(height: 20),
-          const Text('Or continue with', style: TextStyle(color: Colors.grey)),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildSocialButton(Icons.g_mobiledata, () {}),
-              const SizedBox(width: 20),
-              _buildSocialButton(Icons.apple, () {}),
-            ],
-          ),
-        ],
+            const SizedBox(height: 30),
+            _buildGradientButton(
+              text: 'Login',
+              onPressed: _isLoading ? null : _handleLogin,
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Or continue with',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildSocialButton(
+                  Icons.g_mobiledata,
+                  _isLoading ? null : _handleGoogleSignIn,
+                ),
+                const SizedBox(width: 20),
+                _buildSocialButton(Icons.apple, null),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildRegisterForm() {
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Form(
-          key: _registerFormKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 5),
-
-              _buildTextField(
-                controller: _registerNameController,
-                label: 'Full Name',
-                icon: Icons.person_outline,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _registerEmailController,
-                label: 'Email',
-                icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _registerPhoneController,
-                label: 'Phone Number',
-                icon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your phone number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _registerPasswordController,
-                label: 'Password',
-                icon: Icons.lock_outline,
-                obscureText: !_registerPasswordVisible,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _registerPasswordVisible
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _registerPasswordVisible = !_registerPasswordVisible;
-                    });
-                  },
+      child: Form(
+        key: _registerFormKey,
+        child: Column(
+          children: [
+            _buildTextField(
+              controller: _registerNameController,
+              label: 'Full Name',
+              icon: Icons.person_outline,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your name';
+                }
+                if (value.length < 3) {
+                  return 'Name must be at least 3 characters';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: _registerEmailController,
+              label: 'Email',
+              icon: Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your email';
+                }
+                if (!RegExp(
+                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                ).hasMatch(value)) {
+                  return 'Please enter a valid email';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: _registerPhoneController,
+              label: 'Phone Number',
+              icon: Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your phone number';
+                }
+                if (!RegExp(r'^[0-9]{10}$').hasMatch(value)) {
+                  return 'Please enter a valid 10-digit phone number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: _registerPasswordController,
+              label: 'Password',
+              icon: Icons.lock_outline,
+              obscureText: !_registerPasswordVisible,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _registerPasswordVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a password';
-                  }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _registerConfirmPasswordController,
-                label: 'Confirm Password',
-                icon: Icons.lock_outline,
-                obscureText: !_confirmPasswordVisible,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _confirmPasswordVisible
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _confirmPasswordVisible = !_confirmPasswordVisible;
-                    });
-                  },
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please confirm your password';
-                  }
-                  if (value != _registerPasswordController.text) {
-                    return 'Passwords do not match';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 30),
-              _buildGradientButton(
-                text: 'Register',
                 onPressed: () {
-                  if (_registerFormKey.currentState!.validate()) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Registration successful!')),
-                    );
-                  }
+                  setState(
+                    () => _registerPasswordVisible = !_registerPasswordVisible,
+                  );
                 },
               ),
-            ],
-          ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a password';
+                }
+                if (value.length < 8) {
+                  return 'Password must be at least 8 characters';
+                }
+                if (!RegExp(
+                  r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)',
+                ).hasMatch(value)) {
+                  return 'Must contain uppercase, lowercase & number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: _registerConfirmPasswordController,
+              label: 'Confirm Password',
+              icon: Icons.lock_outline,
+              obscureText: !_confirmPasswordVisible,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _confirmPasswordVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off,
+                ),
+                onPressed: () {
+                  setState(
+                    () => _confirmPasswordVisible = !_confirmPasswordVisible,
+                  );
+                },
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please confirm your password';
+                }
+                if (value != _registerPasswordController.text) {
+                  return 'Passwords do not match';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 30),
+            _buildGradientButton(
+              text: 'Register',
+              onPressed: _isLoading ? null : _handleRegister,
+            ),
+            const SizedBox(height: 20),
+          ],
         ),
       ),
     );
@@ -399,7 +597,7 @@ class _AuthPageState extends State<AuthPage>
 
   Widget _buildGradientButton({
     required String text,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
     return Container(
       width: double.infinity,
@@ -426,15 +624,24 @@ class _AuthPageState extends State<AuthPage>
             borderRadius: BorderRadius.circular(15),
           ),
         ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 1,
-          ),
-        ),
+        child: _isLoading
+            ? const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
+              ),
       ),
     );
   }

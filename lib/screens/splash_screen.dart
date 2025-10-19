@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import 'package:play_hub/screens/auth_screen.dart';
-
-void main() {
-  runApp(const SportsEventApp());
-}
+import 'package:play_hub/screens/home_screen.dart';
+import 'package:play_hub/service/auth_service.dart';
 
 class SportsEventApp extends StatelessWidget {
   const SportsEventApp({super.key});
@@ -38,6 +36,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -60,10 +59,7 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const AuthPage()),
-      );
+      _checkAuthStatus();
     });
   }
 
@@ -73,9 +69,24 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
+  void _checkAuthStatus() {
+    if (!mounted) return;
+    if (_authService.isLoggedIn) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const AuthPage()),
+      );
+    } else {
+      // User is not logged in, navigate to AuthPage
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const AuthPage()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Scaffold(
       body: Container(
         color: Colors.white, // simple white background
