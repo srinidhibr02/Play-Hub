@@ -10,7 +10,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final AuthService _authService = AuthService();
+  final _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hello ${_authService.currentUser!.displayName}👋',
+                "Hello 👋 \n${_authService.currentUser!.displayName}",
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.teal.shade900,
@@ -90,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              MaterialPageRoute(builder: (context) => ProfileScreen()),
             );
           },
           borderRadius: BorderRadius.circular(

@@ -15,7 +15,6 @@ class _AuthPageState extends State<AuthPage>
   final _loginFormKey = GlobalKey<FormState>();
   final _registerFormKey = GlobalKey<FormState>();
 
-  // Uncomment this when you import AuthService
   final _authService = AuthService();
 
   // Login controllers
@@ -33,11 +32,13 @@ class _AuthPageState extends State<AuthPage>
   bool _registerPasswordVisible = false;
   bool _confirmPasswordVisible = false;
   bool _isLoading = false;
+  bool _isCheckingAuth = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _checkExistingAuth();
   }
 
   @override
@@ -51,6 +52,37 @@ class _AuthPageState extends State<AuthPage>
     _registerPasswordController.dispose();
     _registerConfirmPasswordController.dispose();
     super.dispose();
+  }
+
+  // Check if user is already logged in (persistent login)
+  Future<void> _checkExistingAuth() async {
+    try {
+      // Initialize Google Sign-In first
+      await _authService.initializeGoogleSignIn();
+
+      // Check if user is logged in via Firebase Auth
+      // Firebase Auth automatically persists authentication state
+      if (_authService.isLoggedIn) {
+        debugPrint(
+          'User already logged in: ${_authService.currentUser?.email}',
+        );
+
+        // Navigate to home
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        }
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error checking auth: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingAuth = false);
+      }
+    }
   }
 
   // Login Handler
@@ -69,7 +101,6 @@ class _AuthPageState extends State<AuthPage>
 
       if (result.success) {
         _showMessage(result.message, isError: false);
-        // Navigate to home
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomePage()),
@@ -87,6 +118,7 @@ class _AuthPageState extends State<AuthPage>
     }
   }
 
+  // Register Handler
   Future<void> _handleRegister() async {
     if (!_registerFormKey.currentState!.validate()) return;
 
@@ -104,7 +136,6 @@ class _AuthPageState extends State<AuthPage>
 
       if (result.success) {
         _showMessage(result.message, isError: false);
-        // Navigate to home
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomePage()),
@@ -112,11 +143,6 @@ class _AuthPageState extends State<AuthPage>
       } else {
         _showMessage(result.message, isError: true);
       }
-
-      // Temporary - Remove this when using AuthService
-      await Future.delayed(const Duration(seconds: 2));
-      if (!mounted) return;
-      _showMessage('Registration successful!', isError: false);
     } catch (e) {
       if (!mounted) return;
       _showMessage('Registration failed: $e', isError: true);
@@ -132,31 +158,36 @@ class _AuthPageState extends State<AuthPage>
     setState(() => _isLoading = true);
 
     try {
-      // TODO: Uncomment and use AuthService
-      /*
       final result = await _authService.signInWithGoogle();
 
       if (!mounted) return;
 
+      // The authentication event stream will handle the actual Firebase sign-in
+      // and navigation, so we just wait a moment for the process to complete
       if (result.success) {
-        _showMessage(result.message, isError: false);
-        // Navigate to home
+        // Wait for the authentication event to process
+        await Future.delayed(const Duration(seconds: 2));
+
+        if (!mounted) return;
+
+        // Check if user is now logged in
+        if (_authService.isLoggedIn) {
+          _showMessage('Signed in successfully!', isError: false);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        } else {
+          setState(() => _isLoading = false);
+        }
       } else {
+        setState(() => _isLoading = false);
         _showMessage(result.message, isError: true);
       }
-      */
-
-      // Temporary
-      await Future.delayed(const Duration(seconds: 2));
-      if (!mounted) return;
-      _showMessage('Google Sign-In successful!', isError: false);
     } catch (e) {
       if (!mounted) return;
+      setState(() => _isLoading = false);
       _showMessage('Google Sign-In failed: $e', isError: true);
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
     }
   }
 
@@ -203,17 +234,8 @@ class _AuthPageState extends State<AuthPage>
 
               Navigator.pop(context);
 
-              // TODO: Uncomment and use AuthService
-              /*
               final result = await _authService.resetPassword(email: email);
               _showMessage(result.message, isError: !result.success);
-              */
-
-              // Temporary
-              _showMessage(
-                'Password reset link sent to $email',
-                isError: false,
-              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.teal,
@@ -243,6 +265,30 @@ class _AuthPageState extends State<AuthPage>
 
   @override
   Widget build(BuildContext context) {
+    // Show loading screen while checking authentication
+    if (_isCheckingAuth) {
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(color: Colors.white),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'images/whiteBGlogo.png',
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 24),
+                const CircularProgressIndicator(color: Colors.teal),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final theme = Theme.of(context);
 
     return Scaffold(
