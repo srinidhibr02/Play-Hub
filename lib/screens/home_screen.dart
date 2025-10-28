@@ -11,7 +11,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-  // final _authService = AuthService();
 
   final List<Widget> _screens = [
     const HomeScreen(),

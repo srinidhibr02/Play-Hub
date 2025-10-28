@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:play_hub/screens/home_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
+import 'package:play_hub/service/google_signin_service.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -15,8 +17,8 @@ class _AuthPageState extends State<AuthPage>
   final _loginFormKey = GlobalKey<FormState>();
   final _registerFormKey = GlobalKey<FormState>();
 
-  // Uncomment this when you import AuthService
   final _authService = AuthService();
+  final _googleSignInService = GoogleSignInService();
 
   // Login controllers
   final _loginEmailController = TextEditingController();
@@ -38,6 +40,7 @@ class _AuthPageState extends State<AuthPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _initializeGoogleSignIn();
   }
 
   @override
@@ -51,6 +54,54 @@ class _AuthPageState extends State<AuthPage>
     _registerPasswordController.dispose();
     _registerConfirmPasswordController.dispose();
     super.dispose();
+  }
+
+  // Initialize Google Sign-In service
+  Future<void> _initializeGoogleSignIn() async {
+    try {
+      await _googleSignInService.initialize(
+        onUserChanged: _handleGoogleUserChanged,
+        onError: _handleGoogleError,
+      );
+    } catch (e) {
+      // Handle initialization error
+      debugPrint('Google Sign-In initialization error: $e');
+    }
+  }
+
+  // Handle Google Sign-In user changes
+  void _handleGoogleUserChanged(GoogleSignInAccount? user) {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    // If user signed in successfully, navigate to home
+    if (user != null) {
+      _showMessage(
+        'Signed in as ${user.displayName ?? user.email}',
+        isError: false,
+      );
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      });
+    }
+  }
+
+  // Handle Google Sign-In errors
+  void _handleGoogleError(Object error) {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    _showMessage('Google Sign-In error: $error', isError: true);
   }
 
   // Login Handler
@@ -69,7 +120,6 @@ class _AuthPageState extends State<AuthPage>
 
       if (result.success) {
         _showMessage(result.message, isError: false);
-        // Navigate to home
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomePage()),
@@ -87,6 +137,7 @@ class _AuthPageState extends State<AuthPage>
     }
   }
 
+  // Register Handler
   Future<void> _handleRegister() async {
     if (!_registerFormKey.currentState!.validate()) return;
 
@@ -104,7 +155,6 @@ class _AuthPageState extends State<AuthPage>
 
       if (result.success) {
         _showMessage(result.message, isError: false);
-        // Navigate to home
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomePage()),
@@ -112,11 +162,6 @@ class _AuthPageState extends State<AuthPage>
       } else {
         _showMessage(result.message, isError: true);
       }
-
-      // Temporary - Remove this when using AuthService
-      await Future.delayed(const Duration(seconds: 2));
-      if (!mounted) return;
-      _showMessage('Registration successful!', isError: false);
     } catch (e) {
       if (!mounted) return;
       _showMessage('Registration failed: $e', isError: true);
@@ -132,31 +177,19 @@ class _AuthPageState extends State<AuthPage>
     setState(() => _isLoading = true);
 
     try {
-      // TODO: Uncomment and use AuthService
-      /*
-      final result = await _authService.signInWithGoogle();
+      final result = await _googleSignInService.signIn();
 
       if (!mounted) return;
 
-      if (result.success) {
-        _showMessage(result.message, isError: false);
-        // Navigate to home
-      } else {
+      if (!result.success) {
+        setState(() => _isLoading = false);
         _showMessage(result.message, isError: true);
       }
-      */
-
-      // Temporary
-      await Future.delayed(const Duration(seconds: 2));
-      if (!mounted) return;
-      _showMessage('Google Sign-In successful!', isError: false);
+      // Success handling happens in _handleGoogleUserChanged callback
     } catch (e) {
       if (!mounted) return;
+      setState(() => _isLoading = false);
       _showMessage('Google Sign-In failed: $e', isError: true);
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
     }
   }
 

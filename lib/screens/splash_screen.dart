@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-
 import 'package:play_hub/screens/auth_screen.dart';
 import 'package:play_hub/screens/home_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
@@ -73,12 +72,12 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     if (_authService.isLoggedIn) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const AuthPage()),
+        MaterialPageRoute<void>(builder: (_) => const HomePage()),
       );
     } else {
       // User is not logged in, navigate to AuthPage
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const AuthPage()),
+        MaterialPageRoute<void>(builder: (_) => const HomePage()),
       );
     }
   }
