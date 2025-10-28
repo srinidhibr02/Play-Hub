@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:play_hub/screens/tabs/home_page.dart';
+import 'package:play_hub/screens/tabs/profile_screen.dart';
 import 'package:play_hub/screens/tabs/tournament_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -16,7 +17,7 @@ class _HomePageState extends State<HomePage> {
     const HomeScreen(),
     const TournamentsScreen(),
     const ClubsScreen(),
-    const ProfileScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -80,22 +81,6 @@ class ClubsScreen extends StatelessWidget {
         foregroundColor: Colors.white,
       ),
       body: const Center(child: Text('Clubs Screen - Coming Soon')),
-    );
-  }
-}
-
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        backgroundColor: Colors.teal.shade700,
-        foregroundColor: Colors.white,
-      ),
-      body: const Center(child: Text('Profile Screen - Coming Soon')),
     );
   }
 }

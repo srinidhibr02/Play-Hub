@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:play_hub/screens/home_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
-import 'package:play_hub/service/google_signin_service.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -18,7 +16,6 @@ class _AuthPageState extends State<AuthPage>
   final _registerFormKey = GlobalKey<FormState>();
 
   final _authService = AuthService();
-  final _googleSignInService = GoogleSignInService();
 
   // Login controllers
   final _loginEmailController = TextEditingController();
@@ -35,12 +32,13 @@ class _AuthPageState extends State<AuthPage>
   bool _registerPasswordVisible = false;
   bool _confirmPasswordVisible = false;
   bool _isLoading = false;
+  bool _isCheckingAuth = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _initializeGoogleSignIn();
+    _checkExistingAuth();
   }
 
   @override
@@ -56,52 +54,35 @@ class _AuthPageState extends State<AuthPage>
     super.dispose();
   }
 
-  // Initialize Google Sign-In service
-  Future<void> _initializeGoogleSignIn() async {
+  // Check if user is already logged in (persistent login)
+  Future<void> _checkExistingAuth() async {
     try {
-      await _googleSignInService.initialize(
-        onUserChanged: _handleGoogleUserChanged,
-        onError: _handleGoogleError,
-      );
-    } catch (e) {
-      // Handle initialization error
-      debugPrint('Google Sign-In initialization error: $e');
-    }
-  }
+      // Initialize Google Sign-In first
+      await _authService.initializeGoogleSignIn();
 
-  // Handle Google Sign-In user changes
-  void _handleGoogleUserChanged(GoogleSignInAccount? user) {
-    if (!mounted) return;
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    // If user signed in successfully, navigate to home
-    if (user != null) {
-      _showMessage(
-        'Signed in as ${user.displayName ?? user.email}',
-        isError: false,
-      );
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
+      // Check if user is logged in via Firebase Auth
+      // Firebase Auth automatically persists authentication state
+      if (_authService.isLoggedIn) {
+        debugPrint(
+          'User already logged in: ${_authService.currentUser?.email}',
         );
-      });
+
+        // Navigate to home
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        }
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error checking auth: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingAuth = false);
+      }
     }
-  }
-
-  // Handle Google Sign-In errors
-  void _handleGoogleError(Object error) {
-    if (!mounted) return;
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    _showMessage('Google Sign-In error: $error', isError: true);
   }
 
   // Login Handler
@@ -177,15 +158,32 @@ class _AuthPageState extends State<AuthPage>
     setState(() => _isLoading = true);
 
     try {
-      final result = await _googleSignInService.signIn();
+      final result = await _authService.signInWithGoogle();
 
       if (!mounted) return;
 
-      if (!result.success) {
+      // The authentication event stream will handle the actual Firebase sign-in
+      // and navigation, so we just wait a moment for the process to complete
+      if (result.success) {
+        // Wait for the authentication event to process
+        await Future.delayed(const Duration(seconds: 2));
+
+        if (!mounted) return;
+
+        // Check if user is now logged in
+        if (_authService.isLoggedIn) {
+          _showMessage('Signed in successfully!', isError: false);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        } else {
+          setState(() => _isLoading = false);
+        }
+      } else {
         setState(() => _isLoading = false);
         _showMessage(result.message, isError: true);
       }
-      // Success handling happens in _handleGoogleUserChanged callback
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -236,17 +234,8 @@ class _AuthPageState extends State<AuthPage>
 
               Navigator.pop(context);
 
-              // TODO: Uncomment and use AuthService
-              /*
               final result = await _authService.resetPassword(email: email);
               _showMessage(result.message, isError: !result.success);
-              */
-
-              // Temporary
-              _showMessage(
-                'Password reset link sent to $email',
-                isError: false,
-              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.teal,
@@ -276,6 +265,30 @@ class _AuthPageState extends State<AuthPage>
 
   @override
   Widget build(BuildContext context) {
+    // Show loading screen while checking authentication
+    if (_isCheckingAuth) {
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(color: Colors.white),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'images/whiteBGlogo.png',
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 24),
+                const CircularProgressIndicator(color: Colors.teal),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final theme = Theme.of(context);
 
     return Scaffold(

@@ -1,22 +1,190 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:play_hub/constants/constants.dart';
 
 class AuthService {
+  // Singleton pattern
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
+
   // Firebase instances
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // OAuth 2.0 Client ID
+  static const String _clientId =
+      '371130915379-54ket1adu7iqt2lqdoh4oqhvi3fedlnj.apps.googleusercontent.com';
+
   // Get current user
   User? get currentUser => _auth.currentUser;
-
-  // Get current user ID
-  String? get currentUserId => _auth.currentUser?.uid;
-
-  // Auth state changes stream
+  String? get currentUserEmailId => _auth.currentUser?.email;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  // Check if user is logged in
   bool get isLoggedIn => _auth.currentUser != null;
+
+  // Google Sign-In current user
+  GoogleSignInAccount? _currentGoogleUser;
+  bool _isAuthorized = false;
+
+  GoogleSignInAccount? get currentGoogleUser => _currentGoogleUser;
+  bool get isAuthorized => _isAuthorized;
+
+  // ==================== INITIALIZE GOOGLE SIGN-IN ====================
+  Future<void> initializeGoogleSignIn() async {
+    final GoogleSignIn signIn = GoogleSignIn.instance;
+
+    // Initialize with client ID following Flutter's example pattern
+    await signIn.initialize(clientId: _clientId).then((_) {
+      // Listen to authentication events
+      signIn.authenticationEvents
+          .listen(_handleAuthenticationEvent)
+          .onError(_handleAuthenticationError);
+
+      // Attempt lightweight authentication (silent sign-in)
+      // This tries to sign in the user without UI if they're already signed in
+      unawaited(signIn.attemptLightweightAuthentication());
+    });
+  }
+
+  // Handle Google Sign-In authentication events (following Flutter's example)
+  Future<void> _handleAuthenticationEvent(
+    GoogleSignInAuthenticationEvent event,
+  ) async {
+    final GoogleSignInAccount? user = switch (event) {
+      GoogleSignInAuthenticationEventSignIn() => event.user,
+      GoogleSignInAuthenticationEventSignOut() => null,
+    };
+
+    _currentGoogleUser = user;
+    _isAuthorized = user != null;
+
+    // If user signed in, automatically sign them into Firebase
+    if (user != null) {
+      await _signInToFirebaseWithGoogle(user);
+    }
+  }
+
+  // Handle authentication errors (following Flutter's example)
+  Future<void> _handleAuthenticationError(Object e) async {
+    _currentGoogleUser = null;
+    _isAuthorized = false;
+
+    final errorMessage = e is GoogleSignInException
+        ? _getGoogleSignInErrorMessage(e)
+        : 'Unknown error: $e';
+
+    print('Google Sign-In Error: $errorMessage');
+  }
+
+  // Sign in to Firebase with Google credentials
+  Future<AuthResult> _signInToFirebaseWithGoogle(
+    GoogleSignInAccount googleUser,
+  ) async {
+    try {
+      const scopes = [
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'openid',
+      ];
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final googleAuthorization = await googleUser.authorizationClient
+          .authorizationForScopes(scopes);
+
+      // Create a new credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuthorization!.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase with the Google credential
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user;
+
+      if (user == null) {
+        return AuthResult(
+          success: false,
+          message: 'Failed to sign in with Google',
+        );
+      }
+
+      // Check if user document exists, if not create it
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(user.email)
+          .get();
+
+      if (!userDoc.exists) {
+        await _firestore.collection('users').doc(user.email).set({
+          'uid': user.uid,
+          'email': user.email ?? '',
+          'fullName': user.displayName ?? '',
+          'phoneNumber': user.phoneNumber ?? '',
+          'role': 'user',
+          'profileImageUrl': user.photoURL ?? '',
+          'clubMemberships': [],
+          'hostedTournaments': [],
+          'isActive': true,
+          'loginMethod': 'google',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        // Update last login
+        await _firestore.collection('users').doc(user.email).update({
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      return AuthResult(
+        success: true,
+        message: 'Signed in with Google successfully!',
+        user: user,
+      );
+    } catch (e) {
+      return AuthResult(
+        success: false,
+        message: 'Failed to sign in to Firebase: $e',
+      );
+    }
+  }
+
+  // ==================== GOOGLE SIGN-IN (following Flutter's example) ====================
+  Future<AuthResult> signInWithGoogle() async {
+    try {
+      // Check if Google Sign-In supports authenticate on this platform
+      if (GoogleSignIn.instance.supportsAuthenticate()) {
+        // Use authenticate() for platforms that support it
+        await GoogleSignIn.instance.authenticate();
+
+        // User sign-in will be handled by the authentication event stream
+        // Return success immediately
+        return AuthResult(
+          success: true,
+          message: 'Google Sign-In initiated',
+          user: currentUser,
+        );
+      } else {
+        // For platforms that don't support authenticate (like web)
+        return AuthResult(
+          success: false,
+          message: 'Google Sign-In is not supported on this platform',
+        );
+      }
+    } on GoogleSignInException catch (e) {
+      return AuthResult(
+        success: false,
+        message: _getGoogleSignInErrorMessage(e),
+      );
+    } catch (e) {
+      return AuthResult(success: false, message: 'Google Sign-In failed: $e');
+    }
+  }
 
   // ==================== REGISTER ====================
   Future<AuthResult> registerWithEmail({
@@ -41,7 +209,7 @@ class AuthService {
 
       await user.updateDisplayName(fullName);
 
-      await _firestore.collection('users').doc(user.uid).set({
+      await _firestore.collection('users').doc(user.email).set({
         'uid': user.uid,
         'email': email,
         'fullName': fullName,
@@ -51,6 +219,7 @@ class AuthService {
         'clubMemberships': [],
         'hostedTournaments': [],
         'isActive': true,
+        'loginMethod': 'email',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -72,6 +241,7 @@ class AuthService {
     }
   }
 
+  // ==================== LOGIN ====================
   Future<AuthResult> loginWithEmail({
     required String email,
     required String password,
@@ -81,6 +251,14 @@ class AuthService {
         email: email,
         password: password,
       );
+
+      // Update last login
+      if (userCredential.user != null) {
+        await _firestore
+            .collection('users')
+            .doc(userCredential.user!.email)
+            .update({'updatedAt': FieldValue.serverTimestamp()});
+      }
 
       return AuthResult(
         success: true,
@@ -100,9 +278,14 @@ class AuthService {
   // ==================== LOGOUT ====================
   Future<void> logout() async {
     try {
-      await Future.wait([_auth.signOut()]);
+      await Future.wait([
+        _auth.signOut(),
+        GoogleSignIn.instance.disconnect(), // Use disconnect to reset state
+      ]);
+      _currentGoogleUser = null;
+      _isAuthorized = false;
     } catch (e) {
-      // Silent fail - user will be logged out anyway
+      print('Logout error: $e');
     }
   }
 
@@ -156,7 +339,7 @@ class AuthService {
         updates['profileImageUrl'] = profileImageUrl;
       }
 
-      await _firestore.collection('users').doc(user.uid).update(updates);
+      await _firestore.collection('users').doc(user.email).update(updates);
 
       return AuthResult(
         success: true,
@@ -172,34 +355,34 @@ class AuthService {
   }
 
   // ==================== GET USER DATA ====================
-  Future<Map<String, dynamic>?> getUserData(String uid) async {
+  Future<Map<String, dynamic>?> getUserData(String email) async {
     try {
-      final doc = await _firestore.collection('users').doc(uid).get();
+      final doc = await _firestore.collection('users').doc(email).get();
       return doc.data();
     } catch (e) {
       return null;
     }
   }
 
-  // ==================== GET CURRENT USER DATA ====================
   Future<Map<String, dynamic>?> getCurrentUserData() async {
-    final uid = currentUserId;
+    final uid = currentUserEmailId;
     if (uid == null) return null;
     return getUserData(uid);
   }
 
   // ==================== STREAM USER DATA ====================
-  Stream<DocumentSnapshot<Map<String, dynamic>>>? streamUserData(String uid) {
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? streamUserData(
+    String emailId,
+  ) {
     try {
-      return _firestore.collection('users').doc(uid).snapshots();
+      return _firestore.collection('users').doc(emailId).snapshots();
     } catch (e) {
       return null;
     }
   }
 
-  // ==================== STREAM CURRENT USER DATA ====================
   Stream<DocumentSnapshot<Map<String, dynamic>>>? streamCurrentUserData() {
-    final uid = currentUserId;
+    final uid = currentUserEmailId;
     if (uid == null) return null;
     return streamUserData(uid);
   }
@@ -216,7 +399,12 @@ class AuthService {
       }
 
       // Delete user document
-      await _firestore.collection('users').doc(user.uid).delete();
+      await _firestore.collection('users').doc(user.email).delete();
+
+      // Sign out from Google if signed in
+      if (_currentGoogleUser != null) {
+        await GoogleSignIn.instance.disconnect();
+      }
 
       // Delete auth account
       await user.delete();
@@ -296,7 +484,7 @@ class AuthService {
     }
   }
 
-  // ==================== ERROR MESSAGE HELPER ====================
+  // ==================== ERROR MESSAGE HELPERS ====================
   String _getAuthErrorMessage(String code) {
     switch (code) {
       case 'email-already-in-use':
@@ -325,18 +513,17 @@ class AuthService {
         return 'Authentication failed. Please try again.';
     }
   }
+
+  String _getGoogleSignInErrorMessage(GoogleSignInException e) {
+    // Following Flutter's example pattern for error handling
+    return switch (e.code) {
+      GoogleSignInExceptionCode.canceled => 'Sign in was cancelled',
+      GoogleSignInExceptionCode.interrupted =>
+        'Network error. Please check your connection.',
+      _ =>
+        'GoogleSignInException ${e.code}: ${e.description ?? "Unknown error"}',
+    };
+  }
 }
 
 // ==================== AUTH RESULT MODEL ====================
-class AuthResult {
-  final bool success;
-  final String message;
-  final User? user;
-
-  AuthResult({required this.success, required this.message, this.user});
-
-  @override
-  String toString() {
-    return 'AuthResult(success: $success, message: $message, user: ${user?.uid})';
-  }
-}
