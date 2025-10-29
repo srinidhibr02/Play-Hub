@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:play_hub/constants/models.dart';
-import 'package:play_hub/screens/selection_confirmation_screens.dart';
+import 'package:play_hub/screens/booking/selection_confirmation_screens.dart';
 import 'package:play_hub/service/booking_service.dart';
 
 class SelectCourtScreen extends StatelessWidget {
