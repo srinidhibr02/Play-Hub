@@ -57,11 +57,7 @@ class _AuthPageState extends State<AuthPage>
   // Check if user is already logged in (persistent login)
   Future<void> _checkExistingAuth() async {
     try {
-      // Initialize Google Sign-In first
       await _authService.initializeGoogleSignIn();
-
-      // Check if user is logged in via Firebase Auth
-      // Firebase Auth automatically persists authentication state
       if (_authService.isLoggedIn) {
         debugPrint(
           'User already logged in: ${_authService.currentUser?.email}',
@@ -69,6 +65,14 @@ class _AuthPageState extends State<AuthPage>
 
         // Navigate to home
         if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'User already logged in: ${_authService.currentUser?.email}',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const HomePage()),

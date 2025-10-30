@@ -44,7 +44,7 @@ class AuthService {
 
       // Attempt lightweight authentication (silent sign-in)
       // This tries to sign in the user without UI if they're already signed in
-      unawaited(signIn.attemptLightweightAuthentication());
+      // unawaited(signIn.attemptLightweightAuthentication());
     });
   }
 

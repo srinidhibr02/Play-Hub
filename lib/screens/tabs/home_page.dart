@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:play_hub/screens/booking/club_screen.dart';
+import 'package:play_hub/screens/booking_ui_screens.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
+import 'package:play_hub/service/initialise_sample_data.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -104,7 +107,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: CircleAvatar(
               radius: 26,
               backgroundColor: Colors.teal.shade100,
-              child: Icon(Icons.person, color: Colors.teal.shade700, size: 30),
+              backgroundImage:
+                  (_authService.currentUser?.photoURL != null &&
+                      _authService.currentUser!.photoURL!.isNotEmpty)
+                  ? NetworkImage(_authService.currentUser!.photoURL!)
+                  : const AssetImage('images/default_image.png')
+                        as ImageProvider,
             ),
           ),
         ),
@@ -154,7 +162,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 14),
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Currently Everything is Free'),
+                      ),
+                    );
+                    // initializeSampleData();
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.teal.shade700,
@@ -200,9 +215,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.event_available,
                 title: 'Book Slot',
                 color: Colors.blue,
-                onTap: () {},
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => SelectSportScreen()),
+                  );
+                },
               ),
             ),
+
             const SizedBox(width: 14),
             Expanded(
               child: _buildActionCard(
@@ -328,6 +348,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(18),
                     onTap: () {
                       // Handle tap
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              SelectClubScreen(sport: sport['name'] as String),
+                        ),
+                      );
                     },
                     child: Padding(
                       padding: const EdgeInsets.all(18),
