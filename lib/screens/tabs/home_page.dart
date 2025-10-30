@@ -3,6 +3,7 @@ import 'package:play_hub/screens/booking/club_screen.dart';
 import 'package:play_hub/screens/booking_ui_screens.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
+import 'package:play_hub/service/initialise_sample_data.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -167,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         content: Text('Currently Everything is Free'),
                       ),
                     );
+                    // initializeSampleData();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,

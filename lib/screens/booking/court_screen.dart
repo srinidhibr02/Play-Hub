@@ -63,6 +63,35 @@ class SelectCourtScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                // Display price
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.teal.shade200, width: 2),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.currency_rupee,
+                        size: 18,
+                        color: Colors.teal.shade700,
+                      ),
+                      Text(
+                        '${club.pricePerHour[sport]?.toStringAsFixed(0) ?? '0'}/hr',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -77,12 +106,23 @@ class SelectCourtScreen extends StatelessWidget {
 
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return Center(
-                    child: Text(
-                      'No courts available',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade600,
-                      ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.sports_tennis,
+                          size: 80,
+                          color: Colors.grey.shade300,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No courts available for $sport',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
@@ -109,12 +149,12 @@ class SelectCourtScreen extends StatelessWidget {
 
   Widget _buildCourtCard(BuildContext context, Court court) {
     return Material(
-      elevation: court.isAvailable ? 4 : 1,
+      elevation: court.isActive ? 4 : 1,
       borderRadius: BorderRadius.circular(16),
       shadowColor: Colors.teal.shade200,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: court.isAvailable
+        onTap: court.isActive
             ? () {
                 Navigator.push(
                   context,
@@ -130,12 +170,13 @@ class SelectCourtScreen extends StatelessWidget {
             : null,
         child: Container(
           decoration: BoxDecoration(
-            color: court.isAvailable ? Colors.white : Colors.grey.shade100,
+            color: court.isActive ? Colors.white : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: court.isAvailable
+              color: court.isActive
                   ? Colors.teal.shade200
                   : Colors.grey.shade300,
+              width: 2,
             ),
           ),
           padding: const EdgeInsets.all(20),
@@ -144,14 +185,14 @@ class SelectCourtScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: court.isAvailable
+                  color: court.isActive
                       ? Colors.teal.shade50
                       : Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   _getSportIcon(court.sport),
-                  color: court.isAvailable
+                  color: court.isActive
                       ? Colors.teal.shade700
                       : Colors.grey.shade600,
                   size: 32,
@@ -167,18 +208,42 @@ class SelectCourtScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: court.isAvailable
+                        color: court.isActive
                             ? Colors.black87
                             : Colors.grey.shade600,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      court.surface,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade700,
-                      ),
+                    Row(
+                      children: [
+                        Icon(
+                          court.type == 'Indoor' ? Icons.home : Icons.wb_sunny,
+                          size: 16,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          court.type,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Icon(
+                          Icons.people,
+                          size: 16,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Max ${court.capacity}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -189,17 +254,17 @@ class SelectCourtScreen extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: court.isAvailable
+                  color: court.isActive
                       ? Colors.green.shade50
                       : Colors.red.shade50,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  court.isAvailable ? 'Available' : 'Unavailable',
+                  court.isActive ? 'Available' : 'Closed',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: court.isAvailable
+                    color: court.isActive
                         ? Colors.green.shade800
                         : Colors.red.shade800,
                   ),
@@ -215,20 +280,24 @@ class SelectCourtScreen extends StatelessWidget {
   IconData _getSportIcon(String sport) {
     switch (sport.toLowerCase()) {
       case 'badminton':
-        return Icons
-            .sports_tennis; // No dedicated badminton icon, using tennis as closest
+        return Icons.sports_tennis;
       case 'cricket':
         return Icons.sports_cricket;
       case 'tennis':
         return Icons.sports_tennis;
+      case 'football':
+      case 'soccer':
+        return Icons.sports_soccer;
       case 'swimming':
         return Icons.pool;
       case 'table tennis':
-        return Icons.sports_tennis; // reuse tennis icon
+        return Icons.sports_tennis;
       case 'basketball':
         return Icons.sports_basketball;
+      case 'volleyball':
+        return Icons.sports_volleyball;
       default:
-        return Icons.sports; // generic sports icon fallback
+        return Icons.sports;
     }
   }
 }

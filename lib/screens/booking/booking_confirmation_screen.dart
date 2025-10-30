@@ -34,49 +34,84 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   Future<void> _confirmBooking() async {
     setState(() => isProcessing = true);
 
-    final userId = authService.currentUserEmailId;
-    if (userId == null) {
+    final user = authService.currentUser;
+    if (user == null) {
+      setState(() => isProcessing = false);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please login to continue')));
       return;
     }
 
-    final price = widget.club.pricing[widget.sport] ?? 0.0;
+    try {
+      // Get user data from Firestore
+      final userData = await authService.getCurrentUserData();
 
-    final bookingId = await bookingService.createBooking(
-      userId: userId,
-      clubId: widget.club.id,
-      courtId: widget.court.id,
-      sport: widget.sport,
-      date: widget.date,
-      timeSlot: widget.timeSlot,
-      price: price,
-    );
+      // Parse time slot (format: "9:00 AM - 10:00 AM")
+      final timeSlotParts = widget.timeSlot.split('-');
+      if (timeSlotParts.length != 2) {
+        throw Exception('Invalid time slot format');
+      }
 
-    setState(() => isProcessing = false);
+      final startTime = timeSlotParts[0].trim();
+      final endTime = timeSlotParts[1].trim();
 
-    if (bookingId != null) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => BookingSuccessScreen(bookingId: bookingId),
-        ),
-        (route) => route.isFirst,
+      final price = widget.club.pricePerHour[widget.sport] ?? 0.0;
+
+      // Create booking with all required parameters
+      final result = await bookingService.createBooking(
+        userId: user.uid,
+        userEmailId: user.email as String,
+        clubId: widget.club.id,
+        clubName: widget.club.name,
+        courtId: widget.court.id,
+        courtName: widget.court.name,
+        sport: widget.sport,
+        date: widget.date,
+        startTime: startTime,
+        endTime: endTime,
+        price: price,
+        userDetails: {
+          'name': userData?['fullName'] ?? user.displayName ?? 'User',
+          'email': user.email ?? '',
+          'phone': userData?['phoneNumber'] ?? '',
+        },
       );
-    } else {
+
+      setState(() => isProcessing = false);
+
+      if (!mounted) return;
+
+      if (result.success && result.bookingId != null) {
+        // Navigate to success screen
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => BookingSuccessScreen(bookingId: result.bookingId!),
+          ),
+          (route) => route.isFirst,
+        );
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      setState(() => isProcessing = false);
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Slot already booked. Please select another.'),
+        SnackBar(
+          content: Text('Error creating booking: $e'),
           backgroundColor: Colors.red,
         ),
       );
-      Navigator.pop(context);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final price = widget.club.pricing[widget.sport] ?? 0.0;
+    final price = widget.club.pricePerHour[widget.sport] ?? 0.0;
     final gst = price * 0.18;
     final total = price + gst;
 
@@ -99,13 +134,24 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: Colors.teal.shade50,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.check_circle,
+                        Icons.event_available,
                         size: 60,
-                        color: Colors.green.shade600,
+                        color: Colors.teal.shade700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  const Center(
+                    child: Text(
+                      'Review Your Booking',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
@@ -114,11 +160,12 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                   // Booking Details Card
                   _buildDetailsCard(
                     title: 'Booking Details',
+                    icon: Icons.sports,
                     children: [
                       _buildDetailRow('Club', widget.club.name),
                       _buildDetailRow('Court', widget.court.name),
                       _buildDetailRow('Sport', widget.sport),
-                      _buildDetailRow('Surface', widget.court.surface),
+                      _buildDetailRow('Type', widget.court.type),
                     ],
                   ),
 
@@ -127,6 +174,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                   // Date & Time Card
                   _buildDetailsCard(
                     title: 'Date & Time',
+                    icon: Icons.calendar_today,
                     children: [
                       _buildDetailRow(
                         'Date',
@@ -141,9 +189,10 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                   // Location Card
                   _buildDetailsCard(
                     title: 'Location',
+                    icon: Icons.location_on,
                     children: [
                       _buildDetailRow('Address', widget.club.address),
-                      _buildDetailRow('Phone', widget.club.phone),
+                      _buildDetailRow('Phone', widget.club.phoneNumber),
                     ],
                   ),
 
@@ -152,6 +201,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                   // Price Breakdown Card
                   _buildDetailsCard(
                     title: 'Price Breakdown',
+                    icon: Icons.receipt,
                     children: [
                       _buildDetailRow(
                         'Court Charge',
@@ -168,6 +218,53 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                         isTotal: true,
                       ),
                     ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Important Information
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.orange.shade700,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Important Information',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange.shade900,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '• Please arrive 10 minutes before your slot\n'
+                          '• Cancellations allowed up to 2 hours before\n'
+                          '• Bring valid ID for verification\n'
+                          '• Follow club rules and regulations',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.orange.shade800,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -200,13 +297,18 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Text(
-                        '₹${total.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal.shade700,
-                        ),
+                      Row(
+                        children: [
+                          const Icon(Icons.currency_rupee, size: 20),
+                          Text(
+                            total.toStringAsFixed(2),
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal.shade700,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -222,6 +324,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        disabledBackgroundColor: Colors.grey.shade400,
                       ),
                       child: isProcessing
                           ? const SizedBox(
@@ -252,6 +355,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
 
   Widget _buildDetailsCard({
     required String title,
+    required IconData icon,
     required List<Widget> children,
   }) {
     return Container(
@@ -259,14 +363,30 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Colors.grey.shade200, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Icon(icon, color: Colors.teal.shade700, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           ...children,
@@ -280,6 +400,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
@@ -289,12 +410,16 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               color: isTotal ? Colors.black87 : Colors.grey.shade600,
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: isTotal ? 18 : 14,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-              color: isTotal ? Colors.teal.shade700 : Colors.black87,
+          const SizedBox(width: 16),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: isTotal ? 18 : 14,
+                fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+                color: isTotal ? Colors.teal.shade700 : Colors.black87,
+              ),
             ),
           ),
         ],

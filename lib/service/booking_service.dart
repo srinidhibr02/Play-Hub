@@ -5,197 +5,254 @@ class BookingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Get all clubs
-  Stream<List<Club>> getClubs() {
-    return _firestore
-        .collection('clubs')
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => Club.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
+  Stream<List<Club>> getClubs({String? city, String? sport}) {
+    Query query = _firestore.collection('clubs');
+
+    if (city != null && city.isNotEmpty) {
+      query = query.where('city', isEqualTo: city);
+    }
+
+    if (sport != null && sport.isNotEmpty) {
+      query = query.where('sports', arrayContains: sport);
+    }
+
+    return query.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => Club.fromFirestore(doc)).toList();
+    });
   }
 
-  // Get clubs by sport
-  Stream<List<Club>> getClubsBySport(String sport) {
-    return _firestore
-        .collection('clubs')
-        .where('sports', arrayContains: sport)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => Club.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
+  // Get club by ID
+  Future<Club?> getClubById(String clubId) async {
+    try {
+      final doc = await _firestore.collection('clubs').doc(clubId).get();
+      if (doc.exists) {
+        return Club.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      print('Error getting club: $e');
+      return null;
+    }
   }
 
   // Get courts for a club and sport
   Stream<List<Court>> getCourts(String clubId, String sport) {
     return _firestore
-        .collection('clubs')
-        .doc(clubId)
-        .collection(sport) // sport-named subcollection holds courts
+        .collection('courts')
+        .where('clubId', isEqualTo: clubId)
+        .where('sport', isEqualTo: sport)
+        .where('isActive', isEqualTo: true)
         .snapshots()
-        .map(
-          (querySnapshot) => querySnapshot.docs
-              .map((doc) => Court.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => Court.fromFirestore(doc)).toList();
+        });
   }
 
   // Get available time slots for a court on a specific date
-  // Updated getAvailableSlots with sport parameter
   Future<List<TimeSlot>> getAvailableSlots({
     required String clubId,
-    required String sport,
     required String courtId,
     required DateTime date,
+    required double pricePerHour,
   }) async {
-    final bookings = await _firestore
-        .collection('bookings')
-        .where('clubId', isEqualTo: clubId)
-        .where('sport', isEqualTo: sport)
-        .where('courtId', isEqualTo: courtId)
-        .where(
-          'date',
-          isEqualTo: Timestamp.fromDate(
-            DateTime(date.year, date.month, date.day),
+    try {
+      // Generate time slots from 6 AM to 11 PM
+      final slots = <TimeSlot>[];
+      final startHour = 6;
+      final endHour = 23;
+
+      // Get existing bookings for this court on this date
+      final dateStart = DateTime(date.year, date.month, date.day);
+      final dateEnd = dateStart.add(const Duration(days: 1));
+
+      final bookingsSnapshot = await _firestore
+          .collection('bookings')
+          .where('courtId', isEqualTo: courtId)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dateStart))
+          .where('date', isLessThan: Timestamp.fromDate(dateEnd))
+          .where('status', whereIn: ['confirmed', 'pending'])
+          .get();
+
+      // Create a map of booked slots with who booked them
+      final bookedSlots = <String, String>{};
+      for (var doc in bookingsSnapshot.docs) {
+        final data = doc.data();
+        final slotKey = '${data['startTime']}-${data['endTime']}';
+        final bookedBy =
+            data['bookedBy'] ??
+            data['userId']; // Fallback to userId if bookedBy not present
+        bookedSlots[slotKey] = bookedBy;
+      }
+
+      // Generate slots
+      for (int hour = startHour; hour < endHour; hour++) {
+        final startTime = _formatTime(hour);
+        final endTime = _formatTime(hour + 1);
+        final slotKey = '$startTime-$endTime';
+
+        slots.add(
+          TimeSlot(
+            startTime: startTime,
+            endTime: endTime,
+            isAvailable: !bookedSlots.containsKey(slotKey),
+            price: pricePerHour,
+            bookedBy: bookedSlots[slotKey], // Add who booked this slot
           ),
-        )
-        .where('status', whereIn: ['pending', 'confirmed'])
-        .get();
+        );
+      }
 
-    final bookedSlots = bookings.docs
-        .map((doc) => doc.data()['timeSlot'] as String)
-        .toSet();
-
-    final slots = <TimeSlot>[];
-    for (int hour = 6; hour < 23; hour++) {
-      final start = '${hour.toString().padLeft(2, '0')}:00';
-      final end = '${(hour + 1).toString().padLeft(2, '0')}:00';
-      final slotKey = '$start-$end';
-
-      slots.add(
-        TimeSlot(
-          startTime: start,
-          endTime: end,
-          isBooked: bookedSlots.contains(slotKey),
-        ),
-      );
+      return slots;
+    } catch (e) {
+      print('Error getting available slots: $e');
+      return [];
     }
-    return slots;
   }
 
   // Create a booking
-  Future<String?> createBooking({
+  Future<BookingResult> createBooking({
     required String userId,
+    required String userEmailId,
     required String clubId,
-    required String sport,
+    required String clubName,
     required String courtId,
+    required String courtName,
+    required String sport,
     required DateTime date,
-    required String timeSlot,
+    required String startTime,
+    required String endTime,
     required double price,
+    required Map<String, dynamic> userDetails,
   }) async {
     try {
-      final existingBookings = await _firestore
+      // Check if slot is still available
+      final dateStart = DateTime(date.year, date.month, date.day);
+      final dateEnd = dateStart.add(const Duration(days: 1));
+
+      final existingBooking = await _firestore
           .collection('bookings')
-          .where('clubId', isEqualTo: clubId)
-          .where('sport', isEqualTo: sport)
           .where('courtId', isEqualTo: courtId)
-          .where(
-            'date',
-            isEqualTo: Timestamp.fromDate(
-              DateTime(date.year, date.month, date.day),
-            ),
-          )
-          .where('timeSlot', isEqualTo: timeSlot)
-          .where('status', whereIn: ['pending', 'confirmed'])
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dateStart))
+          .where('date', isLessThan: Timestamp.fromDate(dateEnd))
+          .where('startTime', isEqualTo: startTime)
+          .where('endTime', isEqualTo: endTime)
+          .where('status', whereIn: ['confirmed', 'pending'])
           .get();
 
-      if (existingBookings.docs.isNotEmpty) {
-        return null; // Slot already booked
+      if (existingBooking.docs.isNotEmpty) {
+        return BookingResult(
+          success: false,
+          message: 'This slot is no longer available',
+        );
       }
 
-      final docRef = await _firestore.collection('bookings').add({
+      // Create booking
+      final bookingData = {
         'userId': userId,
         'clubId': clubId,
-        'sport': sport,
+        'clubName': clubName,
         'courtId': courtId,
-        'date': Timestamp.fromDate(DateTime(date.year, date.month, date.day)),
-        'timeSlot': timeSlot,
+        'courtName': courtName,
+        'sport': sport,
+        'date': Timestamp.fromDate(date),
+        'startTime': startTime,
+        'endTime': endTime,
         'price': price,
-        'status': 'confirmed',
+        'status': 'confirmed', // In real app, would be 'pending' until payment
         'createdAt': FieldValue.serverTimestamp(),
-      });
+        'userDetails': userDetails,
+        'bookedBy': userEmailId, // Add this field!
+      };
 
-      return docRef.id;
+      final docRef = await _firestore.collection('bookings').add(bookingData);
+
+      return BookingResult(
+        success: true,
+        message: 'Booking confirmed successfully!',
+        bookingId: docRef.id,
+      );
     } catch (e) {
       print('Error creating booking: $e');
-      return null;
+      return BookingResult(
+        success: false,
+        message: 'Failed to create booking. Please try again.',
+      );
     }
   }
 
-  // Get user bookings
+  // Get user's bookings
   Stream<List<Booking>> getUserBookings(String userId) {
     return _firestore
         .collection('bookings')
         .where('userId', isEqualTo: userId)
         .orderBy('date', descending: true)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => Booking.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => Booking.fromFirestore(doc))
+              .toList();
+        });
   }
 
   // Cancel booking
-  Future<bool> cancelBooking(String bookingId) async {
+  Future<BookingResult> cancelBooking(String bookingId) async {
     try {
       await _firestore.collection('bookings').doc(bookingId).update({
         'status': 'cancelled',
+        'cancelledAt': FieldValue.serverTimestamp(),
       });
-      return true;
+
+      return BookingResult(
+        success: true,
+        message: 'Booking cancelled successfully',
+      );
     } catch (e) {
       print('Error cancelling booking: $e');
-      return false;
+      return BookingResult(success: false, message: 'Failed to cancel booking');
     }
   }
 
-  // Get club details
-  Future<Club?> getClubDetails(String clubId) async {
-    try {
-      final doc = await _firestore.collection('clubs').doc(clubId).get();
-      if (doc.exists) {
-        return Club.fromMap(doc.data()!, doc.id);
-      }
-      return null;
-    } catch (e) {
-      print('Error getting club details: $e');
-      return null;
-    }
+  // Helper method to format time
+  String _formatTime(int hour) {
+    if (hour == 0) return '12:00 AM';
+    if (hour < 12) return '$hour:00 AM';
+    if (hour == 12) return '12:00 PM';
+    return '${hour - 12}:00 PM';
   }
 
-  // Get court details (now requires clubId + sport + courtId, so adjust as needed)
-  Future<Court?> getCourtDetails(
-    String clubId,
-    String sport,
-    String courtId,
-  ) async {
+  // Search clubs
+  Future<List<Club>> searchClubs(String query) async {
     try {
-      final courtDoc = await _firestore
+      final snapshot = await _firestore
           .collection('clubs')
-          .doc(clubId)
-          .collection(sport)
-          .doc(courtId)
+          .where('name', isGreaterThanOrEqualTo: query)
+          .where('name', isLessThanOrEqualTo: '$query\uf8ff')
           .get();
-      if (courtDoc.exists) {
-        return Court.fromMap(courtDoc.data()!, courtDoc.id);
-      }
-      return null;
+
+      return snapshot.docs.map((doc) => Club.fromFirestore(doc)).toList();
     } catch (e) {
-      print('Error getting court details: $e');
-      return null;
+      print('Error searching clubs: $e');
+      return [];
     }
   }
+
+  // Get popular clubs
+  Stream<List<Club>> getPopularClubs({int limit = 10}) {
+    return _firestore
+        .collection('clubs')
+        .orderBy('rating', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => Club.fromFirestore(doc)).toList();
+        });
+  }
+}
+
+// Result classes
+class BookingResult {
+  final bool success;
+  final String message;
+  final String? bookingId;
+
+  BookingResult({required this.success, required this.message, this.bookingId});
 }

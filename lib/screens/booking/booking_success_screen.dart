@@ -1,4 +1,3 @@
-// ==================== 6. BOOKING SUCCESS SCREEN ====================
 import 'package:flutter/material.dart';
 
 class BookingSuccessScreen extends StatelessWidget {

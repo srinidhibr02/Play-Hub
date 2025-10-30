@@ -1,49 +1,60 @@
-// Club Model
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// Club Model
 class Club {
   final String id;
   final String name;
   final String address;
   final String city;
-  final double rating;
-  final List<String> amenities;
-  final List<String> sports;
   final String imageUrl;
-  final Map<String, double> pricing; // sport: price per hour
-  final String phone;
-  final double latitude;
-  final double longitude;
+  final List<String> sports; // Available sports
+  final Map<String, double> pricePerHour; // Sport -> Price
+  final double rating;
+  final int totalRatings;
+  final String phoneNumber;
+  final Map<String, dynamic> amenities;
+  final GeoPoint location;
+  final List<String> images;
+  final Map<String, String> openingHours; // Day -> Hours
 
   Club({
     required this.id,
     required this.name,
     required this.address,
     required this.city,
-    required this.rating,
-    required this.amenities,
-    required this.sports,
     required this.imageUrl,
-    required this.pricing,
-    required this.phone,
-    required this.latitude,
-    required this.longitude,
+    required this.sports,
+    required this.pricePerHour,
+    required this.rating,
+    required this.totalRatings,
+    required this.phoneNumber,
+    required this.amenities,
+    required this.location,
+    required this.images,
+    required this.openingHours,
   });
 
-  factory Club.fromMap(Map<String, dynamic> map, String id) {
+  factory Club.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
     return Club(
-      id: id,
-      name: map['name'] ?? '',
-      address: map['address'] ?? '',
-      city: map['city'] ?? '',
-      rating: (map['rating'] ?? 0.0).toDouble(),
-      amenities: List<String>.from(map['amenities'] ?? []),
-      sports: List<String>.from(map['sports'] ?? []),
-      imageUrl: map['imageUrl'] ?? '',
-      pricing: Map<String, double>.from(map['pricing'] ?? {}),
-      phone: map['phone'] ?? '',
-      latitude: (map['latitude'] ?? 0.0).toDouble(),
-      longitude: (map['longitude'] ?? 0.0).toDouble(),
+      id: doc.id,
+      name: data['name'] ?? '',
+      address: data['address'] ?? '',
+      city: data['city'] ?? '',
+      imageUrl: data['imageUrl'] ?? '',
+      sports: List<String>.from(data['sports'] ?? []),
+      pricePerHour: Map<String, double>.from(
+        (data['pricePerHour'] ?? {}).map(
+          (key, value) => MapEntry(key, value.toDouble()),
+        ),
+      ),
+      rating: (data['rating'] ?? 0).toDouble(),
+      totalRatings: data['totalRatings'] ?? 0,
+      phoneNumber: data['phoneNumber'] ?? '',
+      amenities: data['amenities'] ?? {},
+      location: data['location'] ?? const GeoPoint(0, 0),
+      images: List<String>.from(data['images'] ?? []),
+      openingHours: Map<String, String>.from(data['openingHours'] ?? {}),
     );
   }
 
@@ -52,14 +63,16 @@ class Club {
       'name': name,
       'address': address,
       'city': city,
-      'rating': rating,
-      'amenities': amenities,
-      'sports': sports,
       'imageUrl': imageUrl,
-      'pricing': pricing,
-      'phone': phone,
-      'latitude': latitude,
-      'longitude': longitude,
+      'sports': sports,
+      'pricePerHour': pricePerHour,
+      'rating': rating,
+      'totalRatings': totalRatings,
+      'phoneNumber': phoneNumber,
+      'amenities': amenities,
+      'location': location,
+      'images': images,
+      'openingHours': openingHours,
     };
   }
 }
@@ -70,26 +83,30 @@ class Court {
   final String clubId;
   final String name;
   final String sport;
-  final bool isAvailable;
-  final String surface; // e.g., "Wooden", "Synthetic", "Grass"
+  final String type; // Indoor/Outdoor
+  final int capacity;
+  final bool isActive;
 
   Court({
     required this.id,
     required this.clubId,
     required this.name,
     required this.sport,
-    required this.isAvailable,
-    required this.surface,
+    required this.type,
+    required this.capacity,
+    required this.isActive,
   });
 
-  factory Court.fromMap(Map<String, dynamic> map, String id) {
+  factory Court.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
     return Court(
-      id: id,
-      clubId: map['clubId'] ?? '',
-      name: map['name'] ?? '',
-      sport: map['sport'] ?? '',
-      isAvailable: map['isAvailable'] ?? true,
-      surface: map['surface'] ?? '',
+      id: doc.id,
+      clubId: data['clubId'] ?? '',
+      name: data['name'] ?? '',
+      sport: data['sport'] ?? '',
+      type: data['type'] ?? '',
+      capacity: data['capacity'] ?? 0,
+      isActive: data['isActive'] ?? true,
     );
   }
 
@@ -98,43 +115,31 @@ class Court {
       'clubId': clubId,
       'name': name,
       'sport': sport,
-      'isAvailable': isAvailable,
-      'surface': surface,
+      'type': type,
+      'capacity': capacity,
+      'isActive': isActive,
     };
   }
 }
 
-// Time Slot Model
+// TimeSlot Model
 class TimeSlot {
   final String startTime;
   final String endTime;
-  final bool isBooked;
-  final String? bookedBy;
+  final bool isAvailable;
+  final double price;
+  final String? bookedBy; // Add this field to track who booked the slot
 
   TimeSlot({
     required this.startTime,
     required this.endTime,
-    this.isBooked = false,
+    required this.isAvailable,
+    required this.price,
     this.bookedBy,
   });
 
-  factory TimeSlot.fromMap(Map<String, dynamic> map) {
-    return TimeSlot(
-      startTime: map['startTime'] ?? '',
-      endTime: map['endTime'] ?? '',
-      isBooked: map['isBooked'] ?? false,
-      bookedBy: map['bookedBy'],
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'startTime': startTime,
-      'endTime': endTime,
-      'isBooked': isBooked,
-      'bookedBy': bookedBy,
-    };
-  }
+  String get displayTime => '$startTime - $endTime';
+  bool get isBooked => !isAvailable;
 }
 
 // Booking Model
@@ -142,39 +147,55 @@ class Booking {
   final String id;
   final String userId;
   final String clubId;
+  final String clubName;
   final String courtId;
+  final String courtName;
   final String sport;
   final DateTime date;
-  final String timeSlot;
+  final String startTime;
+  final String endTime;
   final double price;
   final String status; // pending, confirmed, cancelled, completed
   final DateTime createdAt;
+  final String? paymentId;
+  final Map<String, dynamic>? userDetails;
 
   Booking({
     required this.id,
     required this.userId,
     required this.clubId,
+    required this.clubName,
     required this.courtId,
+    required this.courtName,
     required this.sport,
     required this.date,
-    required this.timeSlot,
+    required this.startTime,
+    required this.endTime,
     required this.price,
     required this.status,
     required this.createdAt,
+    this.paymentId,
+    this.userDetails,
   });
 
-  factory Booking.fromMap(Map<String, dynamic> map, String id) {
+  factory Booking.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
     return Booking(
-      id: id,
-      userId: map['userId'] ?? '',
-      clubId: map['clubId'] ?? '',
-      courtId: map['courtId'] ?? '',
-      sport: map['sport'] ?? '',
-      date: (map['date'] as Timestamp).toDate(),
-      timeSlot: map['timeSlot'] ?? '',
-      price: (map['price'] ?? 0.0).toDouble(),
-      status: map['status'] ?? 'pending',
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      id: doc.id,
+      userId: data['userId'] ?? '',
+      clubId: data['clubId'] ?? '',
+      clubName: data['clubName'] ?? '',
+      courtId: data['courtId'] ?? '',
+      courtName: data['courtName'] ?? '',
+      sport: data['sport'] ?? '',
+      date: (data['date'] as Timestamp).toDate(),
+      startTime: data['startTime'] ?? '',
+      endTime: data['endTime'] ?? '',
+      price: (data['price'] ?? 0).toDouble(),
+      status: data['status'] ?? 'pending',
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      paymentId: data['paymentId'],
+      userDetails: data['userDetails'],
     );
   }
 
@@ -182,13 +203,58 @@ class Booking {
     return {
       'userId': userId,
       'clubId': clubId,
+      'clubName': clubName,
       'courtId': courtId,
+      'courtName': courtName,
       'sport': sport,
       'date': Timestamp.fromDate(date),
-      'timeSlot': timeSlot,
+      'startTime': startTime,
+      'endTime': endTime,
       'price': price,
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
+      'paymentId': paymentId,
+      'userDetails': userDetails,
     };
   }
+
+  String get displayDate {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final bookingDate = DateTime(date.year, date.month, date.day);
+
+    if (bookingDate == today) {
+      return 'Today';
+    } else if (bookingDate == today.add(const Duration(days: 1))) {
+      return 'Tomorrow';
+    } else {
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    }
+  }
+
+  String get displayTime => '$startTime - $endTime';
+
+  bool get isPast => date.isBefore(DateTime.now());
+  bool get isToday {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  bool get isUpcoming => date.isAfter(DateTime.now());
 }
