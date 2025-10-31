@@ -287,17 +287,27 @@ class _HomeScreenState extends State<HomeScreen> {
       {
         'name': 'Badminton',
         'image': 'images/badminton_player.png',
-        'color': Colors.red,
+        'color': Colors.red.shade300,
       },
       {
         'name': 'Cricket',
         'image': 'images/cricket_player.png',
-        'color': Colors.green,
+        'color': Colors.green.shade300,
       },
       {
-        'name': 'Soccer',
+        'name': 'Gym',
+        'image': 'images/gym_player.png',
+        'color': Colors.pinkAccent.shade200,
+      },
+      {
+        'name': 'Football',
         'image': 'images/soccer_player.png',
-        'color': Colors.blue,
+        'color': Colors.blue.shade300,
+      },
+      {
+        'name': 'Swimming',
+        'image': 'images/swimming_player.png',
+        'color': Colors.lightBlueAccent.shade400,
       },
     ];
 

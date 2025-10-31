@@ -2,10 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 Future<void> initializeSampleData() async {
   final firestore = FirebaseFirestore.instance;
-
   print('Starting to add sample data...');
 
-  // Sample Clubs with complete data
   final clubs = [
     {
       'name': 'Rachana Sports Club',
@@ -13,8 +11,8 @@ Future<void> initializeSampleData() async {
       'city': 'Davanagere',
       'imageUrl':
           'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800',
-      'sports': ['Badminton', 'Table Tennis'],
-      'pricePerHour': {'Badminton': 200.0, 'Table Tennis': 150.0},
+      'sports': ['Badminton', 'Gym'],
+      'pricePerHour': {'Badminton': 200.0, 'Gym': 100.0},
       'rating': 4.5,
       'totalRatings': 124,
       'phoneNumber': '+91 9876543210',
@@ -41,50 +39,13 @@ Future<void> initializeSampleData() async {
       },
     },
     {
-      'name': 'CFC Sports Complex',
-      'address': 'Vidhya Nagar, CFC, Harihar',
-      'city': 'Davanagere',
-      'imageUrl':
-          'https://images.unsplash.com/photo-1552667466-07770ae110d0?w=800',
-      'sports': ['Badminton', 'Tennis', 'Basketball'],
-      'pricePerHour': {
-        'Badminton': 250.0,
-        'Tennis': 300.0,
-        'Basketball': 350.0,
-      },
-      'rating': 4.3,
-      'totalRatings': 89,
-      'phoneNumber': '+91 9876543211',
-      'amenities': {
-        'parking': true,
-        'changingRoom': true,
-        'cafeteria': true,
-        'firstAid': true,
-        'wifi': true,
-      },
-      'location': GeoPoint(14.500333, 75.807361),
-      'images': [
-        'https://images.unsplash.com/photo-1552667466-07770ae110d0?w=800',
-        'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800',
-      ],
-      'openingHours': {
-        'Monday': '6:00 AM - 10:00 PM',
-        'Tuesday': '6:00 AM - 10:00 PM',
-        'Wednesday': '6:00 AM - 10:00 PM',
-        'Thursday': '6:00 AM - 10:00 PM',
-        'Friday': '6:00 AM - 10:00 PM',
-        'Saturday': '7:00 AM - 11:00 PM',
-        'Sunday': '7:00 AM - 11:00 PM',
-      },
-    },
-    {
       'name': 'Mask Turf Play Arena',
       'address': 'Near NH4 Shivamogga Road, Harihar',
       'city': 'Davanagere',
       'imageUrl':
           'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800',
-      'sports': ['Football', 'Cricket'],
-      'pricePerHour': {'Football': 500.0, 'Cricket': 400.0},
+      'sports': ['Football', 'Cricket', 'Swimming'],
+      'pricePerHour': {'Football': 500.0, 'Cricket': 400.0, 'Swimming': 150.0},
       'rating': 4.7,
       'totalRatings': 156,
       'phoneNumber': '+91 9876543212',
@@ -116,12 +77,8 @@ Future<void> initializeSampleData() async {
       'city': 'Chennai',
       'imageUrl':
           'https://images.unsplash.com/photo-1519505907962-0a6cb0167c73?w=800',
-      'sports': ['Badminton', 'Squash', 'Table Tennis'],
-      'pricePerHour': {
-        'Badminton': 300.0,
-        'Squash': 350.0,
-        'Table Tennis': 200.0,
-      },
+      'sports': ['Badminton', 'Gym', 'Swimming'],
+      'pricePerHour': {'Badminton': 300.0, 'Gym': 120.0, 'Swimming': 180.0},
       'rating': 4.8,
       'totalRatings': 234,
       'phoneNumber': '+91 9876543213',
@@ -147,149 +104,122 @@ Future<void> initializeSampleData() async {
         'Sunday': '6:00 AM - 12:00 AM',
       },
     },
+    {
+      'name': 'Metro Sports Complex',
+      'address': 'Sector 18, Noida',
+      'city': 'Noida',
+      'imageUrl':
+          'https://images.unsplash.com/photo-1546484959-f5b1548b6b92?w=800',
+      'sports': ['Football', 'Gym'],
+      'pricePerHour': {'Football': 550.0, 'Gym': 110.0},
+      'rating': 4.4,
+      'totalRatings': 102,
+      'phoneNumber': '+91 9876543214',
+      'amenities': {
+        'parking': true,
+        'changingRoom': true,
+        'cafeteria': true,
+        'firstAid': false,
+        'wifi': true,
+      },
+      'location': GeoPoint(28.5672, 77.3210),
+      'images': [
+        'https://images.unsplash.com/photo-1546484959-f5b1548b6b92?w=800',
+        'https://images.unsplash.com/photo-1508609349937-5ec4ae374ebf?w=800',
+      ],
+      'openingHours': {
+        'Monday': '6:00 AM - 10:00 PM',
+        'Tuesday': '6:00 AM - 10:00 PM',
+        'Wednesday': '6:00 AM - 10:00 PM',
+        'Thursday': '6:00 AM - 10:00 PM',
+        'Friday': '6:00 AM - 10:00 PM',
+        'Saturday': '8:00 AM - 9:00 PM',
+        'Sunday': '8:00 AM - 9:00 PM',
+      },
+    },
   ];
 
-  // Add clubs and their courts
   for (var clubData in clubs) {
     try {
-      // Add the club document
       final clubRef = await firestore.collection('clubs').add(clubData);
       print('Added club: ${clubData['name']}');
 
-      final sports = clubData['sports'] as List;
+      final List sports = clubData['sports'] as List<dynamic>;
 
-      // Add courts for each sport
       for (final sport in sports) {
-        final sportStr = sport.toString();
+        final sportStr = sport.toString().toLowerCase();
 
-        // Define courts based on sport type
         List<Map<String, dynamic>> courtsToAdd = [];
 
-        if (sportStr.toLowerCase() == 'badminton') {
-          courtsToAdd = [
-            {
+        if (sportStr == 'badminton') {
+          courtsToAdd = List.generate(3, (i) {
+            return {
               'clubId': clubRef.id,
-              'name': 'Court 1',
+              'name': 'Badminton Court ${i + 1}',
               'sport': 'Badminton',
               'type': 'Indoor',
               'capacity': 4,
               'isActive': true,
-            },
-            {
+            };
+          });
+        } else if (sportStr == 'gym') {
+          courtsToAdd = List.generate(2, (i) {
+            return {
               'clubId': clubRef.id,
-              'name': 'Court 2',
-              'sport': 'Badminton',
+              'name': 'Gym Area ${i + 1}',
+              'sport': 'Gym',
               'type': 'Indoor',
-              'capacity': 4,
+              'capacity': 20,
               'isActive': true,
-            },
-            {
-              'clubId': clubRef.id,
-              'name': 'Court 3',
-              'sport': 'Badminton',
-              'type': 'Indoor',
-              'capacity': 4,
-              'isActive': true,
-            },
-          ];
-        } else if (sportStr.toLowerCase() == 'tennis') {
+            };
+          });
+        } else if (sportStr == 'football') {
           courtsToAdd = [
             {
               'clubId': clubRef.id,
-              'name': 'Court 1',
-              'sport': 'Tennis',
-              'type': 'Outdoor',
-              'capacity': 4,
-              'isActive': true,
-            },
-            {
-              'clubId': clubRef.id,
-              'name': 'Court 2',
-              'sport': 'Tennis',
-              'type': 'Outdoor',
-              'capacity': 4,
-              'isActive': true,
-            },
-          ];
-        } else if (sportStr.toLowerCase() == 'cricket') {
-          courtsToAdd = [
-            {
-              'clubId': clubRef.id,
-              'name': 'Ground 1',
-              'sport': 'Cricket',
-              'type': 'Outdoor',
-              'capacity': 22,
-              'isActive': true,
-            },
-          ];
-        } else if (sportStr.toLowerCase() == 'football') {
-          courtsToAdd = [
-            {
-              'clubId': clubRef.id,
-              'name': 'Turf 1',
+              'name': 'Football Turf 1',
               'sport': 'Football',
               'type': 'Outdoor',
               'capacity': 22,
               'isActive': true,
             },
           ];
-        } else if (sportStr.toLowerCase() == 'basketball') {
+        } else if (sportStr == 'cricket') {
           courtsToAdd = [
             {
               'clubId': clubRef.id,
-              'name': 'Court 1',
-              'sport': 'Basketball',
+              'name': 'Cricket Ground 1',
+              'sport': 'Cricket',
+              'type': 'Outdoor',
+              'capacity': 22,
+              'isActive': true,
+            },
+          ];
+        } else if (sportStr == 'swimming') {
+          courtsToAdd = List.generate(2, (i) {
+            return {
+              'clubId': clubRef.id,
+              'name': 'Swimming Pool ${i + 1}',
+              'sport': 'Swimming',
               'type': 'Indoor',
               'capacity': 10,
               'isActive': true,
-            },
-          ];
-        } else if (sportStr.toLowerCase() == 'table tennis') {
-          courtsToAdd = [
-            {
-              'clubId': clubRef.id,
-              'name': 'Table 1',
-              'sport': 'Table Tennis',
-              'type': 'Indoor',
-              'capacity': 2,
-              'isActive': true,
-            },
-            {
-              'clubId': clubRef.id,
-              'name': 'Table 2',
-              'sport': 'Table Tennis',
-              'type': 'Indoor',
-              'capacity': 2,
-              'isActive': true,
-            },
-          ];
-        } else if (sportStr.toLowerCase() == 'squash') {
-          courtsToAdd = [
-            {
-              'clubId': clubRef.id,
-              'name': 'Court 1',
-              'sport': 'Squash',
-              'type': 'Indoor',
-              'capacity': 2,
-              'isActive': true,
-            },
-          ];
+            };
+          });
         }
 
-        // Add all courts for this sport
         for (var court in courtsToAdd) {
           await firestore.collection('courts').add(court);
           print('  Added ${court['sport']} - ${court['name']}');
         }
       }
-
       print('Completed: ${clubData['name']}\n');
     } catch (e) {
       print('Error adding club ${clubData['name']}: $e');
     }
   }
 
-  // Add sample tournaments (optional)
+  // Add sample tournaments
   await _addSampleTournaments(firestore);
 
   print('✅ Successfully added all sample data to Firebase!');
@@ -297,23 +227,22 @@ Future<void> initializeSampleData() async {
 
 Future<void> _addSampleTournaments(FirebaseFirestore firestore) async {
   print('\nAdding sample tournaments...');
-
   final tournaments = [
     {
       'name': 'City Badminton Championship 2024',
       'sport': 'Badminton',
       'description':
           'Annual city-level badminton championship open to all age groups',
-      'date': Timestamp.fromDate(DateTime.now().add(const Duration(days: 15))),
+      'date': Timestamp.fromDate(DateTime.now().add(Duration(days: 15))),
       'registrationDeadline': Timestamp.fromDate(
-        DateTime.now().add(const Duration(days: 10)),
+        DateTime.now().add(Duration(days: 10)),
       ),
       'location': 'Rachana Sports Club, Davanagere',
       'maxParticipants': 32,
       'currentParticipants': 24,
       'entryFee': 500.0,
       'prizePool': 25000.0,
-      'status': 'open', // open, closed, ongoing, completed
+      'status': 'open',
       'organizer': 'Davanagere Sports Association',
       'contactNumber': '+91 9876543210',
       'rules': [
@@ -328,9 +257,9 @@ Future<void> _addSampleTournaments(FirebaseFirestore firestore) async {
       'name': 'Inter-Club Cricket Tournament',
       'sport': 'Cricket',
       'description': 'T20 format cricket tournament for club teams',
-      'date': Timestamp.fromDate(DateTime.now().add(const Duration(days: 20))),
+      'date': Timestamp.fromDate(DateTime.now().add(Duration(days: 20))),
       'registrationDeadline': Timestamp.fromDate(
-        DateTime.now().add(const Duration(days: 12)),
+        DateTime.now().add(Duration(days: 12)),
       ),
       'location': 'Mask Turf Play Arena, Davanagere',
       'maxParticipants': 12,
@@ -348,6 +277,55 @@ Future<void> _addSampleTournaments(FirebaseFirestore firestore) async {
       'imageUrl':
           'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=800',
     },
+    {
+      'name': 'National Swimming Gala',
+      'sport': 'Swimming',
+      'description': 'Competitive swimming event for all age groups',
+      'date': Timestamp.fromDate(DateTime.now().add(Duration(days: 30))),
+      'registrationDeadline': Timestamp.fromDate(
+        DateTime.now().add(Duration(days: 25)),
+      ),
+      'location': 'City Aquatic Center',
+      'maxParticipants': 50,
+      'currentParticipants': 20,
+      'entryFee': 750.0,
+      'prizePool': 30000.0,
+      'status': 'open',
+      'organizer': 'National Swimming Federation',
+      'contactNumber': '+91 9876543220',
+      'rules': [
+        'Swimwear and caps mandatory',
+        'Age categories apply',
+        'Multiple events per participant',
+      ],
+      'imageUrl':
+          'https://images.unsplash.com/photo-1508609349937-5ec4ae374ebf?w=800',
+    },
+    {
+      'name': 'Annual Fitness Challenge',
+      'sport': 'Gym',
+      'description':
+          'A month-long fitness challenge including strength and endurance tests',
+      'date': Timestamp.fromDate(DateTime.now().add(Duration(days: 40))),
+      'registrationDeadline': Timestamp.fromDate(
+        DateTime.now().add(Duration(days: 35)),
+      ),
+      'location': 'Elite Sports Hub Gym',
+      'maxParticipants': 100,
+      'currentParticipants': 80,
+      'entryFee': 1000.0,
+      'prizePool': 40000.0,
+      'status': 'open',
+      'organizer': 'Elite Sports Hub',
+      'contactNumber': '+91 9876543213',
+      'rules': [
+        'Daily attendance required',
+        'Follow fitness coach guidelines',
+        'Multiple fitness disciplines included',
+      ],
+      'imageUrl':
+          'https://images.unsplash.com/photo-1546484959-f5b1548b6b92?w=800',
+    },
   ];
 
   for (var tournament in tournaments) {
@@ -358,41 +336,4 @@ Future<void> _addSampleTournaments(FirebaseFirestore firestore) async {
       print('Error adding tournament: $e');
     }
   }
-}
-
-// Helper function to clear all sample data (use with caution!)
-Future<void> clearSampleData() async {
-  final firestore = FirebaseFirestore.instance;
-
-  print('⚠️  WARNING: Clearing all sample data...');
-
-  // Delete all clubs
-  final clubsSnapshot = await firestore.collection('clubs').get();
-  for (var doc in clubsSnapshot.docs) {
-    await doc.reference.delete();
-  }
-  print('Deleted ${clubsSnapshot.docs.length} clubs');
-
-  // Delete all courts
-  final courtsSnapshot = await firestore.collection('courts').get();
-  for (var doc in courtsSnapshot.docs) {
-    await doc.reference.delete();
-  }
-  print('Deleted ${courtsSnapshot.docs.length} courts');
-
-  // Delete all bookings
-  final bookingsSnapshot = await firestore.collection('bookings').get();
-  for (var doc in bookingsSnapshot.docs) {
-    await doc.reference.delete();
-  }
-  print('Deleted ${bookingsSnapshot.docs.length} bookings');
-
-  // Delete all tournaments
-  final tournamentsSnapshot = await firestore.collection('tournaments').get();
-  for (var doc in tournamentsSnapshot.docs) {
-    await doc.reference.delete();
-  }
-  print('Deleted ${tournamentsSnapshot.docs.length} tournaments');
-
-  print('✅ All sample data cleared!');
 }

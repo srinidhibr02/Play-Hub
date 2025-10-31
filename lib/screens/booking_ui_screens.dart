@@ -18,10 +18,22 @@ class SelectSportScreen extends StatelessWidget {
       'image': 'images/cricket_player.png',
     },
     {
+      'name': 'Gym',
+      'icon': Icons.sports_gymnastics_sharp,
+      'color': Colors.pinkAccent,
+      'image': 'images/gym_player.png',
+    },
+    {
       'name': 'Football',
       'icon': Icons.sports_soccer,
-      'color': Colors.blue,
+      'color': Colors.yellow,
       'image': 'images/soccer_player.png',
+    },
+    {
+      'name': 'Swimming',
+      'icon': Icons.sports_soccer,
+      'color': Colors.purple,
+      'image': 'images/swimming_player.png',
     },
   ];
 
