@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:play_hub/screens/tabs/bookings_page.dart';
+import 'package:play_hub/service/auth_service.dart';
 
 class BookingSuccessScreen extends StatelessWidget {
   final String bookingId;
 
-  const BookingSuccessScreen({super.key, required this.bookingId});
+  BookingSuccessScreen({super.key, required this.bookingId});
+
+  final _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
+    final curentUserEmailId = _authService.currentUserEmailId;
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -83,6 +89,13 @@ class BookingSuccessScreen extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: () {
                     // Navigate to my bookings
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            BookingsScreen(userId: curentUserEmailId as String),
+                      ),
+                    );
                   },
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),

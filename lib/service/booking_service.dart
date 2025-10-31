@@ -183,7 +183,7 @@ class BookingService {
   Stream<List<Booking>> getUserBookings(String userId) {
     return _firestore
         .collection('bookings')
-        .where('userId', isEqualTo: userId)
+        .where('bookedBy', isEqualTo: userId)
         .orderBy('date', descending: true)
         .snapshots()
         .map((snapshot) {

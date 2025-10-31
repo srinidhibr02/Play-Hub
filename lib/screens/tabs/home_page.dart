@@ -3,7 +3,7 @@ import 'package:play_hub/screens/booking/club_screen.dart';
 import 'package:play_hub/screens/booking_ui_screens.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
-import 'package:play_hub/service/initialise_sample_data.dart';
+import 'package:play_hub/widgets/my_bookings_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -51,7 +51,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildUpcomingEvents(context),
                   const SizedBox(height: 24),
 
-                  _buildMyBookings(context),
+                  // _buildMyBookings(context),
+                  MyBookingsWidget(
+                    userId: _authService.currentUserEmailId as String,
+                  ),
                 ],
               ),
             ),
