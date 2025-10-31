@@ -29,34 +29,7 @@ class _BookingsScreenState extends State<BookingsScreen>
     super.dispose();
   }
 
-  List<Booking> _filterActiveBookings(List<Booking> bookings) {
-    final now = DateTime.now();
-
-    return bookings.where((booking) {
-      // Parse the end time and combine it with the booking date
-      final bookingEndDateTime = _parseBookingEndDateTime(booking);
-
-      // Active if: end time hasn't passed AND status is confirmed/pending
-      return bookingEndDateTime.isAfter(now) &&
-          (booking.status == 'confirmed' || booking.status == 'pending');
-    }).toList();
-  }
-
-  List<Booking> _filterPastBookings(List<Booking> bookings) {
-    final now = DateTime.now();
-
-    return bookings.where((booking) {
-      // Parse the end time and combine it with the booking date
-      final bookingEndDateTime = _parseBookingEndDateTime(booking);
-
-      // Past if: end time has passed OR status is cancelled
-      return bookingEndDateTime.isBefore(now) || booking.status == 'cancelled';
-    }).toList();
-  }
-
-  // Helper method to parse end time and combine with booking date
   DateTime _parseBookingEndDateTime(Booking booking) {
-    // Parse end time (format: "3:00 PM" or "15:00")
     final endTimeParts = booking.endTime
         .replaceAll(RegExp(r'[^\d:]'), '')
         .split(':');
@@ -65,14 +38,12 @@ class _BookingsScreenState extends State<BookingsScreen>
         ? int.parse(endTimeParts[1])
         : 0;
 
-    // Handle AM/PM conversion
     if (booking.endTime.toUpperCase().contains('PM') && endHour != 12) {
       endHour += 12;
     } else if (booking.endTime.toUpperCase().contains('AM') && endHour == 12) {
       endHour = 0;
     }
 
-    // Combine booking date with end time
     return DateTime(
       booking.date.year,
       booking.date.month,
@@ -80,6 +51,62 @@ class _BookingsScreenState extends State<BookingsScreen>
       endHour,
       endMinute,
     );
+  }
+
+  DateTime _parseBookingStartDateTime(Booking booking) {
+    final startTimeParts = booking.startTime
+        .replaceAll(RegExp(r'[^\d:]'), '')
+        .split(':');
+    int startHour = int.parse(startTimeParts[0]);
+    final int startMinute = startTimeParts.length > 1
+        ? int.parse(startTimeParts[1])
+        : 0;
+
+    if (booking.startTime.toUpperCase().contains('PM') && startHour != 12) {
+      startHour += 12;
+    } else if (booking.startTime.toUpperCase().contains('AM') &&
+        startHour == 12) {
+      startHour = 0;
+    }
+
+    return DateTime(
+      booking.date.year,
+      booking.date.month,
+      booking.date.day,
+      startHour,
+      startMinute,
+    );
+  }
+
+  List<Booking> _filterActiveBookings(List<Booking> bookings) {
+    final now = DateTime.now();
+    final filtered = bookings.where((booking) {
+      final bookingEndDateTime = _parseBookingEndDateTime(booking);
+      return bookingEndDateTime.isAfter(now) &&
+          (booking.status == 'confirmed' || booking.status == 'pending');
+    }).toList();
+
+    filtered.sort(
+      (a, b) => _parseBookingStartDateTime(
+        a,
+      ).compareTo(_parseBookingStartDateTime(b)),
+    );
+    return filtered;
+  }
+
+  List<Booking> _filterPastBookings(List<Booking> bookings) {
+    final now = DateTime.now();
+    final filtered = bookings.where((booking) {
+      final bookingEndDateTime = _parseBookingEndDateTime(booking);
+      return bookingEndDateTime.isBefore(now) || booking.status == 'cancelled';
+    }).toList();
+
+    filtered.sort(
+      (a, b) => _parseBookingStartDateTime(
+        a,
+      ).compareTo(_parseBookingStartDateTime(b)),
+    );
+    return filtered;
   }
 
   @override
@@ -217,7 +244,6 @@ class _BookingsScreenState extends State<BookingsScreen>
   }
 
   Widget _buildBookingCard(Booking booking, {required bool isActive}) {
-    final formattedDate = DateFormat('EEE, MMM d, yyyy').format(booking.date);
     final daysDifference = booking.date.difference(DateTime.now()).inDays;
 
     Color statusColor;
@@ -268,7 +294,6 @@ class _BookingsScreenState extends State<BookingsScreen>
         borderRadius: BorderRadius.circular(20),
         child: Column(
           children: [
-            // Header with gradient
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -350,8 +375,6 @@ class _BookingsScreenState extends State<BookingsScreen>
                 ],
               ),
             ),
-
-            // Booking details
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -387,25 +410,8 @@ class _BookingsScreenState extends State<BookingsScreen>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      if (isActive && daysDifference >= 0)
-                        Expanded(
-                          child: _buildInfoTile(
-                            icon: Icons.event_available,
-                            label: 'In',
-                            value: booking.isToday
-                                ? 'Today'
-                                : daysDifference == 1
-                                ? 'Tomorrow'
-                                : '$daysDifference days',
-                            valueColor: daysDifference <= 2
-                                ? Colors.orange.shade700
-                                : Colors.grey.shade700,
-                          ),
-                        ),
                     ],
                   ),
-
-                  // Action buttons for active bookings
                   if (isActive && booking.status == 'confirmed') ...[
                     const SizedBox(height: 16),
                     const Divider(height: 1),

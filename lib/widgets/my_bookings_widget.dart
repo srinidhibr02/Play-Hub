@@ -17,7 +17,7 @@ class MyBookingsWidget extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'My Bookings',
+              'Upcomming',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Colors.teal.shade900,
@@ -67,19 +67,35 @@ class MyBookingsWidget extends StatelessWidget {
 
         final allBookings = snapshot.data ?? [];
 
-        // Filter active bookings (upcoming or today)
+        final now = DateTime.now();
+
+        // Filter active bookings
         final activeBookings = allBookings.where((booking) {
-          return (booking.isUpcoming || booking.isToday) &&
-              (booking.status == 'confirmed' || booking.status == 'pending');
+          // Parse booking start DateTime
+          final bookingStart = _parseBookingDateTime(
+            booking.date,
+            booking.startTime,
+          );
+          // Filter only if start time is in the future
+          return ((booking.isUpcoming || booking.isToday) &&
+              (booking.status == 'confirmed' || booking.status == 'pending') &&
+              (bookingStart.isAfter(now) ||
+                  bookingStart.isAtSameMomentAs(now)));
         }).toList();
 
         if (activeBookings.isEmpty) {
           return _buildNoBookingsCard(context);
         }
 
-        // Sort by date and time to get the nearest booking
-        activeBookings.sort((a, b) => a.date.compareTo(b.date));
-        final nearestBooking = activeBookings.last;
+        // Sort by start datetime
+        activeBookings.sort(
+          (a, b) => _parseBookingDateTime(
+            a.date,
+            a.startTime,
+          ).compareTo(_parseBookingDateTime(b.date, b.startTime)),
+        );
+
+        final nearestBooking = activeBookings.first;
 
         return _buildBookingCard(context: context, booking: nearestBooking);
       },
@@ -87,7 +103,6 @@ class MyBookingsWidget extends StatelessWidget {
   }
 
   DateTime _parseBookingDateTime(DateTime date, String timeString) {
-    // Parse time string like "6:00 PM" or "10:00 AM"
     final timeParts = timeString.trim().split(' ');
     if (timeParts.length != 2) return date;
 
@@ -98,7 +113,6 @@ class MyBookingsWidget extends StatelessWidget {
     final minute = int.tryParse(hourMinute[1]) ?? 0;
     final isPM = timeParts[1].toUpperCase() == 'PM';
 
-    // Convert to 24-hour format
     if (isPM && hour != 12) {
       hour += 12;
     } else if (!isPM && hour == 12) {
