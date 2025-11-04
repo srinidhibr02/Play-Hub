@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:play_hub/screens/booking/club_screen.dart';
 import 'package:play_hub/screens/booking_ui_screens.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
+import 'package:play_hub/screens/tournament/tournament_setup_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
 import 'package:play_hub/widgets/my_bookings_widget.dart';
 
@@ -114,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   (_authService.currentUser?.photoURL != null &&
                       _authService.currentUser!.photoURL!.isNotEmpty)
                   ? NetworkImage(_authService.currentUser!.photoURL!)
-                  : const AssetImage('images/default_image.png')
+                  : const AssetImage('images/default_avatar.png')
                         as ImageProvider,
             ),
           ),
@@ -239,9 +240,15 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: _buildActionCard(
                 icon: Icons.add_circle_outline,
-                title: 'Host Event',
+                title: 'Create Event',
                 color: Colors.orange,
-                onTap: () {},
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const TournamentSetupScreen(),
+                    ),
+                  );
+                },
               ),
             ),
           ],
