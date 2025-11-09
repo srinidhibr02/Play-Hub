@@ -4,7 +4,7 @@ import 'package:play_hub/constants/badminton.dart';
 import 'package:play_hub/screens/tournament/badminton/scorecard.dart';
 
 class BadmintonMatchScheduleScreen extends StatefulWidget {
-  final List<String> members;
+  final List<Team> teams;
   final String teamType;
   final int matchesPerTeam;
   final DateTime startDate;
@@ -12,10 +12,12 @@ class BadmintonMatchScheduleScreen extends StatefulWidget {
   final int matchDuration;
   final int breakDuration;
   final bool allowRematches;
+  final int?
+  customTeamSize; // NEW: Track custom team size for doubles generation
 
   const BadmintonMatchScheduleScreen({
     super.key,
-    required this.members,
+    required this.teams,
     required this.teamType,
     required this.matchesPerTeam,
     required this.startDate,
@@ -23,6 +25,7 @@ class BadmintonMatchScheduleScreen extends StatefulWidget {
     required this.matchDuration,
     required this.breakDuration,
     required this.allowRematches,
+    this.customTeamSize,
   });
 
   @override
@@ -53,8 +56,7 @@ class _BadmintonMatchScheduleScreenState
 
   void _generateMatches() {
     matches = [];
-    List<Team> teams = _createTeams();
-    if (teams.length < 2) return;
+    if (widget.teams.length < 2) return;
 
     DateTime currentMatchTime = DateTime(
       widget.startDate.year,
@@ -64,11 +66,28 @@ class _BadmintonMatchScheduleScreenState
       widget.startTime.minute,
     );
 
-    // Generate all unique pairs (combinations)
+    // Check if this is a custom doubles-within-teams tournament
+    final isCustomDoublesFormat =
+        widget.teamType != 'Singles' &&
+        widget.teamType != 'Doubles' &&
+        widget.customTeamSize != null &&
+        widget.customTeamSize! >= 2;
+
+    if (isCustomDoublesFormat) {
+      // Generate matches for custom doubles-within-teams format
+      _generateCustomDoublesMatches(currentMatchTime);
+    } else {
+      // Generate matches for standard Singles/Doubles format
+      _generateStandardMatches(currentMatchTime);
+    }
+  }
+
+  void _generateStandardMatches(DateTime currentMatchTime) {
+    // Generate all unique team pairs (combinations)
     List<MatchPair> pairs = [];
-    for (int i = 0; i < teams.length; i++) {
-      for (int j = i + 1; j < teams.length; j++) {
-        pairs.add(MatchPair(teams[i], teams[j]));
+    for (int i = 0; i < widget.teams.length; i++) {
+      for (int j = i + 1; j < widget.teams.length; j++) {
+        pairs.add(MatchPair(widget.teams[i], widget.teams[j]));
       }
     }
 
@@ -76,12 +95,22 @@ class _BadmintonMatchScheduleScreenState
     List<MatchPair> schedule = [];
 
     if (widget.allowRematches) {
-      // Each pair plays matchesPerTeam times
-      for (int repeat = 0; repeat < widget.matchesPerTeam; repeat++) {
+      // Calculate how many times each pair should play
+      int totalMatchesNeeded =
+          (widget.teams.length * widget.matchesPerTeam) ~/ 2;
+      int timesPerPair = (totalMatchesNeeded / pairs.length).ceil();
+
+      for (int repeat = 0; repeat < timesPerPair; repeat++) {
         schedule.addAll(pairs);
+        if (schedule.length >= totalMatchesNeeded) break;
+      }
+
+      // Trim to exact number needed
+      if (schedule.length > totalMatchesNeeded) {
+        schedule = schedule.sublist(0, totalMatchesNeeded);
       }
     } else {
-      // Each pair plays only once (round-robin)
+      // Round-robin: each pair plays only once
       schedule = pairs;
     }
 
@@ -110,60 +139,107 @@ class _BadmintonMatchScheduleScreenState
     }
   }
 
-  List<Team> _createTeams() {
-    List<Team> teams = [];
-    List<String> shuffledMembers = List<String>.from(widget.members)..shuffle();
+  void _generateCustomDoublesMatches(DateTime currentMatchTime) {
+    // Generate all possible doubles pairs for each team
+    List<TeamWithDoublesPairs> teamsWithPairs = [];
 
-    if (widget.teamType == 'Singles') {
-      for (int i = 0; i < shuffledMembers.length; i++) {
-        teams.add(
-          Team(
-            id: 'T${i + 1}',
-            name: shuffledMembers[i],
-            players: [shuffledMembers[i]],
-          ),
-        );
-      }
-    } else if (widget.teamType == 'Doubles') {
-      for (int i = 0; i < shuffledMembers.length; i += 2) {
-        if (i + 1 < shuffledMembers.length) {
-          teams.add(
-            Team(
-              id: 'T${teams.length + 1}',
-              name: '${shuffledMembers[i]} & ${shuffledMembers[i + 1]}',
-              players: [shuffledMembers[i], shuffledMembers[i + 1]],
-            ),
-          );
-        }
-      }
-    } else {
-      // Custom team size (e.g., Teams of 3, 4, etc.)
-      for (int i = 0; i < shuffledMembers.length; i += 4) {
-        if (i + 3 < shuffledMembers.length) {
-          teams.add(
-            Team(
-              id: 'T${teams.length + 1}',
-              name: 'Team ${teams.length + 1}',
-              players: [
-                shuffledMembers[i],
-                shuffledMembers[i + 1],
-                shuffledMembers[i + 2],
-                shuffledMembers[i + 3],
-              ],
-            ),
-          );
+    for (var team in widget.teams) {
+      List<DoublesPair> doublesPairs = _generateDoublesPairs(team);
+      teamsWithPairs.add(TeamWithDoublesPairs(team, doublesPairs));
+    }
+
+    // Generate matches between all team combinations
+    List<DoublesMatch> allMatches = [];
+
+    for (int i = 0; i < teamsWithPairs.length; i++) {
+      for (int j = i + 1; j < teamsWithPairs.length; j++) {
+        // Each doubles pair from team i plays each doubles pair from team j
+        for (var pair1 in teamsWithPairs[i].doublesPairs) {
+          for (var pair2 in teamsWithPairs[j].doublesPairs) {
+            allMatches.add(
+              DoublesMatch(
+                teamsWithPairs[i].team,
+                teamsWithPairs[j].team,
+                pair1,
+                pair2,
+              ),
+            );
+          }
         }
       }
     }
-    return teams;
+
+    // Apply rematches if enabled
+    List<DoublesMatch> schedule = [];
+    if (widget.allowRematches) {
+      for (int repeat = 0; repeat < widget.matchesPerTeam; repeat++) {
+        schedule.addAll(allMatches);
+      }
+    } else {
+      schedule = allMatches;
+    }
+
+    // Shuffle to randomize
+    schedule.shuffle();
+
+    // Create Match objects
+    for (var doublesMatch in schedule) {
+      // Create virtual teams for the doubles pairs
+      Team pair1Team = Team(
+        id: '${doublesMatch.team1.id}_${doublesMatch.pair1.player1}_${doublesMatch.pair1.player2}',
+        name:
+            '${doublesMatch.team1.name}: ${doublesMatch.pair1.player1} & ${doublesMatch.pair1.player2}',
+        players: [doublesMatch.pair1.player1, doublesMatch.pair1.player2],
+      );
+
+      Team pair2Team = Team(
+        id: '${doublesMatch.team2.id}_${doublesMatch.pair2.player1}_${doublesMatch.pair2.player2}',
+        name:
+            '${doublesMatch.team2.name}: ${doublesMatch.pair2.player1} & ${doublesMatch.pair2.player2}',
+        players: [doublesMatch.pair2.player1, doublesMatch.pair2.player2],
+      );
+
+      matches.add(
+        Match(
+          id: 'M${matches.length + 1}',
+          team1: pair1Team,
+          team2: pair2Team,
+          date: currentMatchTime,
+          time: _formatTime(currentMatchTime),
+          status: 'Scheduled',
+          score1: 0,
+          score2: 0,
+          winner: null,
+          parentTeam1Id: doublesMatch.team1.id,
+          parentTeam2Id: doublesMatch.team2.id,
+        ),
+      );
+
+      currentMatchTime = currentMatchTime.add(
+        Duration(minutes: widget.matchDuration + widget.breakDuration),
+      );
+    }
+  }
+
+  List<DoublesPair> _generateDoublesPairs(Team team) {
+    List<DoublesPair> pairs = [];
+    List<String> players = team.players;
+
+    // Generate all combinations of 2 players from the team
+    for (int i = 0; i < players.length; i++) {
+      for (int j = i + 1; j < players.length; j++) {
+        pairs.add(DoublesPair(players[i], players[j]));
+      }
+    }
+
+    return pairs;
   }
 
   String _formatTime(DateTime dateTime) =>
       DateFormat('h:mm a').format(dateTime);
 
   void _initializeTeamStats() {
-    List<Team> teams = _createTeams();
-    teamStats = teams
+    teamStats = widget.teams
         .map(
           (team) => TeamStats(
             teamId: team.id,
@@ -273,8 +349,16 @@ class _BadmintonMatchScheduleScreenState
             _buildInfoRow('Format', widget.teamType),
             _buildInfoRow(
               widget.teamType == 'Singles' ? 'Total Players' : 'Total Teams',
-              '${teamStats.length}',
+              '${widget.teams.length}',
             ),
+            if (widget.customTeamSize != null &&
+                widget.customTeamSize! >= 2) ...[
+              _buildInfoRow('Members per Team', '${widget.customTeamSize}'),
+              _buildInfoRow(
+                'Pairs per Team',
+                '${_getPairsPerTeam(widget.customTeamSize!)}',
+              ),
+            ],
             _buildInfoRow('Total Matches', '${matches.length}'),
             _buildInfoRow(
               widget.teamType == 'Singles' ? 'Matches/Player' : 'Matches/Team',
@@ -306,6 +390,10 @@ class _BadmintonMatchScheduleScreenState
         ],
       ),
     );
+  }
+
+  int _getPairsPerTeam(int teamSize) {
+    return (teamSize * (teamSize - 1)) ~/ 2;
   }
 
   Widget _buildInfoRow(String label, String value) {
@@ -375,7 +463,7 @@ class _BadmintonMatchScheduleScreenState
               teamType: widget.teamType,
               onScoreUpdate: (updatedMatch) {
                 setState(() {
-                  matches[index] = updatedMatch;
+                  matches[index] = updatedMatch as Match;
                   _updateTeamStats();
                 });
               },
@@ -570,11 +658,7 @@ class _BadmintonMatchScheduleScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              for (
-                int i = 0;
-                i < (team.players.length > 2 ? 2 : team.players.length);
-                i++
-              )
+              for (int i = 0; i < team.players.length && i < 2; i++)
                 Padding(
                   padding: EdgeInsets.only(left: i > 0 ? 4 : 0),
                   child: Container(
@@ -608,11 +692,19 @@ class _BadmintonMatchScheduleScreenState
         const SizedBox(height: 10),
         Text(
           team.name,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
+        if (team.players.length > 0)
+          Text(
+            team.players.join(' & '),
+            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
       ],
     );
   }
@@ -758,7 +850,7 @@ class _BadmintonMatchScheduleScreenState
                   color: isTopRanked
                       ? Colors.orange.shade50
                       : isTopThree
-                      ? Colors.orange.shade200
+                      ? Colors.orange.shade100
                       : Colors.white,
                   border: Border(
                     bottom: BorderSide(
@@ -882,18 +974,39 @@ class _BadmintonMatchScheduleScreenState
 
     for (var match in matches) {
       if (match.status == 'Completed' && match.winner != null) {
+        // For custom doubles format, use parent team IDs
+        String? winnerTeamId;
+        String? loserTeamId;
+
+        if (match.parentTeam1Id != null && match.parentTeam2Id != null) {
+          // Custom doubles format - use parent team IDs
+          if (match.winner?.contains(match.parentTeam1Id!) == true) {
+            winnerTeamId = match.parentTeam1Id;
+            loserTeamId = match.parentTeam2Id;
+          } else {
+            winnerTeamId = match.parentTeam2Id;
+            loserTeamId = match.parentTeam1Id;
+          }
+        } else {
+          // Standard format
+          winnerTeamId = match.winner;
+          loserTeamId = match.winner == match.team1.id
+              ? match.team2.id
+              : match.team1.id;
+        }
+
+        // Update winner stats
         final winnerIndex = teamStats.indexWhere(
-          (t) => t.teamId == match.winner,
+          (t) => t.teamId == winnerTeamId,
         );
         if (winnerIndex != -1) {
           teamStats[winnerIndex].matchesPlayed++;
           teamStats[winnerIndex].won++;
           teamStats[winnerIndex].points += 2;
         }
-        final loserId = match.winner == match.team1.id
-            ? match.team2.id
-            : match.team1.id;
-        final loserIndex = teamStats.indexWhere((t) => t.teamId == loserId);
+
+        // Update loser stats
+        final loserIndex = teamStats.indexWhere((t) => t.teamId == loserTeamId);
         if (loserIndex != -1) {
           teamStats[loserIndex].matchesPlayed++;
           teamStats[loserIndex].lost++;
@@ -914,12 +1027,4 @@ class _BadmintonMatchScheduleScreenState
         return Colors.grey;
     }
   }
-}
-
-// Helper class for match pairing
-class MatchPair {
-  final Team team1;
-  final Team team2;
-
-  MatchPair(this.team1, this.team2);
 }

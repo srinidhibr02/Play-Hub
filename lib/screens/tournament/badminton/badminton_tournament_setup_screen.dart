@@ -49,6 +49,11 @@ class _BadmintonTournamentSetupScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Auto-focus on screen load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
   }
 
   @override
@@ -74,6 +79,9 @@ class _BadmintonTournamentSetupScreenState
       memberController.clear();
     });
     _showSnackBar('${name} added successfully!', Colors.green);
+
+    // Request focus after adding member
+    _focusNode.requestFocus();
   }
 
   void _removeMember(String name) {

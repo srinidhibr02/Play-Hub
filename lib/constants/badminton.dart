@@ -7,6 +7,37 @@ class Team {
   Team({required this.id, required this.name, required this.players});
 }
 
+class MatchPair {
+  final Team team1;
+  final Team team2;
+
+  MatchPair(this.team1, this.team2);
+}
+
+class DoublesPair {
+  final String player1;
+  final String player2;
+
+  DoublesPair(this.player1, this.player2);
+}
+
+class TeamWithDoublesPairs {
+  final Team team;
+  final List<DoublesPair> doublesPairs;
+
+  TeamWithDoublesPairs(this.team, this.doublesPairs);
+}
+
+class DoublesMatch {
+  final Team team1;
+  final Team team2;
+  final DoublesPair pair1;
+  final DoublesPair pair2;
+
+  DoublesMatch(this.team1, this.team2, this.pair1, this.pair2);
+}
+
+// Extended Match class with parent team tracking
 class Match {
   final String id;
   final Team team1;
@@ -17,6 +48,8 @@ class Match {
   int score1;
   int score2;
   String? winner;
+  final String? parentTeam1Id;
+  final String? parentTeam2Id;
 
   Match({
     required this.id,
@@ -28,6 +61,8 @@ class Match {
     required this.score1,
     required this.score2,
     this.winner,
+    this.parentTeam1Id,
+    this.parentTeam2Id,
   });
 
   Match copyWith({String? status, int? score1, int? score2, String? winner}) {

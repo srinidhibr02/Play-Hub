@@ -17,7 +17,7 @@ class _TournamentSetupScreenState extends State<TournamentSetupScreen> {
       'icon': Icons.sports_tennis,
       'color': Colors.orange,
       'gradient': [Color(0xFFFF6B6B), Color(0xFFFFE66D)],
-      'description': 'Singles, Doubles & Team Events',
+      'description': 'Singles, Doubles & Custom Events',
     },
     {
       'name': 'Cricket',
