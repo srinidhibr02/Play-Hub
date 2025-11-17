@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:play_hub/screens/tabs/home_page.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
-import 'package:play_hub/screens/tabs/tournament_page.dart';
+import 'package:play_hub/screens/tabs/bookings_page.dart';
+import 'package:play_hub/service/auth_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -11,11 +12,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final _userEmailId = AuthService().currentUserEmailId;
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
+  late final List<Widget> _screens = [
     const HomeScreen(),
-    const TournamentsScreen(),
+    BookingsScreen(userId: _userEmailId as String),
     const ClubsScreen(),
     ProfileScreen(),
   ];
@@ -41,16 +43,25 @@ class _HomePageState extends State<HomePage> {
           selectedItemColor: Colors.teal.shade700,
           unselectedItemColor: Colors.grey.shade600,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
+              icon: Image.asset(
+                'images/phlogo.png',
+                color: Colors.grey,
+                width: 24,
+                height: 24,
+              ),
+              activeIcon: Image.asset(
+                'images/phlogo.png',
+                width: 24,
+                height: 24,
+              ),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.emoji_events_outlined),
-              activeIcon: Icon(Icons.emoji_events),
-              label: 'Tournaments',
+              icon: Icon(Icons.book_online),
+              activeIcon: Icon(Icons.book_online_outlined),
+              label: 'Bookings',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.groups_outlined),

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:play_hub/screens/booking/club_screen.dart';
 import 'package:play_hub/screens/booking_ui_screens.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
+import 'package:play_hub/screens/tournament/tournament_setup_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
-import 'package:play_hub/service/initialise_sample_data.dart';
+import 'package:play_hub/widgets/my_bookings_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -51,7 +52,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildUpcomingEvents(context),
                   const SizedBox(height: 24),
 
-                  _buildMyBookings(context),
+                  // _buildMyBookings(context),
+                  MyBookingsWidget(
+                    userId: _authService.currentUserEmailId as String,
+                  ),
                 ],
               ),
             ),
@@ -111,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   (_authService.currentUser?.photoURL != null &&
                       _authService.currentUser!.photoURL!.isNotEmpty)
                   ? NetworkImage(_authService.currentUser!.photoURL!)
-                  : const AssetImage('images/default_image.png')
+                  : const AssetImage('images/default_avatar.png')
                         as ImageProvider,
             ),
           ),
@@ -236,9 +240,15 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: _buildActionCard(
                 icon: Icons.add_circle_outline,
-                title: 'Host Event',
+                title: 'Create Event',
                 color: Colors.orange,
-                onTap: () {},
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const TournamentSetupScreen(),
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -287,17 +297,27 @@ class _HomeScreenState extends State<HomeScreen> {
       {
         'name': 'Badminton',
         'image': 'images/badminton_player.png',
-        'color': Colors.red,
+        'color': Colors.red.shade300,
       },
       {
         'name': 'Cricket',
         'image': 'images/cricket_player.png',
-        'color': Colors.green,
+        'color': Colors.green.shade300,
       },
       {
-        'name': 'Soccer',
+        'name': 'Gym',
+        'image': 'images/gym_player.png',
+        'color': Colors.pinkAccent.shade200,
+      },
+      {
+        'name': 'Football',
         'image': 'images/soccer_player.png',
-        'color': Colors.blue,
+        'color': Colors.blue.shade300,
+      },
+      {
+        'name': 'Swimming',
+        'image': 'images/swimming_player.png',
+        'color': Colors.lightBlueAccent.shade400,
       },
     ];
 
