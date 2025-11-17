@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:play_hub/screens/tournament/badminton/badminton_tournament_setup_screen.dart';
+import 'package:play_hub/screens/tournament/badminton/tournament_list_screen.dart';
 
 class TournamentSetupScreen extends StatefulWidget {
   const TournamentSetupScreen({super.key});
@@ -53,7 +53,8 @@ class _TournamentSetupScreenState extends State<TournamentSetupScreen> {
     if (selectedSport == 'Badminton') {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => BadmintonTournamentSetupScreen()),
+        // MaterialPageRoute(builder: (_) => BadmintonTournamentSetupScreen()),
+        MaterialPageRoute(builder: (_) => TournamentListScreen()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

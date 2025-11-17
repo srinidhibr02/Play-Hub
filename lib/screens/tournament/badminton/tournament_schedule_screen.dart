@@ -2,30 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
 import 'package:play_hub/screens/tournament/badminton/scorecard.dart';
+import 'package:play_hub/service/auth_service.dart';
+import 'package:play_hub/service/badminton_service.dart';
 
 class BadmintonMatchScheduleScreen extends StatefulWidget {
-  final List<Team> teams;
-  final String teamType;
-  final int matchesPerTeam;
-  final DateTime startDate;
-  final TimeOfDay startTime;
-  final int matchDuration;
-  final int breakDuration;
-  final bool allowRematches;
-  final int?
-  customTeamSize; // NEW: Track custom team size for doubles generation
+  final String? tournamentId;
+  final List<Team>? teams;
+  final String? teamType;
+  final int? matchesPerTeam;
+  final DateTime? startDate;
+  final TimeOfDay? startTime;
+  final int? matchDuration;
+  final int? breakDuration;
+  final bool? allowRematches;
+  final int? customTeamSize;
+  final List<String>? members;
 
   const BadmintonMatchScheduleScreen({
     super.key,
-    required this.teams,
-    required this.teamType,
-    required this.matchesPerTeam,
-    required this.startDate,
-    required this.startTime,
-    required this.matchDuration,
-    required this.breakDuration,
-    required this.allowRematches,
+    this.tournamentId,
+    this.teams,
+    this.teamType,
+    this.matchesPerTeam,
+    this.startDate,
+    this.startTime,
+    this.matchDuration,
+    this.breakDuration,
+    this.allowRematches,
     this.customTeamSize,
+    this.members,
   });
 
   @override
@@ -37,36 +42,82 @@ class _BadmintonMatchScheduleScreenState
     extends State<BadmintonMatchScheduleScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  late List<Match> matches;
-  late List<TeamStats> teamStats;
+  final TournamentFirestoreService _firestoreService =
+      TournamentFirestoreService();
+  final AuthService _authService = AuthService();
+
+  String? _tournamentId;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _generateMatches();
-    _initializeTeamStats();
+    _initializeTournament();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _initializeTournament() async {
+    if (widget.tournamentId != null) {
+      setState(() {
+        _tournamentId = widget.tournamentId;
+      });
+    } else if (widget.teams != null &&
+        widget.teamType != null &&
+        widget.members != null) {
+      await _createTournament();
+    }
   }
 
-  void _generateMatches() {
-    matches = [];
-    if (widget.teams.length < 2) return;
+  Future<void> _createTournament() async {
+    setState(() => _isLoading = true);
+
+    try {
+      List<Match> matches = _generateMatches();
+
+      String userEmail = _authService.currentUserEmailId!;
+      String creatorName = _authService.currentUser?.displayName ?? 'Anonymous';
+
+      String tournamentId = await _firestoreService.createTournament(
+        userEmail: userEmail,
+        creatorName: creatorName,
+        members: widget.members!,
+        teamType: widget.teamType!,
+        teams: widget.teams!,
+        matches: matches,
+        startDate: widget.startDate!,
+        startTime: widget.startTime!,
+        matchDuration: widget.matchDuration!,
+        breakDuration: widget.breakDuration!,
+        matchesPerTeam: widget.matchesPerTeam!,
+        allowRematches: widget.allowRematches!,
+        customTeamSize: widget.customTeamSize,
+      );
+
+      setState(() {
+        _tournamentId = tournamentId;
+        _isLoading = false;
+      });
+
+      _showSuccessSnackBar('Tournament created successfully!');
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorSnackBar('Failed to create tournament: $e');
+      print('Error creating tournament: $e');
+    }
+  }
+
+  List<Match> _generateMatches() {
+    List<Match> matches = [];
+    if (widget.teams!.length < 2) return matches;
 
     DateTime currentMatchTime = DateTime(
-      widget.startDate.year,
-      widget.startDate.month,
-      widget.startDate.day,
-      widget.startTime.hour,
-      widget.startTime.minute,
+      widget.startDate!.year,
+      widget.startDate!.month,
+      widget.startDate!.day,
+      widget.startTime!.hour,
+      widget.startTime!.minute,
     );
 
-    // Check if this is a custom doubles-within-teams tournament
     final isCustomDoublesFormat =
         widget.teamType != 'Singles' &&
         widget.teamType != 'Doubles' &&
@@ -74,50 +125,35 @@ class _BadmintonMatchScheduleScreenState
         widget.customTeamSize! >= 2;
 
     if (isCustomDoublesFormat) {
-      // Generate matches for custom doubles-within-teams format
-      _generateCustomDoublesMatches(currentMatchTime);
+      matches = _generateCustomDoublesMatches(currentMatchTime);
     } else {
-      // Generate matches for standard Singles/Doubles format
-      _generateStandardMatches(currentMatchTime);
+      matches = _generateStandardMatches(currentMatchTime);
     }
+
+    return matches;
   }
 
-  void _generateStandardMatches(DateTime currentMatchTime) {
-    // Generate all unique team pairs (combinations)
+  List<Match> _generateStandardMatches(DateTime currentMatchTime) {
+    List<Match> matches = [];
     List<MatchPair> pairs = [];
-    for (int i = 0; i < widget.teams.length; i++) {
-      for (int j = i + 1; j < widget.teams.length; j++) {
-        pairs.add(MatchPair(widget.teams[i], widget.teams[j]));
+
+    for (int i = 0; i < widget.teams!.length; i++) {
+      for (int j = i + 1; j < widget.teams!.length; j++) {
+        pairs.add(MatchPair(widget.teams![i], widget.teams![j]));
       }
     }
 
-    // Create match schedule based on rematches setting
     List<MatchPair> schedule = [];
-
-    if (widget.allowRematches) {
-      // Calculate how many times each pair should play
-      int totalMatchesNeeded =
-          (widget.teams.length * widget.matchesPerTeam) ~/ 2;
-      int timesPerPair = (totalMatchesNeeded / pairs.length).ceil();
-
-      for (int repeat = 0; repeat < timesPerPair; repeat++) {
+    if (widget.allowRematches!) {
+      for (int repeat = 0; repeat < widget.matchesPerTeam!; repeat++) {
         schedule.addAll(pairs);
-        if (schedule.length >= totalMatchesNeeded) break;
-      }
-
-      // Trim to exact number needed
-      if (schedule.length > totalMatchesNeeded) {
-        schedule = schedule.sublist(0, totalMatchesNeeded);
       }
     } else {
-      // Round-robin: each pair plays only once
       schedule = pairs;
     }
 
-    // Shuffle to randomize schedule order
     schedule.shuffle();
 
-    // Schedule all matches
     for (var matchPair in schedule) {
       matches.add(
         Match(
@@ -134,16 +170,20 @@ class _BadmintonMatchScheduleScreenState
       );
 
       currentMatchTime = currentMatchTime.add(
-        Duration(minutes: widget.matchDuration + widget.breakDuration),
+        Duration(minutes: widget.matchDuration! + widget.breakDuration!),
       );
     }
+
+    return matches;
   }
 
-  void _generateCustomDoublesMatches(DateTime currentMatchTime) {
+  List<Match> _generateCustomDoublesMatches(DateTime currentMatchTime) {
+    List<Match> matches = [];
+
     // Generate all possible doubles pairs for each team
     List<TeamWithDoublesPairs> teamsWithPairs = [];
 
-    for (var team in widget.teams) {
+    for (var team in widget.teams!) {
       List<DoublesPair> doublesPairs = _generateDoublesPairs(team);
       teamsWithPairs.add(TeamWithDoublesPairs(team, doublesPairs));
     }
@@ -171,8 +211,8 @@ class _BadmintonMatchScheduleScreenState
 
     // Apply rematches if enabled
     List<DoublesMatch> schedule = [];
-    if (widget.allowRematches) {
-      for (int repeat = 0; repeat < widget.matchesPerTeam; repeat++) {
+    if (widget.allowRematches!) {
+      for (int repeat = 0; repeat < widget.matchesPerTeam!; repeat++) {
         schedule.addAll(allMatches);
       }
     } else {
@@ -216,9 +256,11 @@ class _BadmintonMatchScheduleScreenState
       );
 
       currentMatchTime = currentMatchTime.add(
-        Duration(minutes: widget.matchDuration + widget.breakDuration),
+        Duration(minutes: widget.matchDuration! + widget.breakDuration!),
       );
     }
+
+    return matches;
   }
 
   List<DoublesPair> _generateDoublesPairs(Team team) {
@@ -238,24 +280,77 @@ class _BadmintonMatchScheduleScreenState
   String _formatTime(DateTime dateTime) =>
       DateFormat('h:mm a').format(dateTime);
 
-  void _initializeTeamStats() {
-    teamStats = widget.teams
-        .map(
-          (team) => TeamStats(
-            teamId: team.id,
-            teamName: team.name,
-            players: team.players,
-            matchesPlayed: 0,
-            won: 0,
-            lost: 0,
-            points: 0,
-          ),
-        )
-        .toList();
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 12),
+            Text(message),
+          ],
+        ),
+        backgroundColor: Colors.green.shade600,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.orange.shade600),
+              const SizedBox(height: 16),
+              Text(
+                'Creating tournament...',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_tournamentId == null) {
+      return Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        body: Center(
+          child: Text(
+            'Tournament not found',
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -270,6 +365,10 @@ class _BadmintonMatchScheduleScreenState
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.white),
+            onPressed: _shareTournament,
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline, color: Colors.white),
             onPressed: _showTournamentInfo,
@@ -322,93 +421,8 @@ class _BadmintonMatchScheduleScreenState
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [_buildMatchesTab(), _buildPointsTableTab()],
+              children: [_buildMatchesTab(), _buildStandingsTab()],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTournamentInfo() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.info, color: Colors.orange.shade600),
-            const SizedBox(width: 12),
-            const Text('Tournament Info'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow('Format', widget.teamType),
-            _buildInfoRow(
-              widget.teamType == 'Singles' ? 'Total Players' : 'Total Teams',
-              '${widget.teams.length}',
-            ),
-            if (widget.customTeamSize != null &&
-                widget.customTeamSize! >= 2) ...[
-              _buildInfoRow('Members per Team', '${widget.customTeamSize}'),
-              _buildInfoRow(
-                'Pairs per Team',
-                '${_getPairsPerTeam(widget.customTeamSize!)}',
-              ),
-            ],
-            _buildInfoRow('Total Matches', '${matches.length}'),
-            _buildInfoRow(
-              widget.teamType == 'Singles' ? 'Matches/Player' : 'Matches/Team',
-              '${widget.matchesPerTeam}',
-            ),
-            _buildInfoRow('Match Duration', '${widget.matchDuration} min'),
-            _buildInfoRow('Break Time', '${widget.breakDuration} min'),
-            if (matches.isNotEmpty) ...[
-              _buildInfoRow(
-                'Start',
-                DateFormat('MMM d, h:mm a').format(matches.first.date),
-              ),
-              _buildInfoRow(
-                'End (Est.)',
-                DateFormat('h:mm a').format(
-                  matches.last.date.add(
-                    Duration(minutes: widget.matchDuration),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  int _getPairsPerTeam(int teamSize) {
-    return (teamSize * (teamSize - 1)) ~/ 2;
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -416,70 +430,74 @@ class _BadmintonMatchScheduleScreenState
   }
 
   Widget _buildMatchesTab() {
-    if (matches.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.sports_baseball_outlined,
-              size: 80,
-              color: Colors.grey.shade300,
+    return StreamBuilder<List<Match>>(
+      stream: _firestoreService.getMatches(
+        _authService.currentUserEmailId!,
+        _tournamentId!,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(color: Colors.orange.shade600),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+                const SizedBox(height: 16),
+                Text('Error: ${snapshot.error}'),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              'No matches scheduled',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade600,
-              ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.sports_baseball_outlined,
+                  size: 80,
+                  color: Colors.grey.shade300,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No matches scheduled',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Not enough teams to create matches',
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-            ),
-          ],
-        ),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: matches.length,
-      itemBuilder: (context, index) => _buildMatchCard(matches[index], index),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: snapshot.data!.length,
+          itemBuilder: (context, index) =>
+              _buildMatchCard(snapshot.data![index]),
+        );
+      },
     );
   }
 
-  Widget _buildMatchCard(Match match, int index) {
-    final isUpcoming = match.date.isAfter(DateTime.now());
+  Widget _buildMatchCard(Match match) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ScorecardScreen(
-              match: match,
-              teamType: widget.teamType,
-              onScoreUpdate: (updatedMatch) {
-                setState(() {
-                  matches[index] = updatedMatch as Match;
-                  _updateTeamStats();
-                });
-              },
-            ),
-          ),
-        );
-      },
+      onTap: () => _openScorecard(match),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isUpcoming ? Colors.orange.shade200 : Colors.grey.shade200,
-            width: 2,
-          ),
+          border: Border.all(color: Colors.orange.shade200, width: 2),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -538,48 +556,49 @@ class _BadmintonMatchScheduleScreenState
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       Expanded(
-                        child: _buildTeamDisplay(match.team1, Colors.orange),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Column(
-                          children: [
-                            Text(
-                              match.score1.toString(),
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange.shade600,
-                              ),
-                            ),
-                            const Text(
-                              'VS',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              match.score2.toString(),
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade600,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          match.team1.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      Expanded(
-                        child: _buildTeamDisplay(match.team2, Colors.blue),
+                      Text(
+                        '${match.score1}',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade600,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          match.team2.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${match.score2}',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   const Divider(height: 1),
                   const SizedBox(height: 12),
                   Row(
@@ -587,30 +606,28 @@ class _BadmintonMatchScheduleScreenState
                     children: [
                       Icon(
                         Icons.calendar_today,
-                        size: 16,
+                        size: 14,
                         color: Colors.grey.shade600,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         DateFormat('MMM dd, yyyy').format(match.date),
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
                           color: Colors.grey.shade700,
                         ),
                       ),
                       const SizedBox(width: 16),
                       Icon(
                         Icons.access_time,
-                        size: 16,
+                        size: 14,
                         color: Colors.grey.shade600,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         match.time,
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
                           color: Colors.grey.shade700,
                         ),
                       ),
@@ -625,394 +642,325 @@ class _BadmintonMatchScheduleScreenState
     );
   }
 
-  Widget _buildTeamDisplay(Team team, Color color) {
-    return Column(
-      children: [
-        if (team.players.length == 1)
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [color, color]),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: color.withOpacity(0.5),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+  Widget _buildStandingsTab() {
+    return StreamBuilder<List<TeamStats>>(
+      stream: _firestoreService.getTeamStats(
+        _authService.currentUserEmailId!,
+        _tournamentId!,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(color: Colors.orange.shade600),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No teams found'));
+        }
+
+        List<TeamStats> teamStats = snapshot.data!;
+        teamStats.sort((a, b) {
+          int res = b.points.compareTo(a.points);
+          if (res != 0) return res;
+          res = b.won.compareTo(a.won);
+          if (res != 0) return res;
+          return a.matchesPlayed.compareTo(b.matchesPlayed);
+        });
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.orange.shade600, Colors.orange.shade400],
                 ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                team.players[0][0].toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
-            ),
-          )
-        else
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (int i = 0; i < team.players.length && i < 2; i++)
-                Padding(
-                  padding: EdgeInsets.only(left: i > 0 ? 4 : 0),
-                  child: Container(
+              child: const Row(
+                children: [
+                  SizedBox(
                     width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [color, color]),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withOpacity(0.5),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        team.players[i][0].toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                    child: Text(
+                      'Rank',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                   ),
+                  Expanded(
+                    child: Text(
+                      'Team',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 45,
+                    child: Text(
+                      'Played',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 40,
+                    child: Text(
+                      'Won',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 40,
+                    child: Text(
+                      'Pts',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
                 ),
-            ],
-          ),
-        const SizedBox(height: 10),
-        Text(
-          team.name,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        if (team.players.length > 0)
-          Text(
-            team.players.join(' & '),
-            style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-      ],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: teamStats.length,
+                itemBuilder: (context, index) =>
+                    _buildTeamRow(teamStats[index], index),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildPointsTableTab() {
-    if (teamStats.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.leaderboard_outlined,
-              size: 80,
-              color: Colors.grey.shade300,
+  Widget _buildTeamRow(TeamStats team, int index) {
+    final isTopRanked = index == 0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: isTopRanked ? Colors.orange.shade50 : Colors.white,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 40,
+            child: Text(
+              '${index + 1}',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'No standings available',
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  team.teamName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isTopRanked ? FontWeight.bold : FontWeight.w600,
+                  ),
+                ),
+                if (team.players.length > 1)
+                  Text(
+                    team.players.join(', '),
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(
+            width: 45,
+            child: Text(
+              team.matchesPlayed.toString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+          SizedBox(
+            width: 40,
+            child: Text(
+              team.won.toString(),
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade600,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade600,
               ),
+            ),
+          ),
+          SizedBox(
+            width: 40,
+            child: Text(
+              team.points.toString(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange.shade600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openScorecard(Match match) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScorecardScreen(
+          match: match,
+          teamType: widget.teamType ?? 'Singles',
+          onScoreUpdate: (updatedMatch) {
+            _firestoreService.updateMatch(
+              _authService.currentUserEmailId!,
+              _tournamentId!,
+              updatedMatch,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _shareTournament() async {
+    if (_authService.currentUserEmailId == null || _tournamentId == null)
+      return;
+
+    try {
+      String shareCode = await _firestoreService.createShareableLink(
+        _authService.currentUserEmailId!,
+        _tournamentId!,
+      );
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.share, color: Colors.orange.shade600),
+              const SizedBox(width: 12),
+              const Text('Share Tournament'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Share Code',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.shade200, width: 2),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        shareCode,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade900,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.copy, color: Colors.orange.shade600),
+                      onPressed: () {
+                        _showSuccessSnackBar('Code copied!');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Share this code with others. Valid for 30 days.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
             ),
           ],
         ),
       );
+    } catch (e) {
+      _showErrorSnackBar('Failed to create share link: $e');
     }
-
-    teamStats.sort((a, b) {
-      int res = b.points.compareTo(a.points);
-      if (res != 0) return res;
-      res = b.won.compareTo(a.won);
-      if (res != 0) return res;
-      return a.matchesPlayed.compareTo(b.matchesPlayed);
-    });
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.orange.shade600, Colors.orange.shade400],
-            ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-            ),
-          ),
-          child: Row(
-            children: [
-              const SizedBox(
-                width: 40,
-                child: Text(
-                  'Rank',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  widget.teamType == 'Singles' ? 'Player' : 'Team',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(
-                width: 45,
-                child: Text(
-                  'Played',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(
-                width: 40,
-                child: Text(
-                  'Won',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
-                ),
-              ),
-              const SizedBox(
-                width: 40,
-                child: Text(
-                  'Pts',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(16),
-              bottomRight: Radius.circular(16),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: teamStats.length,
-            itemBuilder: (context, index) {
-              final team = teamStats[index];
-              final isTopRanked = index == 0;
-              final isTopThree = index < 3 && teamStats.length >= 3;
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: isTopRanked
-                      ? Colors.orange.shade50
-                      : isTopThree
-                      ? Colors.orange.shade100
-                      : Colors.white,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Colors.grey.shade200,
-                      width: index == teamStats.length - 1 ? 0 : 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 40,
-                      child: Row(
-                        children: [
-                          if (isTopThree)
-                            Icon(
-                              index == 0
-                                  ? Icons.emoji_events
-                                  : index == 1
-                                  ? Icons.workspace_premium
-                                  : Icons.military_tech,
-                              size: 20,
-                              color: index == 0
-                                  ? Colors.amber.shade700
-                                  : index == 1
-                                  ? Colors.grey
-                                  : Colors.orange.shade800,
-                            )
-                          else
-                            Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            team.teamName,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: isTopRanked
-                                  ? FontWeight.bold
-                                  : FontWeight.w600,
-                              color: Colors.grey.shade800,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (team.players.length > 1)
-                            Text(
-                              team.players.join(', '),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey.shade500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      width: 45,
-                      child: Text(
-                        team.matchesPlayed.toString(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 40,
-                      child: Text(
-                        team.won.toString(),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade600,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 40,
-                      child: Text(
-                        team.points.toString(),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange.shade600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
   }
 
-  void _updateTeamStats() {
-    for (var stat in teamStats) {
-      stat.matchesPlayed = 0;
-      stat.won = 0;
-      stat.lost = 0;
-      stat.points = 0;
-    }
-
-    for (var match in matches) {
-      if (match.status == 'Completed' && match.winner != null) {
-        // For custom doubles format, use parent team IDs
-        String? winnerTeamId;
-        String? loserTeamId;
-
-        if (match.parentTeam1Id != null && match.parentTeam2Id != null) {
-          // Custom doubles format - use parent team IDs
-          if (match.winner?.contains(match.parentTeam1Id!) == true) {
-            winnerTeamId = match.parentTeam1Id;
-            loserTeamId = match.parentTeam2Id;
-          } else {
-            winnerTeamId = match.parentTeam2Id;
-            loserTeamId = match.parentTeam1Id;
-          }
-        } else {
-          // Standard format
-          winnerTeamId = match.winner;
-          loserTeamId = match.winner == match.team1.id
-              ? match.team2.id
-              : match.team1.id;
-        }
-
-        // Update winner stats
-        final winnerIndex = teamStats.indexWhere(
-          (t) => t.teamId == winnerTeamId,
-        );
-        if (winnerIndex != -1) {
-          teamStats[winnerIndex].matchesPlayed++;
-          teamStats[winnerIndex].won++;
-          teamStats[winnerIndex].points += 2;
-        }
-
-        // Update loser stats
-        final loserIndex = teamStats.indexWhere((t) => t.teamId == loserTeamId);
-        if (loserIndex != -1) {
-          teamStats[loserIndex].matchesPlayed++;
-          teamStats[loserIndex].lost++;
-        }
-      }
-    }
+  void _showTournamentInfo() {
+    // Show tournament details
   }
 
   Color _getStatusColor(String status) {
@@ -1027,4 +975,31 @@ class _BadmintonMatchScheduleScreenState
         return Colors.grey;
     }
   }
+}
+
+// Helper classes
+class MatchPair {
+  final Team team1;
+  final Team team2;
+  MatchPair(this.team1, this.team2);
+}
+
+class DoublesPair {
+  final String player1;
+  final String player2;
+  DoublesPair(this.player1, this.player2);
+}
+
+class TeamWithDoublesPairs {
+  final Team team;
+  final List<DoublesPair> doublesPairs;
+  TeamWithDoublesPairs(this.team, this.doublesPairs);
+}
+
+class DoublesMatch {
+  final Team team1;
+  final Team team2;
+  final DoublesPair pair1;
+  final DoublesPair pair2;
+  DoublesMatch(this.team1, this.team2, this.pair1, this.pair2);
 }

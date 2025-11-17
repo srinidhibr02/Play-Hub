@@ -137,6 +137,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
           breakDuration: widget.breakDuration,
           allowRematches: widget.allowRematches,
           customTeamSize: widget.customTeamSize, // Pass custom team size
+          members: widget.members, // ✅ ADD THIS - Required for Firestore
         ),
       ),
     );
