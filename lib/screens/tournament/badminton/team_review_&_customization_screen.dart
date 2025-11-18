@@ -11,6 +11,7 @@ class TeamReviewScreen extends StatefulWidget {
   final int matchDuration;
   final int breakDuration;
   final bool allowRematches;
+  final String tournamentFormat;
   final int? customTeamSize; // NEW: Custom team size
 
   const TeamReviewScreen({
@@ -23,6 +24,7 @@ class TeamReviewScreen extends StatefulWidget {
     required this.matchDuration,
     required this.breakDuration,
     required this.allowRematches,
+    required this.tournamentFormat,
     this.customTeamSize,
   });
 
@@ -138,6 +140,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
           allowRematches: widget.allowRematches,
           customTeamSize: widget.customTeamSize, // Pass custom team size
           members: widget.members, // ✅ ADD THIS - Required for Firestore
+          tournamentFormat: widget.tournamentFormat,
         ),
       ),
     );

@@ -161,7 +161,10 @@ class _BadmintonTournamentSetupScreenState
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Clear All'),
+            child: const Text(
+              'Clear All',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),

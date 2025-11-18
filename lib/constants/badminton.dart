@@ -50,6 +50,8 @@ class Match {
   String? winner;
   final String? parentTeam1Id;
   final String? parentTeam2Id;
+  final int? round; // ✅ ADD THIS
+  final String? roundName; // ✅ ADD THIS
 
   Match({
     required this.id,
@@ -63,8 +65,57 @@ class Match {
     this.winner,
     this.parentTeam1Id,
     this.parentTeam2Id,
+    this.round, // ✅ ADD THIS
+    this.roundName, // ✅ ADD THIS
   });
 
+  // Update your toMap() method to include new fields:
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'team1': {'id': team1.id, 'name': team1.name, 'players': team1.players},
+      'team2': {'id': team2.id, 'name': team2.name, 'players': team2.players},
+      'date': date.toIso8601String(),
+      'time': time,
+      'status': status,
+      'score1': score1,
+      'score2': score2,
+      'winner': winner,
+      'parentTeam1Id': parentTeam1Id,
+      'parentTeam2Id': parentTeam2Id,
+      'round': round, // ✅ ADD THIS
+      'roundName': roundName, // ✅ ADD THIS
+    };
+  }
+
+  // Update your fromMap() method:
+  factory Match.fromMap(Map<String, dynamic> map) {
+    return Match(
+      id: map['id'],
+      team1: Team(
+        id: map['team1']['id'],
+        name: map['team1']['name'],
+        players: List<String>.from(map['team1']['players']),
+      ),
+      team2: Team(
+        id: map['team2']['id'],
+        name: map['team2']['name'],
+        players: List<String>.from(map['team2']['players']),
+      ),
+      date: DateTime.parse(map['date']),
+      time: map['time'],
+      status: map['status'],
+      score1: map['score1'],
+      score2: map['score2'],
+      winner: map['winner'],
+      parentTeam1Id: map['parentTeam1Id'],
+      parentTeam2Id: map['parentTeam2Id'],
+      round: map['round'], // ✅ ADD THIS
+      roundName: map['roundName'], // ✅ ADD THIS
+    );
+  }
+
+  // Update copyWith method:
   Match copyWith({String? status, int? score1, int? score2, String? winner}) {
     return Match(
       id: id,
@@ -76,6 +127,10 @@ class Match {
       score1: score1 ?? this.score1,
       score2: score2 ?? this.score2,
       winner: winner ?? this.winner,
+      parentTeam1Id: parentTeam1Id,
+      parentTeam2Id: parentTeam2Id,
+      round: round, // ✅ ADD THIS
+      roundName: roundName, // ✅ ADD THIS
     );
   }
 }
