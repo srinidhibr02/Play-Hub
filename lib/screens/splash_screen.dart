@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:play_hub/screens/auth_screen.dart';
-import 'package:play_hub/screens/home_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
 
 class SportsEventApp extends StatelessWidget {

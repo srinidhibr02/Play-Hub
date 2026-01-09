@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:play_hub/screens/home_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
+import 'package:play_hub/service/google_auth_service.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -38,6 +39,12 @@ class _AuthPageState extends State<AuthPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    ();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _checkExistingAuth();
   }
 
@@ -56,29 +63,27 @@ class _AuthPageState extends State<AuthPage>
 
   // Check if user is already logged in (persistent login)
   Future<void> _checkExistingAuth() async {
+    final user = _authService.currentUser;
     try {
-      await _authService.initializeGoogleSignIn();
-      if (_authService.isLoggedIn) {
-        debugPrint(
-          'User already logged in: ${_authService.currentUser?.email}',
-        );
-
-        // Navigate to home
+      if (user != null && mounted) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'User already logged in: ${_authService.currentUser?.email}',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomePage()),
-          );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Welcome back: ${user.email}'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const HomePage()),
+              );
+            }
+          });
         }
-        return;
+      } else {
+        debugPrint('No existing user session found.');
       }
     } catch (e) {
       debugPrint('Error checking auth: $e');
@@ -154,44 +159,6 @@ class _AuthPageState extends State<AuthPage>
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }
-  }
-
-  // Google Sign In Handler
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final result = await _authService.signInWithGoogle();
-
-      if (!mounted) return;
-
-      // The authentication event stream will handle the actual Firebase sign-in
-      // and navigation, so we just wait a moment for the process to complete
-      if (result.success) {
-        // Wait for the authentication event to process
-        await Future.delayed(const Duration(seconds: 2));
-
-        if (!mounted) return;
-
-        // Check if user is now logged in
-        if (_authService.isLoggedIn) {
-          _showMessage('Signed in successfully!', isError: false);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomePage()),
-          );
-        } else {
-          setState(() => _isLoading = false);
-        }
-      } else {
-        setState(() => _isLoading = false);
-        _showMessage(result.message, isError: true);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      _showMessage('Google Sign-In failed: $e', isError: true);
     }
   }
 
@@ -456,17 +423,7 @@ class _AuthPageState extends State<AuthPage>
               style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildSocialButton(
-                  Icons.g_mobiledata,
-                  _isLoading ? null : _handleGoogleSignIn,
-                ),
-                const SizedBox(width: 20),
-                _buildSocialButton(Icons.apple, null),
-              ],
-            ),
+            GoogleSignInButton(),
           ],
         ),
       ),
