@@ -244,8 +244,6 @@ class _BookingsScreenState extends State<BookingsScreen>
   }
 
   Widget _buildBookingCard(Booking booking, {required bool isActive}) {
-    final daysDifference = booking.date.difference(DateTime.now()).inDays;
-
     Color statusColor;
     IconData statusIcon;
     String statusText;

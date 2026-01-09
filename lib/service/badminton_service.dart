@@ -29,6 +29,7 @@ class TournamentFirestoreService {
     required int breakDuration,
     required int matchesPerTeam,
     required bool allowRematches,
+    required String tournamentFormat,
     int? customTeamSize,
   }) async {
     try {
@@ -46,6 +47,7 @@ class TournamentFirestoreService {
         'teamType': teamType,
         'members': members,
         'customTeamSize': customTeamSize,
+        'tournamentFormat': tournamentFormat,
         'schedule': {
           'startDate': Timestamp.fromDate(startDate),
           'startTimeHour': startTime.hour,
@@ -140,12 +142,85 @@ class TournamentFirestoreService {
           'score1': match.score1,
           'score2': match.score2,
           'winner': match.winner,
+          'round': match.round,
+          'roundName': match.roundName,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
 
       await batch.commit();
+    }
+  }
+
+  /// Add new matches to existing tournament (for knockout next rounds)
+  Future<void> addMatches(
+    String userEmail,
+    String tournamentId,
+    List<Match> matches,
+  ) async {
+    try {
+      // Process in batches of 500 (Firestore batch limit)
+      for (int i = 0; i < matches.length; i += 500) {
+        WriteBatch batch = _firestore.batch();
+
+        int end = (i + 500 < matches.length) ? i + 500 : matches.length;
+        List<Match> batchMatches = matches.sublist(i, end);
+
+        for (Match match in batchMatches) {
+          DocumentReference matchRef = _getUserTournamentsCollection(
+            userEmail,
+          ).doc(tournamentId).collection('matches').doc(match.id);
+
+          batch.set(matchRef, {
+            'id': match.id,
+            'team1': {
+              'id': match.team1.id,
+              'name': match.team1.name,
+              'players': match.team1.players,
+            },
+            'team2': {
+              'id': match.team2.id,
+              'name': match.team2.name,
+              'players': match.team2.players,
+            },
+            'parentTeam1Id': match.parentTeam1Id,
+            'parentTeam2Id': match.parentTeam2Id,
+            'scheduledDate': Timestamp.fromDate(match.date),
+            'time': match.time,
+            'status': match.status,
+            'score1': match.score1,
+            'score2': match.score2,
+            'winner': match.winner,
+            'round': match.round,
+            'roundName': match.roundName,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        await batch.commit();
+      }
+
+      // Update tournament total matches count
+      DocumentSnapshot tournamentDoc = await _getUserTournamentsCollection(
+        userEmail,
+      ).doc(tournamentId).get();
+
+      if (tournamentDoc.exists) {
+        Map<String, dynamic> data =
+            tournamentDoc.data() as Map<String, dynamic>;
+        int currentTotal = data['stats']['totalMatches'] ?? 0;
+
+        await _getUserTournamentsCollection(
+          userEmail,
+        ).doc(tournamentId).update({
+          'stats.totalMatches': currentTotal + matches.length,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      throw Exception('Failed to add matches: $e');
     }
   }
 
@@ -265,6 +340,8 @@ class TournamentFirestoreService {
               winner: data['winner'],
               parentTeam1Id: data['parentTeam1Id'],
               parentTeam2Id: data['parentTeam2Id'],
+              round: data['round'],
+              roundName: data['roundName'],
             );
           }).toList();
         });
