@@ -43,8 +43,10 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
         : (teamsCount > 1 ? teamsCount - 1 : 1);
     if (!allowRematches) {
       rematches = maxMatches;
-    } else if (rematches > maxMatches) {
-      rematches = maxMatches;
+      totalMatches = _getBaseMaxMatches() ~/ 2;
+    } else {
+      rematches = 1;
+      totalMatches = _getBaseMaxMatches() ~/ 2;
     }
   }
 
@@ -98,154 +100,156 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // FORMAT SELECTION
-            _buildSectionTitle('Tournament Format'),
-            const SizedBox(height: 10),
-            Container(
-              height: 56, // ✅ Taller for modern feel
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.orange.shade50, Colors.orange.shade100],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(28), // ✅ Softer corners
-                border: Border.all(
-                  color: Colors.orange.shade200,
-                  width: 1.5, // ✅ Thicker, premium border
-                ),
-                boxShadow: [
-                  // ✅ Subtle glassmorphism shadow
-                  BoxShadow(
-                    color: Colors.orange.shade100,
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
+            if (widget.teamType != 'Custom') ...[
+              _buildSectionTitle('Tournament Format'),
+              const SizedBox(height: 10),
+              Container(
+                height: 48, // ✅ Taller for modern feel
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orange.shade50, Colors.orange.shade100],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 24,
-                    offset: const Offset(0, 2),
+                  borderRadius: BorderRadius.circular(28), // ✅ Softer corners
+                  border: Border.all(
+                    color: Colors.orange.shade200,
+                    width: 2.5, // ✅ Thicker, premium border
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // Round Robin Tab ✅
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          tournamentFormat = 'round_robin';
-                          allowRematches = true;
-                          HapticFeedback.lightImpact(); // ✅ iOS/Android haptic
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        height: 56,
-                        decoration: BoxDecoration(
-                          gradient: tournamentFormat == 'round_robin'
-                              ? LinearGradient(
-                                  colors: [
-                                    Colors.orange.shade600,
-                                    Colors.orange.shade700,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
-                              : null,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(28),
-                            bottomLeft: Radius.circular(28),
-                          ),
-                          boxShadow: tournamentFormat == 'round_robin'
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.orange.shade400.withOpacity(
-                                      0.4,
+                  boxShadow: [
+                    // ✅ Subtle glassmorphism shadow
+                    BoxShadow(
+                      color: Colors.orange.shade100,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 24,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // Round Robin Tab ✅
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            tournamentFormat = 'round_robin';
+                            allowRematches = true;
+                            HapticFeedback.lightImpact(); // ✅ iOS/Android haptic
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 56,
+                          decoration: BoxDecoration(
+                            gradient: tournamentFormat == 'round_robin'
+                                ? LinearGradient(
+                                    colors: [
+                                      Colors.orange.shade600,
+                                      Colors.orange.shade700,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(28),
+                              bottomLeft: Radius.circular(28),
+                            ),
+                            boxShadow: tournamentFormat == 'round_robin'
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.orange.shade400.withOpacity(
+                                        0.4,
+                                      ),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
                                     ),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Center(
-                          child: Text(
-                            'ROUND ROBIN', // ✅ ALL CAPS modern
-                            style: TextStyle(
-                              color: tournamentFormat == 'round_robin'
-                                  ? Colors.white
-                                  : Colors.orange.shade900,
-                              fontWeight: FontWeight.w700, // ✅ Bolder
-                              fontSize: 13, // ✅ Compact modern
-                              letterSpacing: 0.5, // ✅ Letter spacing
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'ROUND ROBIN', // ✅ ALL CAPS modern
+                              style: TextStyle(
+                                color: tournamentFormat == 'round_robin'
+                                    ? Colors.white
+                                    : Colors.orange.shade900,
+                                fontWeight: FontWeight.w700, // ✅ Bolder
+                                fontSize: 13, // ✅ Compact modern
+                                letterSpacing: 0.5, // ✅ Letter spacing
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  // Knockout Tab ✅
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          tournamentFormat = 'knockout';
-                          allowRematches = false;
-                          totalMatches = _getBaseMaxMatches();
-                          HapticFeedback.lightImpact(); // ✅ Haptic feedback
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        height: 56,
-                        decoration: BoxDecoration(
-                          gradient: tournamentFormat == 'knockout'
-                              ? LinearGradient(
-                                  colors: [
-                                    Colors.orange.shade600,
-                                    Colors.orange.shade700,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
-                              : null,
-                          borderRadius: const BorderRadius.only(
-                            topRight: Radius.circular(28),
-                            bottomRight: Radius.circular(28),
-                          ),
-                          boxShadow: tournamentFormat == 'knockout'
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.orange.shade400.withOpacity(
-                                      0.4,
+                    // Knockout Tab ✅
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            tournamentFormat = 'knockout';
+                            allowRematches = false;
+                            totalMatches = _getBaseMaxMatches();
+                            HapticFeedback.lightImpact(); // ✅ Haptic feedback
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 56,
+                          decoration: BoxDecoration(
+                            gradient: tournamentFormat == 'knockout'
+                                ? LinearGradient(
+                                    colors: [
+                                      Colors.orange.shade600,
+                                      Colors.orange.shade700,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(28),
+                              bottomRight: Radius.circular(28),
+                            ),
+                            boxShadow: tournamentFormat == 'knockout'
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.orange.shade400.withOpacity(
+                                        0.4,
+                                      ),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
                                     ),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Center(
-                          child: Text(
-                            'KNOCKOUT', // ✅ ALL CAPS modern
-                            style: TextStyle(
-                              color: tournamentFormat == 'knockout'
-                                  ? Colors.white
-                                  : Colors.orange.shade900,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              letterSpacing: 0.5,
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'KNOCKOUT', // ✅ ALL CAPS modern
+                              style: TextStyle(
+                                color: tournamentFormat == 'knockout'
+                                    ? Colors.white
+                                    : Colors.orange.shade900,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
 
             const SizedBox(height: 15),
 
@@ -294,14 +298,12 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
             _buildTimeSelector(),
             const SizedBox(height: 24),
 
-            _buildSectionTitle('Match Rules'),
+            _buildSectionTitle('Rematches - Against same opponent'),
             const SizedBox(height: 12),
             _buildMatchRulesCard(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
             // Show rematch & match slider ONLY for round robin/league format
             if (tournamentFormat == "round_robin" && allowRematches) ...[
-              _buildSectionTitle('Rematches against Same Team'),
-              const SizedBox(height: 24),
               _buildSliderCard(
                 value: rematches.toDouble(),
                 min: 1,
@@ -315,34 +317,6 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                 },
                 suffix: rematches == 1 ? 'match' : 'matches',
                 helperText: 'Number of rematches against every other team.',
-              ),
-            ],
-
-            if (widget.teamType == 'Custom') ...[
-              const SizedBox(height: 24),
-              _buildSectionTitle('NO Consecutive Matches for Same Player'),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info, color: Colors.green.shade800),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Scheduling will ensure no player plays consecutive matches, guaranteeing breaks in between. (You\'ll see the scheduled format and breaks preview in the next step.)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.green.shade900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
 
@@ -524,8 +498,17 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                 : (value) {
                     setState(() {
                       allowRematches = value;
+                      debugPrint('Allow Rematches toggled to: $allowRematches');
                       final maxMatches = _getBaseMaxMatches();
+                      rematches = allowRematches ? rematches : 1;
                       totalMatches = allowRematches ? totalMatches : maxMatches;
+                      allowRematches
+                          ? debugPrint(
+                              'Rematches allowed. Current rematches: $rematches, Total Matches: $totalMatches',
+                            )
+                          : debugPrint(
+                              'Rematches disallowed. Resetting rematches to 1 and total matches to $maxMatches',
+                            );
                     });
                   },
           ),
