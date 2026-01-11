@@ -652,27 +652,4 @@ class _AuthPageState extends State<AuthPage>
       ),
     );
   }
-
-  Widget _buildSocialButton(IconData icon, VoidCallback? onPressed) {
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.teal.shade200, width: 2),
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: IconButton(
-        icon: Icon(icon, size: 30, color: Colors.teal.shade700),
-        onPressed: onPressed,
-      ),
-    );
-  }
 }
