@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/screens/tournament/badminton/team_review_&_customization_screen.dart';
 
@@ -19,11 +20,12 @@ class TournamentConfigScreen extends StatefulWidget {
 class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
   DateTime selectedDate = DateTime.now();
   TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
-  int matchesPerTeam = 1;
+  int totalMatches = 1;
   int breakBetweenMatches = 15;
-  int matchDuration = 30;
+  int matchDuration = 15;
   bool allowRematches = false;
   int? customTeamSize;
+  int rematches = 1;
 
   String tournamentFormat = "round_robin"; // "round_robin" or "knockout"
 
@@ -40,16 +42,42 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
         ? _getMaxMatchesPerTeam()
         : (teamsCount > 1 ? teamsCount - 1 : 1);
     if (!allowRematches) {
-      matchesPerTeam = maxMatches;
-    } else if (matchesPerTeam > maxMatches) {
-      matchesPerTeam = maxMatches;
+      rematches = maxMatches;
+      totalMatches = _getBaseMaxMatches() ~/ 2;
+    } else {
+      rematches = 1;
+      totalMatches = _getBaseMaxMatches() ~/ 2;
     }
+  }
+
+  int _getBaseMaxMatches() {
+    // Calculate max WITHOUT rematches (rematches = 1)
+    final teamsCount = _getTeamsCount();
+    if (teamsCount < 2) return 0;
+
+    if (tournamentFormat == "knockout") {
+      return teamsCount - 1;
+    }
+
+    if (widget.teamType == 'Singles' || widget.teamType == 'Doubles') {
+      return (teamsCount * (teamsCount - 1)) ~/ 2;
+    } else {
+      // Custom: your pair logic without rematches multiplier
+      final teamSize = customTeamSize ?? (widget.members.length ~/ 2);
+      final pairsPerTeam = _getPairsPerTeam(teamSize);
+      final teamMatchups = (teamsCount * (teamsCount - 1)) ~/ 2;
+      return teamMatchups * pairsPerTeam * pairsPerTeam;
+    }
+  }
+
+  int _getCurrentMaxMatches() {
+    final baseMax = _getBaseMaxMatches();
+    return allowRematches ? baseMax * rematches : baseMax;
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalMatches = _calculateTotalMatches();
-    final estimatedDuration = _calculateTotalDuration();
+    var maxMatches = _calculateTotalMatchesMaximum();
     final teamsCount = _getTeamsCount();
 
     return Scaffold(
@@ -72,38 +100,157 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // FORMAT SELECTION
-            _buildSectionTitle('Tournament Format'),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Radio<String>(
-                  value: "round_robin",
-                  groupValue: tournamentFormat,
-                  activeColor: Colors.orange.shade600,
-                  onChanged: (value) {
-                    setState(() {
-                      tournamentFormat = value!;
-                      // Enable rematch/slider for round robin only
-                    });
-                  },
+            if (widget.teamType != 'Custom') ...[
+              _buildSectionTitle('Tournament Format'),
+              const SizedBox(height: 10),
+              Container(
+                height: 48, // ✅ Taller for modern feel
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orange.shade50, Colors.orange.shade100],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(28), // ✅ Softer corners
+                  border: Border.all(
+                    color: Colors.orange.shade200,
+                    width: 2.5, // ✅ Thicker, premium border
+                  ),
+                  boxShadow: [
+                    // ✅ Subtle glassmorphism shadow
+                    BoxShadow(
+                      color: Colors.orange.shade100,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 24,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                const Text("Round Robin/League"),
-                const SizedBox(width: 16),
-                Radio<String>(
-                  value: "knockout",
-                  groupValue: tournamentFormat,
-                  activeColor: Colors.orange.shade600,
-                  onChanged: (value) {
-                    setState(() {
-                      tournamentFormat = value!;
-                      // Always single elimination: disable rematch
-                      allowRematches = false;
-                    });
-                  },
+                child: Row(
+                  children: [
+                    // Round Robin Tab ✅
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            tournamentFormat = 'round_robin';
+                            allowRematches = true;
+                            HapticFeedback.lightImpact(); // ✅ iOS/Android haptic
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 56,
+                          decoration: BoxDecoration(
+                            gradient: tournamentFormat == 'round_robin'
+                                ? LinearGradient(
+                                    colors: [
+                                      Colors.orange.shade600,
+                                      Colors.orange.shade700,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(28),
+                              bottomLeft: Radius.circular(28),
+                            ),
+                            boxShadow: tournamentFormat == 'round_robin'
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.orange.shade400.withOpacity(
+                                        0.4,
+                                      ),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'ROUND ROBIN', // ✅ ALL CAPS modern
+                              style: TextStyle(
+                                color: tournamentFormat == 'round_robin'
+                                    ? Colors.white
+                                    : Colors.orange.shade900,
+                                fontWeight: FontWeight.w700, // ✅ Bolder
+                                fontSize: 13, // ✅ Compact modern
+                                letterSpacing: 0.5, // ✅ Letter spacing
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Knockout Tab ✅
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            tournamentFormat = 'knockout';
+                            allowRematches = false;
+                            totalMatches = _getBaseMaxMatches();
+                            HapticFeedback.lightImpact(); // ✅ Haptic feedback
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 56,
+                          decoration: BoxDecoration(
+                            gradient: tournamentFormat == 'knockout'
+                                ? LinearGradient(
+                                    colors: [
+                                      Colors.orange.shade600,
+                                      Colors.orange.shade700,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(28),
+                              bottomRight: Radius.circular(28),
+                            ),
+                            boxShadow: tournamentFormat == 'knockout'
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.orange.shade400.withOpacity(
+                                        0.4,
+                                      ),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'KNOCKOUT', // ✅ ALL CAPS modern
+                              style: TextStyle(
+                                color: tournamentFormat == 'knockout'
+                                    ? Colors.white
+                                    : Colors.orange.shade900,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const Text("Knockout/Elimination"),
-              ],
-            ),
+              ),
+            ],
+
             const SizedBox(height: 15),
 
             _buildSummaryCard(
@@ -151,62 +298,50 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
             _buildTimeSelector(),
             const SizedBox(height: 24),
 
-            _buildSectionTitle('Match Rules'),
+            _buildSectionTitle('Rematches - Against same opponent'),
             const SizedBox(height: 12),
             _buildMatchRulesCard(),
-
+            const SizedBox(height: 10),
             // Show rematch & match slider ONLY for round robin/league format
             if (tournamentFormat == "round_robin" && allowRematches) ...[
-              _buildSectionTitle('Rematches / Matches per Team'),
-              const SizedBox(height: 12),
               _buildSliderCard(
-                value: matchesPerTeam.toDouble(),
+                value: rematches.toDouble(),
                 min: 1,
-                max: _getMaxMatchesPerTeam().toDouble(),
-                divisions: _getMaxMatchesPerTeam() > 1
-                    ? _getMaxMatchesPerTeam() - 1
-                    : 1,
-                label: matchesPerTeam.toString(),
+                max: 5,
+                divisions: 4,
+                label: rematches.toString(),
                 onChanged: (value) {
                   setState(() {
-                    matchesPerTeam = value.toInt();
+                    rematches = value.toInt();
                   });
                 },
-                suffix: matchesPerTeam == 1 ? 'match' : 'matches',
-                helperText:
-                    'Number of matches each team will play against every other team.',
-              ),
-            ],
-
-            if (widget.teamType == 'Custom') ...[
-              const SizedBox(height: 24),
-              _buildSectionTitle('NO Consecutive Matches for Same Player'),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info, color: Colors.green.shade800),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Scheduling will ensure no player plays consecutive matches, guaranteeing breaks in between. (You\'ll see the scheduled format and breaks preview in the next step.)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.green.shade900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                suffix: rematches == 1 ? 'match' : 'matches',
+                helperText: 'Number of rematches against every other team.',
               ),
             ],
 
             const SizedBox(height: 24),
+
+            _buildSectionTitle('Total Number of Matches'),
+            SizedBox(height: 12),
+            _buildSliderCard(
+              value: totalMatches.toDouble(), // ✅ Auto-updates from switch
+              min: 1,
+              max: maxMatches.toDouble(), // ✅ Dynamic max
+              divisions: maxMatches - 1,
+              label: totalMatches.toString(),
+              onChanged: (value) {
+                setState(() {
+                  totalMatches = value.toInt().clamp(1, maxMatches);
+                });
+              },
+              suffix: 'matches',
+              helperText: allowRematches
+                  ? 'Up to $maxMatches matches with rematches'
+                  : 'Up to ${_getBaseMaxMatches()} matches (no rematches)',
+            ),
+
+            const SizedBox(height: 32),
             _buildSectionTitle('Break Between Matches'),
             const SizedBox(height: 12),
             _buildSliderCard(
@@ -222,15 +357,15 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
               },
               suffix: 'minutes',
             ),
-            const SizedBox(height: 24),
 
+            const SizedBox(height: 24),
             _buildSectionTitle('Match Duration'),
             const SizedBox(height: 12),
             _buildSliderCard(
               value: matchDuration.toDouble(),
-              min: 10,
-              max: 90,
-              divisions: 8,
+              min: 15,
+              max: 45,
+              divisions: 6,
               label: matchDuration.toString(),
               onChanged: (value) {
                 setState(() {
@@ -238,62 +373,6 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                 });
               },
               suffix: 'minutes',
-            ),
-            const SizedBox(height: 32),
-
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.orange.shade600, Colors.orange.shade400],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.orange.shade300.withOpacity(0.5),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'Tournament Summary',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildSummaryItem(
-                        'Total Matches',
-                        totalMatches.toString(),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 40,
-                        color: Colors.white.withOpacity(0.3),
-                      ),
-                      _buildSummaryItem('Duration', estimatedDuration),
-                    ],
-                  ),
-                  if (tournamentFormat == "knockout") ...[
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Knockout: Single elimination - lose and you\'re out! Winners face off in next rounds until we have a champion.',
-                      style: TextStyle(fontSize: 13, color: Colors.white),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ],
-              ),
             ),
             const SizedBox(height: 32),
 
@@ -419,9 +498,17 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                 : (value) {
                     setState(() {
                       allowRematches = value;
-                      final maxMatches = _getMaxMatchesPerTeam();
-                      if (matchesPerTeam > maxMatches)
-                        matchesPerTeam = maxMatches;
+                      debugPrint('Allow Rematches toggled to: $allowRematches');
+                      final maxMatches = _getBaseMaxMatches();
+                      rematches = allowRematches ? rematches : 1;
+                      totalMatches = allowRematches ? totalMatches : maxMatches;
+                      allowRematches
+                          ? debugPrint(
+                              'Rematches allowed. Current rematches: $rematches, Total Matches: $totalMatches',
+                            )
+                          : debugPrint(
+                              'Rematches disallowed. Resetting rematches to 1 and total matches to $maxMatches',
+                            );
                     });
                   },
           ),
@@ -476,7 +563,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                   children: [
                     if (showTeamSizeControls)
                       IconButton(
-                        onPressed: _decrementTeamSize,
+                        onPressed: _incrementTeamSize,
                         icon: Icon(Icons.remove_circle, color: color),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(
@@ -484,6 +571,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                           minHeight: 32,
                         ),
                       ),
+
                     Text(
                       value,
                       style: TextStyle(
@@ -494,7 +582,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                     ),
                     if (showTeamSizeControls)
                       IconButton(
-                        onPressed: _incrementTeamSize,
+                        onPressed: _decrementTeamSize,
                         icon: Icon(Icons.add_circle, color: color),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(
@@ -544,9 +632,12 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
 
   String _getTeamInfo() {
     final teamsCount = _getTeamsCount();
-    final teamSize = customTeamSize ?? (widget.members.length ~/ 2);
-    final pairsPerTeam = _getPairsPerTeam(teamSize);
-    return '$teamsCount teams × $teamSize members ($pairsPerTeam doubles pairs each)';
+    final teamSize = widget.members.length ~/ teamsCount;
+    final pairsPerteam = _getPairsPerTeam(teamSize);
+    debugPrint(
+      'Calculating team info: teamsCount=$teamsCount, teamSize=$teamSize',
+    );
+    return '$teamsCount teams × $teamSize members each ($pairsPerteam pairs per team)';
   }
 
   String _getMinimumRequirement() {
@@ -732,26 +823,6 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
     );
   }
 
-  Widget _buildSummaryItem(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9)),
-        ),
-      ],
-    );
-  }
-
   int _getTeamsCount() {
     if (widget.teamType == 'Singles') {
       return widget.members.length;
@@ -767,7 +838,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
     return (teamSize * (teamSize - 1)) ~/ 2;
   }
 
-  int _calculateTotalMatches() {
+  int _calculateTotalMatchesMaximum() {
     final teamsCount = _getTeamsCount();
     if (teamsCount < 2) return 0;
 
@@ -778,19 +849,22 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
 
     if (widget.teamType == 'Singles') {
       int uniquePairs = (teamsCount * (teamsCount - 1)) ~/ 2;
-      return allowRematches ? uniquePairs * matchesPerTeam : uniquePairs;
+      return allowRematches ? uniquePairs * rematches : uniquePairs;
     } else if (widget.teamType == 'Doubles') {
       int uniquePairs = (teamsCount * (teamsCount - 1)) ~/ 2;
-      return allowRematches ? uniquePairs * matchesPerTeam : uniquePairs;
+      return allowRematches ? uniquePairs * rematches : uniquePairs;
     } else {
+      debugPrint('Custom team type selected.');
       final teamSize = customTeamSize ?? (widget.members.length ~/ 2);
       final pairsPerTeam = _getPairsPerTeam(teamSize);
       final teamMatchups = (teamsCount * (teamsCount - 1)) ~/ 2;
-
+      debugPrint(
+        'TeamsCount: $teamsCount, TeamSize: $teamSize, PairsPerTeam: $pairsPerTeam, TeamMatchups: $teamMatchups',
+      );
       int matchesPerTeamMatchup = pairsPerTeam * pairsPerTeam;
       int totalMatches = teamMatchups * matchesPerTeamMatchup;
 
-      return allowRematches ? totalMatches * matchesPerTeam : totalMatches;
+      return allowRematches ? totalMatches * rematches : totalMatches;
     }
   }
 
@@ -801,7 +875,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
   }
 
   String _calculateTotalDuration() {
-    int totalMatches = _calculateTotalMatches();
+    int totalMatches = _calculateTotalMatchesMaximum();
     if (totalMatches == 0) return '0m';
 
     int totalMinutes =
@@ -829,7 +903,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
         builder: (context) => TeamReviewScreen(
           members: widget.members,
           teamType: widget.teamType,
-          matchesPerTeam: matchesPerTeam,
+          matchesPerTeam: 0,
           startDate: selectedDate,
           startTime: startTime,
           matchDuration: matchDuration,
@@ -840,5 +914,19 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
         ),
       ),
     );
+    // Object data = {
+    //   'members': widget.members,
+    //   'teamType': widget.teamType,
+    //   'rematches': rematches,
+    //   'startDate': selectedDate,
+    //   'startTime': startTime,
+    //   'matchDuration': matchDuration,
+    //   'breakDuration': breakBetweenMatches,
+    //   'totalMatches': totalMatches,
+    //   'allowRematches': allowRematches,
+    //   'customTeamSize': customTeamSize,
+    //   'tournamentFormat': tournamentFormat,
+    // };
+    // debugPrint('Navigating to TeamReviewScreen with data: $data');
   }
 }
