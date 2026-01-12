@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
 import 'package:play_hub/service/auth_service.dart';
-import 'package:play_hub/service/badminton_service.dart';
+import 'package:play_hub/service/badminton_services/badminton_service.dart';
 
 class StandingsTab extends StatefulWidget {
   final int? matchDuration;

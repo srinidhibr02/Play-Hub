@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/screens/tournament/badminton/badminton_tournament_setup_screen.dart';
 import 'package:play_hub/screens/tournament/badminton/tournament_schedule_screen.dart';
-import 'package:play_hub/service/badminton_service.dart';
+import 'package:play_hub/service/badminton_services/badminton_service.dart';
 
 class TournamentListScreen extends StatefulWidget {
   const TournamentListScreen({super.key});
