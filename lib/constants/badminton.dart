@@ -30,6 +30,7 @@ class Match {
   final int? round; // ✅ ADD THIS
   final String? roundName; // ✅ ADD THIS
   final String? stage;
+  final int? rematchNumber;
 
   Match({
     required this.id,
@@ -46,6 +47,7 @@ class Match {
     this.round, // ✅ ADD THIS
     this.roundName, // ✅ ADD THIS
     this.stage,
+    this.rematchNumber,
   });
 
   // Update your toMap() method to include new fields:

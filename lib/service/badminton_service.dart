@@ -13,7 +13,32 @@ class TournamentFirestoreService {
         .collection('localTournament');
   }
 
-  // ==================== CREATE ====================
+  Future<void> updateMatchOrder(
+    String userEmail,
+    String tournamentId,
+    List<Match> newOrder,
+  ) async {
+    final batch = _firestore.batch();
+
+    // Update each match with new order index
+    for (int i = 0; i < newOrder.length; i++) {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userEmail)
+          .collection('localTournament')
+          .doc(tournamentId)
+          .collection('matches')
+          .doc(newOrder[i].id);
+
+      batch.update(docRef, {
+        'orderIndex': i, // Add orderIndex field to Match model
+        'date': newOrder[i].date,
+        'time': newOrder[i].time,
+      });
+    }
+
+    await batch.commit();
+  }
 
   /// Create a new tournament under user's collection
   Future<String> createTournament({

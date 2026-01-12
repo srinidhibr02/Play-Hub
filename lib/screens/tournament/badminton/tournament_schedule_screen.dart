@@ -147,15 +147,19 @@ class _BadmintonMatchScheduleScreenState
   }
 
   List<Match> _generateMatches() {
+    debugPrint('🔢 Generating ${widget.totalMatches} matches');
+    debugPrint('  allowRematches: ${widget.allowRematches}');
+    debugPrint('  rematches: ${widget.rematches}');
+
     List<Match> matches = [];
 
     if (widget.teams == null || widget.teams!.length < 2) {
-      print('❌ Error: Not enough teams (${widget.teams?.length ?? 0})');
+      debugPrint('❌ Not enough teams: ${widget.teams?.length ?? 0}');
       return matches;
     }
 
     if (widget.startDate == null || widget.startTime == null) {
-      print('❌ Error: Start date or time is null');
+      debugPrint('❌ Missing start date/time');
       return matches;
     }
 
@@ -167,174 +171,169 @@ class _BadmintonMatchScheduleScreenState
       widget.startTime!.minute,
     );
 
-    final isCustomDoublesFormat =
-        widget.teamType != null &&
-        widget.teamType != 'Singles' &&
-        widget.teamType != 'Doubles' &&
-        widget.customTeamSize != null &&
-        widget.customTeamSize! >= 2;
-
+    // 🎯 HANDLE KNOCKOUT (always teamsCount - 1 matches)
     if (widget.tournamentFormat == 'knockout') {
-      matches = isCustomDoublesFormat
-          ? _generateCustomDoublesKnockout(currentMatchTime)
-          : _generateKnockoutMatches(currentMatchTime);
-    } else {
-      matches = isCustomDoublesFormat
-          ? _generateCustomDoublesMatches(currentMatchTime)
-          : _generateRoundRobinMatches(currentMatchTime);
+      return _generateKnockoutMatchesLimited(
+        currentMatchTime,
+        widget.totalMatches!,
+      );
     }
 
-    print('✅ Generated ${matches.length} matches');
-    return matches;
+    // 🎯 ROUND ROBIN WITH REMATCHES LOGIC
+    // Calculate unique team matchups: C(n,2)
+    final int teamsCount = widget.teams!.length;
+    final int uniqueMatchups = (teamsCount * (teamsCount - 1)) ~/ 2;
+
+    debugPrint('  📊 Teams: $teamsCount, Unique matchups: $uniqueMatchups');
+
+    int matchesPerMatchup = widget.allowRematches! ? widget.rematches! : 1;
+    int maxPossibleMatches = uniqueMatchups * matchesPerMatchup;
+
+    debugPrint(
+      '  🎯 Max possible: $maxPossibleMatches, User requested: ${widget.totalMatches}',
+    );
+
+    // Generate exactly user-specified totalMatches
+    return _generateRoundRobinWithRematches(
+      currentMatchTime,
+      widget.totalMatches!,
+      uniqueMatchups,
+      matchesPerMatchup,
+    );
   }
 
-  // ==================== ROUND ROBIN SCHEDULING ====================
-
-  List<Match> _generateRoundRobinMatches(DateTime currentMatchTime) {
+  List<Match> _generateRoundRobinWithRematches(
+    DateTime currentMatchTime,
+    int totalMatchesRequested,
+    int uniqueMatchups,
+    int matchesPerMatchup,
+  ) {
     List<Match> matches = [];
     List<Team> teams = List.from(widget.teams!);
 
-    if (teams.length % 2 != 0) {
-      teams.add(Team(id: 'BYE', name: 'BYE', players: []));
-    }
-
-    int numTeams = teams.length;
-    int numRounds = numTeams - 1;
-    int matchesPerRound = numTeams ~/ 2;
-
-    for (int round = 0; round < numRounds; round++) {
-      for (int match = 0; match < matchesPerRound; match++) {
-        int home = (round + match) % (numTeams - 1);
-        int away = (numTeams - 1 - match + round) % (numTeams - 1);
-
-        if (match == 0) {
-          away = numTeams - 1;
-        }
-
-        Team team1 = teams[home];
-        Team team2 = teams[away];
-
-        if (team1.id == 'BYE' || team2.id == 'BYE') continue;
-
-        matches.add(
-          Match(
-            id: 'M${matches.length + 1}',
-            team1: team1,
-            team2: team2,
-            date: currentMatchTime,
-            time: _formatTime(currentMatchTime),
-            status: 'Scheduled',
-            score1: 0,
-            score2: 0,
-            winner: null,
-            round: round + 1,
-            roundName: 'Round ${round + 1}',
-            stage: 'League',
-          ),
-        );
-      }
-
-      if (widget.matchDuration != null && widget.breakDuration != null) {
-        currentMatchTime = currentMatchTime.add(
-          Duration(
-            minutes:
-                (widget.matchDuration! + widget.breakDuration!) *
-                matchesPerRound,
-          ),
-        );
-      }
-    }
-
-    return matches;
-  }
-
-  List<Match> _generateCustomDoublesMatches(DateTime currentMatchTime) {
-    List<Match> matches = [];
+    // 🎯 TRACK LAST MATCHED OPPONENTS FOR EACH TEAM
+    Map<String, Set<String>> teamRecentOpponents = {};
     Map<String, DateTime> teamLastMatchTime = {};
 
-    List<TeamWithDoublesPairs> teamsWithPairs = [];
-    for (var team in widget.teams!) {
-      List<DoublesPair> doublesPairs = _generateDoublesPairs(team);
-      teamsWithPairs.add(TeamWithDoublesPairs(team, doublesPairs));
+    // Initialize tracking
+    for (var team in teams) {
+      teamRecentOpponents[team.id] = <String>{};
     }
 
-    List<DoublesMatch> allMatches = [];
-    for (int i = 0; i < teamsWithPairs.length; i++) {
-      for (int j = i + 1; j < teamsWithPairs.length; j++) {
-        for (var pair1 in teamsWithPairs[i].doublesPairs) {
-          for (var pair2 in teamsWithPairs[j].doublesPairs) {
-            allMatches.add(
-              DoublesMatch(
-                teamsWithPairs[i].team,
-                teamsWithPairs[j].team,
-                pair1,
-                pair2,
-              ),
-            );
-          }
-        }
+    // Generate ALL possible matchups
+    List<List<Team>> allMatchups = [];
+    for (int i = 0; i < teams.length; i++) {
+      for (int j = i + 1; j < teams.length; j++) {
+        allMatchups.add([teams[i], teams[j]]);
       }
     }
 
-    allMatches.shuffle();
+    int generated = 0;
 
-    for (var doublesMatch in allMatches) {
-      DateTime team1LastMatch =
-          teamLastMatchTime[doublesMatch.team1.id] ?? DateTime(1970);
-      DateTime team2LastMatch =
-          teamLastMatchTime[doublesMatch.team2.id] ?? DateTime(1970);
+    while (generated < totalMatchesRequested) {
+      // 🎯 Find BEST next matchup (no recent opponents)
+      List<Team> bestMatchup = _findBestMatchup(
+        allMatchups,
+        teamRecentOpponents,
+        teamLastMatchTime,
+        currentMatchTime,
+      );
 
-      DateTime maxLastMatch = team1LastMatch.isAfter(team2LastMatch)
-          ? team1LastMatch
-          : team2LastMatch;
-
-      if (widget.matchDuration != null && widget.breakDuration != null) {
-        if (currentMatchTime.isBefore(
-          maxLastMatch.add(
-            Duration(minutes: widget.matchDuration! + widget.breakDuration!),
-          ),
-        )) {
-          currentMatchTime = maxLastMatch.add(
-            Duration(minutes: widget.matchDuration! + widget.breakDuration!),
-          );
-        }
+      if (bestMatchup.isEmpty) {
+        // Fallback: use first available
+        bestMatchup = allMatchups.isNotEmpty ? allMatchups.removeAt(0) : [];
       }
 
-      Team pair1Team = Team(
-        id: '${doublesMatch.team1.id}_${doublesMatch.pair1.player1}_${doublesMatch.pair1.player2}',
-        name:
-            '${doublesMatch.team1.name}: ${doublesMatch.pair1.player1} & ${doublesMatch.pair1.player2}',
-        players: [doublesMatch.pair1.player1, doublesMatch.pair1.player2],
-      );
+      if (bestMatchup.isEmpty) break;
 
-      Team pair2Team = Team(
-        id: '${doublesMatch.team2.id}_${doublesMatch.pair2.player1}_${doublesMatch.pair2.player2}',
-        name:
-            '${doublesMatch.team2.name}: ${doublesMatch.pair2.player1} & ${doublesMatch.pair2.player2}',
-        players: [doublesMatch.pair2.player1, doublesMatch.pair2.player2],
-      );
+      Team team1 = bestMatchup[0];
+      Team team2 = bestMatchup[1];
 
+      // Generate this match
       matches.add(
         Match(
           id: 'M${matches.length + 1}',
-          team1: pair1Team,
-          team2: pair2Team,
+          team1: team1,
+          team2: team2,
           date: currentMatchTime,
           time: _formatTime(currentMatchTime),
           status: 'Scheduled',
           score1: 0,
           score2: 0,
           winner: null,
-          parentTeam1Id: doublesMatch.team1.id,
-          parentTeam2Id: doublesMatch.team2.id,
           round: null,
-          roundName: null,
+          roundName: 'Match ${matches.length + 1}',
           stage: 'League',
+          rematchNumber: widget.allowRematches! ? 1 : null,
         ),
       );
 
-      teamLastMatchTime[doublesMatch.team1.id] = currentMatchTime;
-      teamLastMatchTime[doublesMatch.team2.id] = currentMatchTime;
+      // 🎯 UPDATE RECENT OPPONENTS (last 2 matches only)
+      teamRecentOpponents[team1.id]!
+        ..add(team2.id)
+        ..removeWhere((id) => teamRecentOpponents[team1.id]!.length > 2);
+      teamRecentOpponents[team2.id]!
+        ..add(team1.id)
+        ..removeWhere((id) => teamRecentOpponents[team2.id]!.length > 2);
+
+      teamLastMatchTime[team1.id] = currentMatchTime;
+      teamLastMatchTime[team2.id] = currentMatchTime;
+
+      generated++;
+
+      // Remove this matchup from available (avoid immediate repeat)
+      allMatchups.removeWhere(
+        (m) =>
+            (m[0].id == team1.id && m[1].id == team2.id) ||
+            (m[0].id == team2.id && m[1].id == team1.id),
+      );
+
+      // Advance time
+      currentMatchTime = currentMatchTime.add(
+        Duration(
+          minutes: (widget.matchDuration ?? 30) + (widget.breakDuration ?? 5),
+        ),
+      );
+    }
+
+    debugPrint('✅ Generated $generated matches - NO CONSECUTIVE TEAMS');
+    return matches;
+  }
+
+  List<Match> _generateKnockoutMatchesLimited(
+    DateTime currentMatchTime,
+    int totalMatchesRequested,
+  ) {
+    List<Match> matches = [];
+    List<Team> teams = List.from(widget.teams!);
+    teams.shuffle();
+
+    // Generate matches sequentially until we hit totalMatches
+    int matchIndex = 0;
+    while (matchIndex < totalMatchesRequested && teams.isNotEmpty) {
+      if (teams.length < 2) break;
+
+      Team team1 = teams.removeAt(0);
+      Team team2 = teams.removeAt(0);
+
+      matches.add(
+        Match(
+          id: 'M${matches.length + 1}',
+          team1: team1,
+          team2: team2,
+          date: currentMatchTime,
+          time: _formatTime(currentMatchTime),
+          status: 'Scheduled',
+          score1: 0,
+          score2: 0,
+          winner: null,
+          round: (matchIndex ~/ 2) + 1,
+          roundName: _getKnockoutRoundName(matches.length + 1),
+          stage: 'Knockout',
+        ),
+      );
+
+      matchIndex++;
 
       if (widget.matchDuration != null && widget.breakDuration != null) {
         currentMatchTime = currentMatchTime.add(
@@ -343,173 +342,60 @@ class _BadmintonMatchScheduleScreenState
       }
     }
 
+    debugPrint(
+      '✅ Generated $matchIndex/$totalMatchesRequested knockout matches',
+    );
     return matches;
   }
 
-  // ==================== KNOCKOUT SCHEDULING ====================
+  List<Team> _findBestMatchup(
+    List<List<Team>> availableMatchups,
+    Map<String, Set<String>> teamRecentOpponents,
+    Map<String, DateTime> teamLastMatchTime,
+    DateTime currentTime,
+  ) {
+    List<List<Team>> validMatchups = [];
 
-  List<Match> _generateKnockoutMatches(DateTime currentMatchTime) {
-    List<Match> matches = [];
-    List<Team> teams = List.from(widget.teams!);
-    teams.shuffle();
+    for (var matchup in availableMatchups) {
+      Team team1 = matchup[0];
+      Team team2 = matchup[1];
 
-    int numTeams = teams.length;
-    int totalRounds = _calculateKnockoutRounds(numTeams);
+      // 🎯 RULE 1: No recent opponents (last 2 matches)
+      bool hasRecentOpponent =
+          teamRecentOpponents[team1.id]!.contains(team2.id) ||
+          teamRecentOpponents[team2.id]!.contains(team1.id);
 
-    int currentRound = 1;
-    List<Team> currentTeams = teams;
+      // 🎯 RULE 2: Minimum time gap (15 mins since last match)
+      DateTime team1Last = teamLastMatchTime[team1.id] ?? DateTime(1970);
+      DateTime team2Last = teamLastMatchTime[team2.id] ?? DateTime(1970);
+      bool hasTimeGap =
+          currentTime.isAfter(team1Last.add(Duration(minutes: 15))) &&
+          currentTime.isAfter(team2Last.add(Duration(minutes: 15)));
 
-    while (currentTeams.length > 1) {
-      List<Team> nextRoundTeams = [];
-
-      for (int i = 0; i < currentTeams.length; i += 2) {
-        if (i + 1 < currentTeams.length) {
-          matches.add(
-            Match(
-              id: 'M${matches.length + 1}',
-              team1: currentTeams[i],
-              team2: currentTeams[i + 1],
-              date: currentMatchTime,
-              time: _formatTime(currentMatchTime),
-              status: 'Scheduled',
-              score1: 0,
-              score2: 0,
-              winner: null,
-              round: currentRound,
-              roundName: _getRoundName(currentRound, totalRounds),
-              stage: 'Knockout',
-            ),
-          );
-
-          nextRoundTeams.add(currentTeams[i]);
-
-          if (widget.matchDuration != null && widget.breakDuration != null) {
-            currentMatchTime = currentMatchTime.add(
-              Duration(minutes: widget.matchDuration! + widget.breakDuration!),
-            );
-          }
-        } else {
-          nextRoundTeams.add(currentTeams[i]);
-        }
-      }
-
-      currentTeams = nextRoundTeams;
-      currentRound++;
-
-      if (currentTeams.length > 1 && widget.breakDuration != null) {
-        currentMatchTime = currentMatchTime.add(
-          Duration(minutes: widget.breakDuration! * 2),
-        );
+      if (!hasRecentOpponent && hasTimeGap) {
+        validMatchups.add(matchup);
       }
     }
 
-    return matches;
+    // Return BEST available (or empty)
+    return validMatchups.isNotEmpty ? validMatchups[0] : [];
   }
 
-  List<Match> _generateCustomDoublesKnockout(DateTime currentMatchTime) {
-    List<Match> matches = [];
-
-    List<Team> allPairs = [];
-    for (var team in widget.teams!) {
-      List<DoublesPair> doublesPairs = _generateDoublesPairs(team);
-      for (var pair in doublesPairs) {
-        allPairs.add(
-          Team(
-            id: '${team.id}_${pair.player1}_${pair.player2}',
-            name: '${team.name}: ${pair.player1} & ${pair.player2}',
-            players: [pair.player1, pair.player2],
-          ),
-        );
-      }
-    }
-
-    allPairs.shuffle();
-
-    int totalRounds = _calculateKnockoutRounds(allPairs.length);
-    int currentRound = 1;
-    List<Team> currentTeams = allPairs;
-
-    while (currentTeams.length > 1) {
-      List<Team> nextRoundTeams = [];
-
-      for (int i = 0; i < currentTeams.length; i += 2) {
-        if (i + 1 < currentTeams.length) {
-          matches.add(
-            Match(
-              id: 'M${matches.length + 1}',
-              team1: currentTeams[i],
-              team2: currentTeams[i + 1],
-              date: currentMatchTime,
-              time: _formatTime(currentMatchTime),
-              status: 'Scheduled',
-              score1: 0,
-              score2: 0,
-              winner: null,
-              round: currentRound,
-              roundName: _getRoundName(currentRound, totalRounds),
-              stage: 'Knockout',
-            ),
-          );
-
-          nextRoundTeams.add(currentTeams[i]);
-          if (widget.matchDuration != null && widget.breakDuration != null) {
-            currentMatchTime = currentMatchTime.add(
-              Duration(minutes: widget.matchDuration! + widget.breakDuration!),
-            );
-          }
-        } else {
-          nextRoundTeams.add(currentTeams[i]);
-        }
-      }
-
-      currentTeams = nextRoundTeams;
-      currentRound++;
-
-      if (currentTeams.length > 1 && widget.breakDuration != null) {
-        currentMatchTime = currentMatchTime.add(
-          Duration(minutes: widget.breakDuration! * 2),
-        );
-      }
-    }
-
-    return matches;
-  }
-
-  int _calculateKnockoutRounds(int numTeams) {
-    int rounds = 0;
-    int remaining = numTeams;
-    while (remaining > 1) {
-      remaining = (remaining + 1) ~/ 2;
-      rounds++;
-    }
-    return rounds;
-  }
-
-  String _getRoundName(int currentRound, int totalRounds) {
-    int roundsFromEnd = totalRounds - currentRound;
-    switch (roundsFromEnd) {
-      case 0:
-        return 'Final';
+  String _getKnockoutRoundName(int matchNumber) {
+    switch (matchNumber) {
       case 1:
-        return 'Semi-Final';
+        return 'Final';
       case 2:
+      case 3:
+        return 'Semi-Final';
+      case 4:
+      case 5:
+      case 6:
+      case 7:
         return 'Quarter-Final';
       default:
-        return 'Round $currentRound';
+        return 'Round ${matchNumber}';
     }
-  }
-
-  List<DoublesPair> _generateDoublesPairs(Team team) {
-    List<DoublesPair> pairs = [];
-    List<String> players = team.players;
-
-    for (int i = 0; i < players.length; i++) {
-      for (int j = i + 1; j < players.length; j++) {
-        pairs.add(DoublesPair(players[i], players[j]));
-      }
-    }
-
-    return pairs;
   }
 
   String _formatTime(DateTime dateTime) =>
@@ -959,32 +845,24 @@ class _BadmintonMatchScheduleScreenState
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Match ${match.id}',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
                       if (match.roundName != null)
                         Text(
                           match.roundName!,
                           style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.white70,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
-                      // ✅ NEW: Show stage label
-                      const SizedBox(height: 4),
                       Text(
-                        match.stage ?? 'Match',
+                        match.id,
                         style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.white60,
-                          fontStyle: FontStyle.italic,
+                          fontSize: 11,
+                          color: Colors.white70,
                         ),
                       ),
+                      // ✅ NEW: Show stage label
+                      const SizedBox(height: 4),
                     ],
                   ),
                   Container(
