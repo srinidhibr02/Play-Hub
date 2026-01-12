@@ -431,21 +431,41 @@ class _BadmintonMatchScheduleScreenState
     return [];
   }
 
-  String _getKnockoutRoundName(int matchNumber) {
-    switch (matchNumber) {
-      case 1:
-        return 'Final';
-      case 2:
-      case 3:
-        return 'Semi-Final';
-      case 4:
-      case 5:
-      case 6:
-      case 7:
-        return 'Quarter-Final';
-      default:
-        return 'Round ${matchNumber}';
+  String _getKnockoutRoundName(int matchNumber, {int? teamCount}) {
+    // Calculate round based on match number and total teams
+    final int totalTeams = teamCount ?? widget.teams?.length ?? 2;
+    final int matchesInRound = _getMatchesInRound(matchNumber, totalTeams);
+
+    if (matchesInRound == 1) return 'Final';
+    if (matchesInRound == 2) return 'Semi-Final';
+    if (matchesInRound <= 4) return 'Quarter-Final';
+    if (matchesInRound <= 8) return 'Round of 16';
+    if (matchesInRound <= 16) return 'Round of 32';
+
+    return 'Round of ${matchesInRound * 2}';
+  }
+
+  int _getMatchesInRound(int matchNumber, int totalTeams) {
+    // Simulate bracket to find which round this match belongs to
+    List<int> roundMatches = [];
+    int remainingTeams = totalTeams;
+
+    while (remainingTeams > 1) {
+      int matches = (remainingTeams + 1) ~/ 2;
+      roundMatches.add(matches);
+      remainingTeams = matches;
     }
+
+    // Find round for this match number
+    int cumulativeMatches = 0;
+    for (int i = 0; i < roundMatches.length; i++) {
+      cumulativeMatches += roundMatches[i];
+      if (matchNumber <= cumulativeMatches) {
+        return roundMatches[i];
+      }
+    }
+
+    return 1; // Final fallback
   }
 
   void _toggleReorderMode() {
@@ -1141,8 +1161,9 @@ class _BadmintonMatchScheduleScreenState
   }
 
   void _shareTournament() async {
-    if (_authService.currentUserEmailId == null || _tournamentId == null)
+    if (_authService.currentUserEmailId == null || _tournamentId == null) {
       return;
+    }
 
     try {
       String shareCode = await _badmintonFirestoreService.createShareableLink(
