@@ -903,11 +903,12 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
         builder: (context) => TeamReviewScreen(
           members: widget.members,
           teamType: widget.teamType,
-          matchesPerTeam: 0,
+          rematches: rematches,
           startDate: selectedDate,
           startTime: startTime,
           matchDuration: matchDuration,
           breakDuration: breakBetweenMatches,
+          totalMatches: totalMatches,
           allowRematches: allowRematches,
           customTeamSize: customTeamSize,
           tournamentFormat: tournamentFormat,

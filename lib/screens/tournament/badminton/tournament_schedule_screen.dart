@@ -10,11 +10,12 @@ class BadmintonMatchScheduleScreen extends StatefulWidget {
   final String? tournamentId;
   final List<Team>? teams;
   final String? teamType;
-  final int? matchesPerTeam;
+  final int? rematches;
   final DateTime? startDate;
   final TimeOfDay? startTime;
   final int? matchDuration;
   final int? breakDuration;
+  final int? totalMatches;
   final bool? allowRematches;
   final int? customTeamSize;
   final List<String>? members;
@@ -25,11 +26,12 @@ class BadmintonMatchScheduleScreen extends StatefulWidget {
     this.tournamentId,
     this.teams,
     this.teamType,
-    this.matchesPerTeam,
+    this.rematches,
     this.startDate,
     this.startTime,
     this.matchDuration,
     this.breakDuration,
+    this.totalMatches,
     this.allowRematches,
     this.customTeamSize,
     this.members,
@@ -90,7 +92,8 @@ class _BadmintonMatchScheduleScreenState
           widget.startTime == null ||
           widget.matchDuration == null ||
           widget.breakDuration == null ||
-          widget.matchesPerTeam == null ||
+          widget.rematches == null ||
+          widget.totalMatches == null ||
           widget.allowRematches == null) {
         throw Exception('Missing required tournament parameters');
       }
@@ -119,7 +122,8 @@ class _BadmintonMatchScheduleScreenState
         startTime: widget.startTime!,
         matchDuration: widget.matchDuration!,
         breakDuration: widget.breakDuration!,
-        matchesPerTeam: widget.matchesPerTeam!,
+        totalMatches: widget.totalMatches!,
+        rematches: widget.rematches!,
         allowRematches: widget.allowRematches!,
         customTeamSize: widget.customTeamSize,
         tournamentFormat: widget.tournamentFormat ?? 'round_robin',

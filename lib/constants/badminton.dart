@@ -14,29 +14,6 @@ class MatchPair {
   MatchPair(this.team1, this.team2);
 }
 
-class DoublesPair {
-  final String player1;
-  final String player2;
-
-  DoublesPair(this.player1, this.player2);
-}
-
-class TeamWithDoublesPairs {
-  final Team team;
-  final List<DoublesPair> doublesPairs;
-
-  TeamWithDoublesPairs(this.team, this.doublesPairs);
-}
-
-class DoublesMatch {
-  final Team team1;
-  final Team team2;
-  final DoublesPair pair1;
-  final DoublesPair pair2;
-
-  DoublesMatch(this.team1, this.team2, this.pair1, this.pair2);
-}
-
 // Extended Match class with parent team tracking
 class Match {
   final String id;
@@ -155,4 +132,35 @@ class TeamStats {
     required this.lost,
     required this.points,
   });
+}
+
+// ==================== HELPER CLASSES ====================
+class TeamPairing {
+  final Team team1;
+  final Team team2;
+
+  TeamPairing(this.team1, this.team2);
+}
+
+class TeamWithDoublesPairs {
+  final Team team;
+  final List<DoublesPair> doublesPairs;
+
+  TeamWithDoublesPairs(this.team, this.doublesPairs);
+}
+
+class DoublesMatch {
+  final Team team1;
+  final Team team2;
+  final DoublesPair pair1;
+  final DoublesPair pair2;
+
+  DoublesMatch(this.team1, this.team2, this.pair1, this.pair2);
+}
+
+class DoublesPair {
+  final String player1;
+  final String player2;
+
+  DoublesPair(this.player1, this.player2);
 }

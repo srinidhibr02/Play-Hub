@@ -5,11 +5,12 @@ import 'package:play_hub/screens/tournament/badminton/tournament_schedule_screen
 class TeamReviewScreen extends StatefulWidget {
   final List<String> members;
   final String teamType;
-  final int matchesPerTeam;
+  final int rematches;
   final DateTime startDate;
   final TimeOfDay startTime;
   final int matchDuration;
   final int breakDuration;
+  final int totalMatches;
   final bool allowRematches;
   final String tournamentFormat;
   final int? customTeamSize; // NEW: Custom team size
@@ -18,11 +19,12 @@ class TeamReviewScreen extends StatefulWidget {
     super.key,
     required this.members,
     required this.teamType,
-    required this.matchesPerTeam,
+    required this.rematches,
     required this.startDate,
     required this.startTime,
     required this.matchDuration,
     required this.breakDuration,
+    required this.totalMatches,
     required this.allowRematches,
     required this.tournamentFormat,
     this.customTeamSize,
@@ -126,17 +128,108 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
   }
 
   void _proceedToSchedule() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // ✅ Prevent outside taps
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.schedule, color: Colors.orange.shade600, size: 28),
+              SizedBox(width: 12),
+              Text(
+                'Confirm Schedule',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade800,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Schedule ${widget.totalMatches} matches for ${teams.length} teams?',
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.orange.shade600,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '• ${widget.teamType} tournament\n• ${widget.tournamentFormat.toUpperCase()} format\n'
+                        '${widget.allowRematches ? "• ${widget.rematches} x rematches" : "• No rematches"}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.orange.shade800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                _navigateToSchedule(); // Navigate
+              },
+              icon: Icon(Icons.arrow_forward, size: 18),
+              label: Text('Generate Schedule'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _navigateToSchedule() {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => BadmintonMatchScheduleScreen(
           teams: teams,
           teamType: widget.teamType,
-          matchesPerTeam: widget.matchesPerTeam,
+          rematches: widget.rematches,
           startDate: widget.startDate,
           startTime: widget.startTime,
           matchDuration: widget.matchDuration,
           breakDuration: widget.breakDuration,
+          totalMatches: widget.totalMatches,
           allowRematches: widget.allowRematches,
           customTeamSize: widget.customTeamSize, // Pass custom team size
           members: widget.members, // ✅ ADD THIS - Required for Firestore

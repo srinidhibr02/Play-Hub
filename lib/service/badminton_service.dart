@@ -27,7 +27,8 @@ class TournamentFirestoreService {
     required TimeOfDay startTime,
     required int matchDuration,
     required int breakDuration,
-    required int matchesPerTeam,
+    required int totalMatches,
+    required int rematches,
     required bool allowRematches,
     required String tournamentFormat,
     int? customTeamSize,
@@ -54,7 +55,7 @@ class TournamentFirestoreService {
           'startTimeMinute': startTime.minute,
           'matchDuration': matchDuration,
           'breakDuration': breakDuration,
-          'matchesPerTeam': matchesPerTeam,
+          'rematches': rematches,
           'allowRematches': allowRematches,
         },
         'stats': {
