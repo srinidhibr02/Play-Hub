@@ -13,31 +13,72 @@ class TournamentFirestoreService {
         .collection('localTournament');
   }
 
+  // Add to TournamentFirestoreService class
+
   Future<void> updateMatchOrder(
     String userEmail,
     String tournamentId,
-    List<Match> newOrder,
+    List<Match> reorderedMatches,
   ) async {
-    final batch = _firestore.batch();
-
-    // Update each match with new order index
-    for (int i = 0; i < newOrder.length; i++) {
-      final docRef = _firestore
+    try {
+      await FirebaseFirestore.instance
           .collection('users')
           .doc(userEmail)
-          .collection('localTournament')
+          .collection('tournaments')
           .doc(tournamentId)
           .collection('matches')
-          .doc(newOrder[i].id);
+          .doc('_metadata')
+          .set({
+            'matches': reorderedMatches.map((m) => m.toMap()).toList(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
 
-      batch.update(docRef, {
-        'orderIndex': i, // Add orderIndex field to Match model
-        'date': newOrder[i].date,
-        'time': newOrder[i].time,
-      });
+      // Update each match individually
+      for (var match in reorderedMatches) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userEmail)
+            .collection('tournaments')
+            .doc(tournamentId)
+            .collection('matches')
+            .doc(match.id)
+            .update(match.toMap());
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating match order: $e');
+      rethrow;
     }
+  }
 
-    await batch.commit();
+  // In TournamentFirestoreService class
+  Future<List<Match>> getMatchesOnce(
+    String userEmail,
+    String tournamentId,
+  ) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(userEmail)
+          .collection('localTournaments')
+          .doc(tournamentId)
+          .collection('matches')
+          .orderBy('orderIndex') // ✅ Order by position
+          .get();
+
+      final matches = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return Match.fromJson({
+          ...data,
+          'id': doc.id,
+        }); // Assuming you have fromJson
+      }).toList();
+
+      debugPrint('✅ getMatchesOnce: Retrieved ${matches.length} matches');
+      return matches;
+    } catch (e) {
+      debugPrint('❌ getMatchesOnce error: $e');
+      rethrow;
+    }
   }
 
   /// Create a new tournament under user's collection

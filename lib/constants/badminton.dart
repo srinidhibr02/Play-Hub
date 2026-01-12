@@ -69,6 +69,34 @@ class Match {
     };
   }
 
+  factory Match.fromJson(Map<String, dynamic> json) {
+    return Match(
+      id: json['id'] ?? '',
+      team1: Team(
+        id: json['team1']['id'] ?? '',
+        name: json['team1']['name'] ?? '',
+        players: List<String>.from(json['team1']['players'] ?? []),
+      ),
+      team2: Team(
+        id: json['team2']['id'] ?? '',
+        name: json['team2']['name'] ?? '',
+        players: List<String>.from(json['team2']['players'] ?? []),
+      ),
+      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
+      time: json['time'] ?? '',
+      status: json['status'] ?? 'Scheduled',
+      score1: json['score1'] ?? 0,
+      score2: json['score2'] ?? 0,
+      winner: json['winner'],
+      parentTeam1Id: json['parentTeam1Id'],
+      parentTeam2Id: json['parentTeam2Id'],
+      round: json['round'],
+      roundName: json['roundName'],
+      stage: json['stage'],
+      rematchNumber: json['rematchNumber'],
+    );
+  }
+
   // Update your fromMap() method:
   factory Match.fromMap(Map<String, dynamic> map) {
     return Match(

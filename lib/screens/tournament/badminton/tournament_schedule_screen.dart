@@ -51,6 +51,9 @@ class _BadmintonMatchScheduleScreenState
       TournamentFirestoreService();
   final AuthService _authService = AuthService();
 
+  bool _isReorderMode = false;
+  List<Match> _reorderMatches = [];
+
   String? _tournamentId;
   bool _isLoading = false;
   late int _tabCount;
@@ -171,7 +174,6 @@ class _BadmintonMatchScheduleScreenState
       widget.startTime!.minute,
     );
 
-    // 🎯 HANDLE KNOCKOUT (always teamsCount - 1 matches)
     if (widget.tournamentFormat == 'knockout') {
       return _generateKnockoutMatchesLimited(
         currentMatchTime,
@@ -179,8 +181,6 @@ class _BadmintonMatchScheduleScreenState
       );
     }
 
-    // 🎯 ROUND ROBIN WITH REMATCHES LOGIC
-    // Calculate unique team matchups: C(n,2)
     final int teamsCount = widget.teams!.length;
     final int uniqueMatchups = (teamsCount * (teamsCount - 1)) ~/ 2;
 
@@ -193,7 +193,6 @@ class _BadmintonMatchScheduleScreenState
       '  🎯 Max possible: $maxPossibleMatches, User requested: ${widget.totalMatches}',
     );
 
-    // Generate exactly user-specified totalMatches
     return _generateRoundRobinWithRematches(
       currentMatchTime,
       widget.totalMatches!,
@@ -211,7 +210,8 @@ class _BadmintonMatchScheduleScreenState
     List<Match> matches = [];
     List<Team> teams = List.from(widget.teams!);
 
-    // 🎯 TRACK LAST MATCHED OPPONENTS FOR EACH TEAM
+    // 🎯 TRACK MATCH COUNT PER MATCHUP (NOT remove matchups!)
+    Map<String, int> matchupCount = {}; // "team1_team2": count
     Map<String, Set<String>> teamRecentOpponents = {};
     Map<String, DateTime> teamLastMatchTime = {};
 
@@ -220,10 +220,12 @@ class _BadmintonMatchScheduleScreenState
       teamRecentOpponents[team.id] = <String>{};
     }
 
-    // Generate ALL possible matchups
+    // Generate ALL possible matchups (keep them available!)
     List<List<Team>> allMatchups = [];
     for (int i = 0; i < teams.length; i++) {
       for (int j = i + 1; j < teams.length; j++) {
+        String key = '${teams[i].id}_${teams[j].id}';
+        matchupCount[key] = 0;
         allMatchups.add([teams[i], teams[j]]);
       }
     }
@@ -231,25 +233,23 @@ class _BadmintonMatchScheduleScreenState
     int generated = 0;
 
     while (generated < totalMatchesRequested) {
-      // 🎯 Find BEST next matchup (no recent opponents)
-      List<Team> bestMatchup = _findBestMatchup(
+      // 🎯 Find BEST matchup respecting ALL constraints
+      List<Team> bestMatchup = _findBestMatchupWithRematchSupport(
         allMatchups,
+        matchupCount,
+        matchesPerMatchup,
         teamRecentOpponents,
         teamLastMatchTime,
         currentMatchTime,
       );
 
-      if (bestMatchup.isEmpty) {
-        // Fallback: use first available
-        bestMatchup = allMatchups.isNotEmpty ? allMatchups.removeAt(0) : [];
-      }
-
       if (bestMatchup.isEmpty) break;
 
       Team team1 = bestMatchup[0];
       Team team2 = bestMatchup[1];
+      String matchupKey = '${team1.id}_${team2.id}';
 
-      // Generate this match
+      // ✅ Generate this match
       matches.add(
         Match(
           id: 'M${matches.length + 1}',
@@ -264,11 +264,14 @@ class _BadmintonMatchScheduleScreenState
           round: null,
           roundName: 'Match ${matches.length + 1}',
           stage: 'League',
-          rematchNumber: widget.allowRematches! ? 1 : null,
+          rematchNumber: (matchupCount[matchupKey]! + 1),
         ),
       );
 
-      // 🎯 UPDATE RECENT OPPONENTS (last 2 matches only)
+      // ✅ INCREMENT matchup count (don't remove!)
+      matchupCount[matchupKey] = matchupCount[matchupKey]! + 1;
+
+      // Update recent opponents (max 2)
       teamRecentOpponents[team1.id]!
         ..add(team2.id)
         ..removeWhere((id) => teamRecentOpponents[team1.id]!.length > 2);
@@ -278,15 +281,7 @@ class _BadmintonMatchScheduleScreenState
 
       teamLastMatchTime[team1.id] = currentMatchTime;
       teamLastMatchTime[team2.id] = currentMatchTime;
-
       generated++;
-
-      // Remove this matchup from available (avoid immediate repeat)
-      allMatchups.removeWhere(
-        (m) =>
-            (m[0].id == team1.id && m[1].id == team2.id) ||
-            (m[0].id == team2.id && m[1].id == team1.id),
-      );
 
       // Advance time
       currentMatchTime = currentMatchTime.add(
@@ -296,7 +291,44 @@ class _BadmintonMatchScheduleScreenState
       );
     }
 
-    debugPrint('✅ Generated $generated matches - NO CONSECUTIVE TEAMS');
+    // 🎯 FALLBACK: Fill remaining matches if needed
+    while (generated < totalMatchesRequested) {
+      List<Team> fallbackMatchup = _getAnyValidMatchup(
+        allMatchups,
+        matchupCount,
+        matchesPerMatchup,
+      );
+      if (fallbackMatchup.isEmpty) break;
+
+      Team team1 = fallbackMatchup[0];
+      Team team2 = fallbackMatchup[1];
+      String matchupKey = '${team1.id}_${team2.id}';
+
+      matches.add(
+        Match(
+          id: 'M${matches.length + 1}',
+          team1: team1,
+          team2: team2,
+          date: currentMatchTime,
+          time: _formatTime(currentMatchTime),
+          status: 'Scheduled',
+          score1: 0,
+          score2: 0,
+          winner: null,
+          round: null,
+          roundName: 'Match ${matches.length + 1}',
+          stage: 'League',
+          rematchNumber: matchupCount[matchupKey]! + 1,
+        ),
+      );
+
+      matchupCount[matchupKey] = matchupCount[matchupKey]! + 1;
+      generated++;
+      currentMatchTime = currentMatchTime.add(Duration(minutes: 35));
+    }
+
+    debugPrint('✅ Generated $generated/$totalMatchesRequested matches');
+    debugPrint('  Matchup counts: $matchupCount');
     return matches;
   }
 
@@ -308,7 +340,6 @@ class _BadmintonMatchScheduleScreenState
     List<Team> teams = List.from(widget.teams!);
     teams.shuffle();
 
-    // Generate matches sequentially until we hit totalMatches
     int matchIndex = 0;
     while (matchIndex < totalMatchesRequested && teams.isNotEmpty) {
       if (teams.length < 2) break;
@@ -348,37 +379,56 @@ class _BadmintonMatchScheduleScreenState
     return matches;
   }
 
-  List<Team> _findBestMatchup(
-    List<List<Team>> availableMatchups,
+  List<Team> _findBestMatchupWithRematchSupport(
+    List<List<Team>> allMatchups,
+    Map<String, int> matchupCount,
+    int maxMatchesPerMatchup,
     Map<String, Set<String>> teamRecentOpponents,
     Map<String, DateTime> teamLastMatchTime,
     DateTime currentTime,
   ) {
     List<List<Team>> validMatchups = [];
 
-    for (var matchup in availableMatchups) {
+    for (var matchup in allMatchups) {
       Team team1 = matchup[0];
       Team team2 = matchup[1];
+      String key = '${team1.id}_${team2.id}';
 
-      // 🎯 RULE 1: No recent opponents (last 2 matches)
+      // ✅ RULE 1: Respect rematch limit
+      if (matchupCount[key]! >= maxMatchesPerMatchup) continue;
+
+      // RULE 2: No recent opponents
       bool hasRecentOpponent =
           teamRecentOpponents[team1.id]!.contains(team2.id) ||
           teamRecentOpponents[team2.id]!.contains(team1.id);
+      if (hasRecentOpponent) continue;
 
-      // 🎯 RULE 2: Minimum time gap (15 mins since last match)
+      // RULE 3: Time gap (15 mins)
       DateTime team1Last = teamLastMatchTime[team1.id] ?? DateTime(1970);
       DateTime team2Last = teamLastMatchTime[team2.id] ?? DateTime(1970);
       bool hasTimeGap =
           currentTime.isAfter(team1Last.add(Duration(minutes: 15))) &&
           currentTime.isAfter(team2Last.add(Duration(minutes: 15)));
+      if (!hasTimeGap) continue;
 
-      if (!hasRecentOpponent && hasTimeGap) {
-        validMatchups.add(matchup);
-      }
+      validMatchups.add(matchup);
     }
 
-    // Return BEST available (or empty)
     return validMatchups.isNotEmpty ? validMatchups[0] : [];
+  }
+
+  List<Team> _getAnyValidMatchup(
+    List<List<Team>> allMatchups,
+    Map<String, int> matchupCount,
+    int maxMatchesPerMatchup,
+  ) {
+    for (var matchup in allMatchups) {
+      String key = '${matchup[0].id}_${matchup[1].id}';
+      if (matchupCount[key]! < maxMatchesPerMatchup) {
+        return matchup;
+      }
+    }
+    return [];
   }
 
   String _getKnockoutRoundName(int matchNumber) {
@@ -398,180 +448,70 @@ class _BadmintonMatchScheduleScreenState
     }
   }
 
-  String _formatTime(DateTime dateTime) =>
-      DateFormat('h:mm a').format(dateTime);
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _showSuccessSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 12),
-            Text(message),
-          ],
-        ),
-        backgroundColor: Colors.green.shade600,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.red.shade600,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: Colors.grey.shade50,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Colors.orange.shade600),
-              const SizedBox(height: 16),
-              Text(
-                'Creating tournament...',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-              ),
-            ],
-          ),
-        ),
-      );
+  void _toggleReorderMode() {
+    if (!_isReorderMode) {
+      setState(() => _isReorderMode = true);
+    } else {
+      _saveReorderedMatches();
     }
+  }
 
-    if (_tournamentId == null) {
-      return Scaffold(
-        backgroundColor: Colors.grey.shade50,
-        body: Center(
-          child: Text(
-            'Tournament not found',
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-          ),
-        ),
+  Future<void> _saveReorderedMatches() async {
+    try {
+      DateTime currentTime = DateTime(
+        widget.startDate!.year,
+        widget.startDate!.month,
+        widget.startDate!.day,
+        widget.startTime!.hour,
+        widget.startTime!.minute,
       );
-    }
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        backgroundColor: Colors.orange.shade600,
-        elevation: 0,
-        title: const Text(
-          'Tournament Schedule',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+      List<Match> updatedMatches = [];
+      for (int i = 0; i < _reorderMatches.length; i++) {
+        Match match = _reorderMatches[i];
+
+        Match updatedMatch = Match(
+          id: 'M${i + 1}',
+          team1: match.team1,
+          team2: match.team2,
+          date: currentTime,
+          time: _formatTime(currentTime),
+          status: match.status,
+          score1: match.score1,
+          score2: match.score2,
+          winner: match.winner,
+          round: match.round,
+          roundName: match.roundName,
+          stage: match.stage,
+          parentTeam1Id: match.parentTeam1Id,
+          parentTeam2Id: match.parentTeam2Id,
+        );
+
+        updatedMatches.add(updatedMatch);
+
+        currentTime = currentTime.add(
+          Duration(
+            minutes: (widget.matchDuration ?? 30) + (widget.breakDuration ?? 5),
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.white),
-            onPressed: _shareTournament,
-          ),
-          IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.white),
-            onPressed: _showTournamentInfo,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Container(
-            color: Colors.orange.shade600,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.white,
-              ),
-              labelColor: Colors.orange.shade600,
-              unselectedLabelColor: Colors.white.withOpacity(0.7),
-              labelStyle: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              tabs: _tabCount == 1
-                  ? const [
-                      Tab(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.sports_tennis, size: 20),
-                            SizedBox(width: 8),
-                            Text('Matches'),
-                          ],
-                        ),
-                      ),
-                    ]
-                  : [
-                      const Tab(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.sports_tennis, size: 20),
-                            SizedBox(width: 8),
-                            Text('Matches'),
-                          ],
-                        ),
-                      ),
-                      const Tab(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.leaderboard, size: 20),
-                            SizedBox(width: 8),
-                            Text('Standings'),
-                          ],
-                        ),
-                      ),
-                    ],
-            ),
-          ),
-          Expanded(
-            child: _tabCount == 1
-                ? _buildMatchesTab()
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildMatchesTab(),
-                      StandingsTab(
-                        tournamentId: _tournamentId,
-                        matchDuration: widget.matchDuration,
-                        breakDuration: widget.breakDuration,
-                      ),
-                    ],
-                  ),
-          ),
-        ],
-      ),
-    );
+        );
+      }
+
+      await _badmintonFirestoreService.updateMatchOrder(
+        _authService.currentUserEmailId ?? '',
+        _tournamentId ?? '',
+        updatedMatches,
+      );
+
+      setState(() {
+        _isReorderMode = false;
+        _reorderMatches = [];
+      });
+
+      _showSuccessSnackBar('Match order updated successfully!');
+    } catch (e) {
+      debugPrint('❌ Error saving reorder: $e');
+      _showErrorSnackBar('Failed to save match order: $e');
+    }
   }
 
   Widget _buildMatchesTab() {
@@ -581,170 +521,342 @@ class _BadmintonMatchScheduleScreenState
         _tournamentId ?? '',
       ),
       builder: (context, snapshot) {
-        // ✅ Better debugging
-        if (snapshot.hasError) {
-          print('❌ Snapshot Error: ${snapshot.error}');
-          print('❌ Stack trace: ${snapshot.stackTrace}');
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
-                const SizedBox(height: 16),
-                Padding(
+        if (_isReorderMode) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(
+              child: Text(
+                'No matches to reorder',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+              ),
+            );
+          }
+
+          if (_reorderMatches.isEmpty) {
+            _reorderMatches = List.from(snapshot.data!);
+          }
+
+          return Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: Colors.amber.shade50,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.drag_indicator,
+                          color: Colors.amber.shade700,
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Reorder Mode',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber.shade800,
+                              ),
+                            ),
+                            Text(
+                              'Drag to change match order',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.amber.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ReorderableListView(
+                  onReorder: (oldIndex, newIndex) {
+                    setState(() {
+                      if (newIndex > oldIndex) newIndex--;
+                      final Match match = _reorderMatches.removeAt(oldIndex);
+                      _reorderMatches.insert(newIndex, match);
+                    });
+                  },
                   padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'Error: ${snapshot.error}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.red.shade600),
-                  ),
+                  children: [
+                    ..._reorderMatches.asMap().entries.map((entry) {
+                      int index = entry.key;
+                      Match match = entry.value;
+                      return _buildDraggableMatchCard(
+                        match,
+                        index,
+                        key: ValueKey('reorder_${match.id}_$index'),
+                      );
+                    }),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => setState(() {}),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(color: Colors.orange.shade600),
-          );
-        }
-
-        if (!snapshot.hasData) {
-          print('❌ No data in snapshot');
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.sports_baseball_outlined,
-                  size: 80,
-                  color: Colors.grey.shade300,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No matches scheduled yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        List<Match> allMatches = snapshot.data ?? [];
-
-        if (allMatches.isEmpty) {
-          print('❌ Matches list is empty');
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.sports_baseball_outlined,
-                  size: 80,
-                  color: Colors.grey.shade300,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No matches found',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        print('✅ Found ${allMatches.length} matches');
-
-        // ✅ FIX: Separate matches by stage
-        List<Match> leagueMatches = allMatches
-            .where((m) => m.stage == 'League' || m.stage == null)
-            .toList();
-        List<Match> playoffMatches = allMatches
-            .where((m) => m.stage == 'Playoff')
-            .toList();
-        List<Match> knockoutMatches = allMatches
-            .where((m) => m.stage == 'Knockout')
-            .toList();
-
-        print(
-          '✅ League: ${leagueMatches.length}, Playoff: ${playoffMatches.length}, Knockout: ${knockoutMatches.length}',
-        );
-
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // ✅ LEAGUE STAGE SECTION
-            if (leagueMatches.isNotEmpty) ...[
-              _buildSectionHeader(
-                icon: Icons.sports_tennis,
-                title: 'League Stage',
-                color: Colors.blue,
-                matchCount: leagueMatches.length,
               ),
-              ...leagueMatches
-                  .map((match) => _buildMatchCard(match, isLeague: true))
-                  .toList(),
-              const SizedBox(height: 24),
             ],
+          );
+        }
 
-            // ✅ PLAYOFF STAGE SECTION
-            if (playoffMatches.isNotEmpty) ...[
-              _buildSectionHeader(
-                icon: Icons.emoji_events,
-                title: 'Playoff Stage',
-                color: Colors.amber,
-                matchCount: playoffMatches.length,
-              ),
-              ...playoffMatches
-                  .map((match) => _buildMatchCard(match, isLeague: false))
-                  .toList(),
-              const SizedBox(height: 24),
-            ],
-
-            // ✅ KNOCKOUT STAGE SECTION
-            if (knockoutMatches.isNotEmpty) ...[
-              _buildSectionHeader(
-                icon: Icons.military_tech,
-                title: 'Knockout Stage',
-                color: Colors.red,
-                matchCount: knockoutMatches.length,
-              ),
-              ...knockoutMatches
-                  .map((match) => _buildMatchCard(match, isLeague: false))
-                  .toList(),
-            ],
-
-            // ✅ Show message if no matches in any stage
-            if (leagueMatches.isEmpty &&
-                playoffMatches.isEmpty &&
-                knockoutMatches.isEmpty)
-              Center(
-                child: Text(
-                  'No matches in any stage',
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                ),
-              ),
-          ],
-        );
+        return _buildNormalMatchesList(snapshot);
       },
     );
   }
 
-  // ✅ NEW: Section header widget
+  Widget _buildDraggableMatchCard(Match match, int index, {required Key key}) {
+    return Container(
+      key: key,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.amber.shade300, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.amber.shade600, Colors.amber.shade400],
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(14),
+                topRight: Radius.circular(14),
+              ),
+            ),
+            child: Row(
+              children: [
+                ReorderableDragStartListener(
+                  index: index,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.grab,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      child: const Icon(
+                        Icons.drag_indicator,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Match ${index + 1}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '${match.team1.name} vs ${match.team2.name}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Pos ${index + 1}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${match.team1.players[0]} & ${match.team1.players[1]}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'vs',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${match.team2.players[0]} & ${match.team2.players[1]}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNormalMatchesList(AsyncSnapshot<List<Match>> snapshot) {
+    if (snapshot.hasError) {
+      debugPrint('❌ Snapshot Error: ${snapshot.error}');
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Error: ${snapshot.error}',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.red.shade600),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => setState(() {}),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return Center(
+        child: CircularProgressIndicator(color: Colors.orange.shade600),
+      );
+    }
+
+    if (!snapshot.hasData || (snapshot.data ?? []).isEmpty) {
+      debugPrint('❌ No matches data');
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.sports_baseball_outlined,
+              size: 80,
+              color: Colors.grey.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No matches scheduled yet',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    List<Match> allMatches = snapshot.data!;
+    debugPrint('✅ Found ${allMatches.length} matches');
+
+    List<Match> leagueMatches = allMatches
+        .where((m) => m.stage == 'League' || m.stage == null)
+        .toList();
+    List<Match> playoffMatches = allMatches
+        .where((m) => m.stage == 'Playoff')
+        .toList();
+    List<Match> knockoutMatches = allMatches
+        .where((m) => m.stage == 'Knockout')
+        .toList();
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (leagueMatches.isNotEmpty) ...[
+          _buildSectionHeader(
+            icon: Icons.sports_tennis,
+            title: 'League Stage',
+            color: Colors.blue,
+            matchCount: leagueMatches.length,
+          ),
+          ...leagueMatches
+              .map((match) => _buildMatchCard(match, isLeague: true))
+              .toList(),
+          const SizedBox(height: 24),
+        ],
+        if (playoffMatches.isNotEmpty) ...[
+          _buildSectionHeader(
+            icon: Icons.emoji_events,
+            title: 'Playoff Stage',
+            color: Colors.amber,
+            matchCount: playoffMatches.length,
+          ),
+          ...playoffMatches
+              .map((match) => _buildMatchCard(match, isLeague: false))
+              .toList(),
+          const SizedBox(height: 24),
+        ],
+        if (knockoutMatches.isNotEmpty) ...[
+          _buildSectionHeader(
+            icon: Icons.military_tech,
+            title: 'Knockout Stage',
+            color: Colors.red,
+            matchCount: knockoutMatches.length,
+          ),
+          ...knockoutMatches
+              .map((match) => _buildMatchCard(match, isLeague: false))
+              .toList(),
+        ],
+      ],
+    );
+  }
+
   Widget _buildSectionHeader({
     required IconData icon,
     required String title,
@@ -810,7 +922,6 @@ class _BadmintonMatchScheduleScreenState
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          // ✅ FIX: Different border colors for league vs playoff
           border: Border.all(
             color: isLeague ? Colors.blue.shade300 : Colors.amber.shade300,
             width: 2,
@@ -828,7 +939,6 @@ class _BadmintonMatchScheduleScreenState
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                // ✅ FIX: Different gradient for league vs playoff
                 gradient: LinearGradient(
                   colors: isLeague
                       ? [Colors.blue.shade600, Colors.blue.shade400]
@@ -861,8 +971,6 @@ class _BadmintonMatchScheduleScreenState
                           color: Colors.white70,
                         ),
                       ),
-                      // ✅ NEW: Show stage label
-                      const SizedBox(height: 4),
                     ],
                   ),
                   Container(
@@ -1185,5 +1293,226 @@ class _BadmintonMatchScheduleScreenState
       default:
         return Colors.grey;
     }
+  }
+
+  String _formatTime(DateTime dateTime) =>
+      DateFormat('h:mm a').format(dateTime);
+
+  void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 12),
+            Text(message),
+          ],
+        ),
+        backgroundColor: Colors.green.shade600,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.orange.shade600),
+              const SizedBox(height: 16),
+              Text(
+                'Creating tournament...',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_tournamentId == null) {
+      return Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        body: Center(
+          child: Text(
+            'Tournament not found',
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+          ),
+        ),
+      );
+    }
+
+    return WillPopScope(
+      onWillPop: () async {
+        if (_isReorderMode) {
+          setState(() => _isReorderMode = false);
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        appBar: AppBar(
+          backgroundColor: Colors.orange.shade600,
+          elevation: 0,
+          centerTitle: false,
+          title: Text(
+            _isReorderMode ? 'Reorder Matches' : 'Tournament Schedule',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+          actions: [
+            // 🔀 Reorder toggle
+            IconButton(
+              tooltip: 'Reorder matches',
+              icon: Icon(Icons.swap_vert_rounded, color: Colors.white),
+              onPressed: _toggleReorderMode,
+            ),
+
+            // ⋮ More options (ONLY when not reordering)
+            if (!_isReorderMode)
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.white),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'share':
+                      _shareTournament();
+                      break;
+                    case 'info':
+                      _showTournamentInfo();
+                      break;
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'share',
+                    child: ListTile(
+                      leading: Icon(Icons.share),
+                      title: Text('Share'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'info',
+                    child: ListTile(
+                      leading: Icon(Icons.info_outline),
+                      title: Text('Tournament info'),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+
+        body: Column(
+          children: [
+            Container(
+              color: Colors.orange.shade600,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: _isReorderMode
+                  ? const SizedBox.shrink()
+                  : TabBar(
+                      controller: _tabController,
+                      indicator: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white,
+                      ),
+                      labelColor: Colors.orange.shade600,
+                      unselectedLabelColor: Colors.white.withOpacity(0.7),
+                      labelStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      dividerColor: Colors.transparent,
+                      tabs: _tabCount == 1
+                          ? const [
+                              Tab(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.sports_tennis, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Matches'),
+                                  ],
+                                ),
+                              ),
+                            ]
+                          : [
+                              const Tab(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.sports_tennis, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Matches'),
+                                  ],
+                                ),
+                              ),
+                              const Tab(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.leaderboard, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Standings'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                    ),
+            ),
+            Expanded(
+              child: _tabCount == 1
+                  ? _buildMatchesTab()
+                  : _isReorderMode
+                  ? _buildMatchesTab()
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildMatchesTab(),
+                        StandingsTab(
+                          tournamentId: _tournamentId,
+                          matchDuration: widget.matchDuration,
+                          breakDuration: widget.breakDuration,
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 }
