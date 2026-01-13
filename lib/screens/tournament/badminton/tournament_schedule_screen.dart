@@ -373,8 +373,8 @@ class _BadmintonMatchScheduleScreenState
             minutes: (widget.matchDuration ?? 30) + (widget.breakDuration ?? 5),
           ),
         );
+        debugPrint('New Order $updatedMatches');
       }
-
       await _badmintonService.updateMatchOrder(
         _authService.currentUserEmailId ?? '',
         _tournamentId ?? '',
