@@ -27,20 +27,20 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
   int? customTeamSize;
   int rematches = 1;
 
-  String tournamentFormat = "round_robin"; // "round_robin" or "knockout"
+  String tournamentFormat = "round_robin";
 
   @override
   void initState() {
     super.initState();
     if (widget.teamType == 'Custom') {
-      customTeamSize = widget.members.length ~/ 2;
-      if (customTeamSize! < 2) customTeamSize = 2;
+      // Set default to the middle configuration
+      final configs = _getValidTeamConfigurations();
+      if (configs.isNotEmpty) {
+        customTeamSize = configs[configs.length ~/ 2];
+      }
     }
 
     final teamsCount = _getTeamsCount();
-    final maxMatches = allowRematches
-        ? _getMaxMatchesPerTeam()
-        : (teamsCount > 1 ? teamsCount - 1 : 1);
     if (!allowRematches) {
       totalMatches = _getBaseMaxMatches();
     } else {
@@ -49,8 +49,27 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
     }
   }
 
+  // Get all valid team configurations for custom type
+  List<int> _getValidTeamConfigurations() {
+    List<int> validConfigs = [];
+    int totalMembers = widget.members.length;
+
+    // Check all possible team sizes from 2 to totalMembers/2
+    for (int teamSize = 2; teamSize <= totalMembers ~/ 2; teamSize++) {
+      // Check if we can divide members evenly into teams
+      if (totalMembers % teamSize == 0) {
+        int numTeams = totalMembers ~/ teamSize;
+        // We need at least 2 teams for a tournament
+        if (numTeams >= 2) {
+          validConfigs.add(teamSize);
+        }
+      }
+    }
+
+    return validConfigs;
+  }
+
   int _getBaseMaxMatches() {
-    // Calculate max WITHOUT rematches (rematches = 1)
     final teamsCount = _getTeamsCount();
     if (teamsCount < 2) return 0;
 
@@ -61,7 +80,6 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
     if (widget.teamType == 'Singles' || widget.teamType == 'Doubles') {
       return (teamsCount * (teamsCount - 1)) ~/ 2;
     } else {
-      // Custom: your pair logic without rematches multiplier
       final teamSize = customTeamSize ?? (widget.members.length ~/ 2);
       final pairsPerTeam = _getPairsPerTeam(teamSize);
       final teamMatchups = (teamsCount * (teamsCount - 1)) ~/ 2;
@@ -103,7 +121,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
               _buildSectionTitle('Tournament Format'),
               const SizedBox(height: 10),
               Container(
-                height: 48, // ✅ Taller for modern feel
+                height: 48,
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -111,13 +129,9 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(28), // ✅ Softer corners
-                  border: Border.all(
-                    color: Colors.orange.shade200,
-                    width: 2.5, // ✅ Thicker, premium border
-                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: Colors.orange.shade200, width: 2.5),
                   boxShadow: [
-                    // ✅ Subtle glassmorphism shadow
                     BoxShadow(
                       color: Colors.orange.shade100,
                       blurRadius: 10,
@@ -132,14 +146,13 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                 ),
                 child: Row(
                   children: [
-                    // Round Robin Tab ✅
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
                           setState(() {
                             tournamentFormat = 'round_robin';
                             allowRematches = true;
-                            HapticFeedback.lightImpact(); // ✅ iOS/Android haptic
+                            HapticFeedback.lightImpact();
                           });
                         },
                         child: AnimatedContainer(
@@ -174,21 +187,20 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                           ),
                           child: Center(
                             child: Text(
-                              'ROUND ROBIN', // ✅ ALL CAPS modern
+                              'ROUND ROBIN',
                               style: TextStyle(
                                 color: tournamentFormat == 'round_robin'
                                     ? Colors.white
                                     : Colors.orange.shade900,
-                                fontWeight: FontWeight.w700, // ✅ Bolder
-                                fontSize: 13, // ✅ Compact modern
-                                letterSpacing: 0.5, // ✅ Letter spacing
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                    // Knockout Tab ✅
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
@@ -196,7 +208,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                             tournamentFormat = 'knockout';
                             allowRematches = false;
                             totalMatches = _getBaseMaxMatches();
-                            HapticFeedback.lightImpact(); // ✅ Haptic feedback
+                            HapticFeedback.lightImpact();
                           });
                         },
                         child: AnimatedContainer(
@@ -231,7 +243,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                           ),
                           child: Center(
                             child: Text(
-                              'KNOCKOUT', // ✅ ALL CAPS modern
+                              'KNOCKOUT',
                               style: TextStyle(
                                 color: tournamentFormat == 'knockout'
                                     ? Colors.white
@@ -301,7 +313,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
             const SizedBox(height: 12),
             _buildMatchRulesCard(),
             const SizedBox(height: 10),
-            // Show rematch & match slider ONLY for round robin/league format
+
             if (tournamentFormat == "round_robin" && allowRematches) ...[
               _buildSliderCard(
                 value: rematches.toDouble(),
@@ -325,16 +337,29 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
               _buildSectionTitle('Total Number of Matches'),
               SizedBox(height: 12),
               _buildSliderCard(
-                value: totalMatches.toDouble(), // ✅ Auto-updates from switch
-                min: 1,
-                max: maxMatches.toDouble(), // ✅ Dynamic max
-                divisions: maxMatches - 1,
+                value: totalMatches.toDouble().clamp(
+                  1.0,
+                  maxMatches.toDouble(),
+                ), // ✅ FIX 1: Clamp value
+                min: 1.0, // ✅ FIX 2: Explicit double literals
+                max: (maxMatches >= 1
+                    ? maxMatches.toDouble()
+                    : 1.0), // ✅ FIX 3: Safe max
+                divisions: maxMatches > 1
+                    ? maxMatches - 1
+                    : 1, // ✅ FIX 4: Safe divisions
                 label: totalMatches.toString(),
-                onChanged: (value) {
-                  setState(() {
-                    totalMatches = value.toInt().clamp(1, maxMatches);
-                  });
-                },
+                onChanged: maxMatches >= 1
+                    ? (value) {
+                        // ✅ FIX 5: Disable if invalid range
+                        setState(() {
+                          totalMatches = value.toInt().clamp(
+                            1,
+                            maxMatches,
+                          ); // ✅ FIX 6: Clamp in onChanged
+                        });
+                      }
+                    : null,
                 suffix: 'matches',
                 helperText: allowRematches
                     ? 'Up to $maxMatches matches with rematches'
@@ -369,7 +394,6 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Match count
                           Row(
                             children: [
                               SizedBox(width: 6),
@@ -392,6 +416,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                 ),
               ),
             ],
+
             _buildSectionTitle('Break Between Matches'),
             const SizedBox(height: 12),
             _buildSliderCard(
@@ -552,13 +577,6 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                       final maxMatches = _getBaseMaxMatches();
                       rematches = allowRematches ? rematches : 1;
                       totalMatches = allowRematches ? totalMatches : maxMatches;
-                      allowRematches
-                          ? debugPrint(
-                              'Rematches allowed. Current rematches: $rematches, Total Matches: $totalMatches',
-                            )
-                          : debugPrint(
-                              'Rematches disallowed. Resetting rematches to 1 and total matches to $maxMatches',
-                            );
                     });
                   },
           ),
@@ -667,27 +685,54 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
 
   void _incrementTeamSize() {
     setState(() {
-      final currentSize = customTeamSize ?? (widget.members.length ~/ 2);
-      final newSize = currentSize + 1;
-      if (widget.members.length ~/ newSize >= 2) customTeamSize = newSize;
+      totalMatches = _getCurrentMaxMatches();
+      final validConfigs = _getValidTeamConfigurations();
+      if (validConfigs.isEmpty) return;
+
+      final currentSize = customTeamSize ?? validConfigs[0];
+      final currentIndex = validConfigs.indexOf(currentSize);
+
+      if (currentIndex < validConfigs.length - 1) {
+        customTeamSize = validConfigs[currentIndex + 1];
+      }
     });
   }
 
   void _decrementTeamSize() {
     setState(() {
-      final currentSize = customTeamSize ?? (widget.members.length ~/ 2);
-      if (currentSize > 2) customTeamSize = currentSize - 1;
+      totalMatches = _getCurrentMaxMatches();
+      final validConfigs = _getValidTeamConfigurations();
+      if (validConfigs.isEmpty) return;
+
+      final currentSize = customTeamSize ?? validConfigs[0];
+      final currentIndex = validConfigs.indexOf(currentSize);
+
+      if (currentIndex > 0) {
+        customTeamSize = validConfigs[currentIndex - 1];
+      }
     });
   }
 
   String _getTeamInfo() {
     final teamsCount = _getTeamsCount();
-    final teamSize = widget.members.length ~/ teamsCount;
+    final teamSize = customTeamSize ?? (widget.members.length ~/ 2);
     final pairsPerteam = _getPairsPerTeam(teamSize);
-    debugPrint(
-      'Calculating team info: teamsCount=$teamsCount, teamSize=$teamSize',
-    );
-    return '$teamsCount teams × $teamSize members each ($pairsPerteam pairs per team)';
+
+    // Show all possible configurations
+    final validConfigs = _getValidTeamConfigurations();
+    String configOptions = '';
+
+    if (validConfigs.length > 1) {
+      configOptions = '\nAvailable: ';
+      for (int i = 0; i < validConfigs.length; i++) {
+        final size = validConfigs[i];
+        final teams = widget.members.length ~/ size;
+        configOptions += '$teams×$size';
+        if (i < validConfigs.length - 1) configOptions += ', ';
+      }
+    }
+
+    return '$teamsCount teams × $teamSize members each ($pairsPerteam pairs per team)$configOptions';
   }
 
   String _getMinimumRequirement() {
@@ -696,7 +741,12 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
     } else if (widget.teamType == 'Doubles') {
       return '4 members (2 teams) to create a tournament';
     } else {
-      final minMembers = (customTeamSize ?? 2) * 2;
+      final validConfigs = _getValidTeamConfigurations();
+      if (validConfigs.isEmpty) {
+        return '4 members minimum (2 teams of 2) to create a tournament';
+      }
+      final minSize = validConfigs.first;
+      final minMembers = minSize * 2;
       return '$minMembers members (2 teams) to create a tournament';
     }
   }
@@ -888,54 +938,6 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
     return (teamSize * (teamSize - 1)) ~/ 2;
   }
 
-  int _calculateTotalMatchesMaximum() {
-    final teamsCount = _getTeamsCount();
-    if (teamsCount < 2) return 0;
-
-    if (tournamentFormat == "knockout") {
-      // Single elimination: (n-1) matches for n teams
-      return teamsCount - 1;
-    }
-
-    if (widget.teamType == 'Singles') {
-      int uniquePairs = (teamsCount * (teamsCount - 1)) ~/ 2;
-      return allowRematches ? uniquePairs * rematches : uniquePairs;
-    } else if (widget.teamType == 'Doubles') {
-      int uniquePairs = (teamsCount * (teamsCount - 1)) ~/ 2;
-      return allowRematches ? uniquePairs * rematches : uniquePairs;
-    } else {
-      debugPrint('Custom team type selected.');
-      final teamSize = customTeamSize ?? (widget.members.length ~/ 2);
-      final pairsPerTeam = _getPairsPerTeam(teamSize);
-      final teamMatchups = (teamsCount * (teamsCount - 1)) ~/ 2;
-      debugPrint(
-        'TeamsCount: $teamsCount, TeamSize: $teamSize, PairsPerTeam: $pairsPerTeam, TeamMatchups: $teamMatchups',
-      );
-      int matchesPerTeamMatchup = pairsPerTeam * pairsPerTeam;
-      int totalMatches = teamMatchups * matchesPerTeamMatchup;
-
-      return allowRematches ? totalMatches * rematches : totalMatches;
-    }
-  }
-
-  int _getMaxMatchesPerTeam() {
-    int teamsCount = _getTeamsCount();
-    if (teamsCount < 2) return 1;
-    return teamsCount - 1;
-  }
-
-  String _calculateTotalDuration() {
-    int totalMatches = _calculateTotalMatchesMaximum();
-    if (totalMatches == 0) return '0m';
-
-    int totalMinutes =
-        (totalMatches * matchDuration) +
-        ((totalMatches - 1) * breakBetweenMatches);
-    int hours = totalMinutes ~/ 60;
-    int minutes = totalMinutes % 60;
-    return hours > 0 ? '${hours}h ${minutes}m' : '${minutes}m';
-  }
-
   void _generateSchedule() {
     if (_getTeamsCount() < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -946,7 +948,9 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
       );
       return;
     }
-    totalMatches = _calculateTotalMatchesMaximum();
+    if (widget.teamType.toLowerCase() != 'custom') {
+      totalMatches = _calculateTotalMatchesMaximum();
+    }
     debugPrint('total matches : $totalMatches');
     Navigator.push(
       context,
@@ -980,5 +984,35 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
     //   'tournamentFormat': tournamentFormat,
     // };
     // debugPrint('Navigating to TeamReviewScreen with data: $data');
+  }
+
+  int _calculateTotalMatchesMaximum() {
+    final teamsCount = _getTeamsCount();
+    if (teamsCount < 2) return 0;
+
+    if (tournamentFormat == "knockout") {
+      // Single elimination: (n-1) matches for n teams
+      return teamsCount - 1;
+    }
+
+    if (widget.teamType == 'Singles') {
+      int uniquePairs = (teamsCount * (teamsCount - 1)) ~/ 2;
+      return allowRematches ? uniquePairs * rematches : uniquePairs;
+    } else if (widget.teamType == 'Doubles') {
+      int uniquePairs = (teamsCount * (teamsCount - 1)) ~/ 2;
+      return allowRematches ? uniquePairs * rematches : uniquePairs;
+    } else {
+      debugPrint('Custom team type selected.');
+      final teamSize = customTeamSize ?? (widget.members.length ~/ 2);
+      final pairsPerTeam = _getPairsPerTeam(teamSize);
+      final teamMatchups = (teamsCount * (teamsCount - 1)) ~/ 2;
+      debugPrint(
+        'TeamsCount: $teamsCount, TeamSize: $teamSize, PairsPerTeam: $pairsPerTeam, TeamMatchups: $teamMatchups',
+      );
+      int matchesPerTeamMatchup = pairsPerTeam * pairsPerTeam;
+      int totalMatches = teamMatchups * matchesPerTeamMatchup;
+
+      return allowRematches ? totalMatches * rematches : totalMatches;
+    }
   }
 }
