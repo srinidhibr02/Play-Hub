@@ -13,7 +13,73 @@ class TournamentFirestoreService {
         .collection('localTournament');
   }
 
-  // ==================== CREATE ====================
+  // Add to TournamentFirestoreService class
+
+  Future<void> updateMatchOrder(
+    String userEmail,
+    String tournamentId,
+    List<Match> reorderedMatches,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userEmail)
+          .collection('tournaments')
+          .doc(tournamentId)
+          .collection('matches')
+          .doc('_metadata')
+          .set({
+            'matches': reorderedMatches.map((m) => m.toMap()).toList(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+      // Update each match individually
+      for (var match in reorderedMatches) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userEmail)
+            .collection('tournaments')
+            .doc(tournamentId)
+            .collection('matches')
+            .doc(match.id)
+            .update(match.toMap());
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating match order: $e');
+      rethrow;
+    }
+  }
+
+  // In TournamentFirestoreService class
+  Future<List<Match>> getMatchesOnce(
+    String userEmail,
+    String tournamentId,
+  ) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(userEmail)
+          .collection('localTournaments')
+          .doc(tournamentId)
+          .collection('matches')
+          .orderBy('orderIndex') // ✅ Order by position
+          .get();
+
+      final matches = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return Match.fromJson({
+          ...data,
+          'id': doc.id,
+        }); // Assuming you have fromJson
+      }).toList();
+
+      debugPrint('✅ getMatchesOnce: Retrieved ${matches.length} matches');
+      return matches;
+    } catch (e) {
+      debugPrint('❌ getMatchesOnce error: $e');
+      rethrow;
+    }
+  }
 
   /// Create a new tournament under user's collection
   Future<String> createTournament({
@@ -27,7 +93,8 @@ class TournamentFirestoreService {
     required TimeOfDay startTime,
     required int matchDuration,
     required int breakDuration,
-    required int matchesPerTeam,
+    required int totalMatches,
+    required int rematches,
     required bool allowRematches,
     required String tournamentFormat,
     int? customTeamSize,
@@ -54,7 +121,7 @@ class TournamentFirestoreService {
           'startTimeMinute': startTime.minute,
           'matchDuration': matchDuration,
           'breakDuration': breakDuration,
-          'matchesPerTeam': matchesPerTeam,
+          'rematches': rematches,
           'allowRematches': allowRematches,
         },
         'stats': {
@@ -619,6 +686,239 @@ class TournamentFirestoreService {
       yield* getTeamStats(ownerEmail, tournamentId);
     } catch (e) {
       yield [];
+    }
+  }
+}
+
+// Add this extension to your TournamentFirestoreService class
+// in badminton_service.dart (or your service file)
+
+extension PlayoffMethods on TournamentFirestoreService {
+  /// Add playoff matches to tournament
+  Future<void> addPlayoffMatches(
+    String userEmail,
+    String tournamentId,
+    List<Match> playoffMatches,
+  ) async {
+    try {
+      if (playoffMatches.isEmpty) {
+        throw Exception('No playoff matches to add');
+      }
+
+      final userRef = FirebaseFirestore.instance
+          .collection('tournaments')
+          .doc(userEmail)
+          .collection('tournaments')
+          .doc(tournamentId);
+
+      // Get existing matches
+      final docSnapshot = await userRef.get();
+      if (!docSnapshot.exists) {
+        throw Exception('Tournament not found');
+      }
+
+      final existingMatches = List<Map<String, dynamic>>.from(
+        docSnapshot['matches'] ?? [],
+      );
+
+      // Convert playoff matches to maps and add to existing matches
+      final newMatches = playoffMatches
+          .map((match) => _matchToMap(match))
+          .toList();
+
+      // Update tournament with new playoff matches
+      await userRef.update({
+        'matches': [...existingMatches, ...newMatches],
+        'playoffsStarted': true,
+        'playoffsStartedAt': FieldValue.serverTimestamp(),
+      });
+
+      debugPrint('✅ Playoff matches added successfully');
+    } catch (e) {
+      debugPrint('❌ Error adding playoff matches: $e');
+      rethrow;
+    }
+  }
+
+  /// Helper method to convert Match to Firestore map
+  Map<String, dynamic> _matchToMap(Match match) {
+    return {
+      'id': match.id,
+      'team1': {
+        'id': match.team1.id,
+        'name': match.team1.name,
+        'players': match.team1.players,
+      },
+      'team2': {
+        'id': match.team2.id,
+        'name': match.team2.name,
+        'players': match.team2.players,
+      },
+      'date': Timestamp.fromDate(match.date),
+      'time': match.time,
+      'status': match.status,
+      'score1': match.score1,
+      'score2': match.score2,
+      'winner': match.winner,
+      'round': match.round,
+      'roundName': match.roundName,
+      'stage': match.stage,
+      'rematchNumber': match.rematchNumber,
+      'parentTeam1Id': match.parentTeam1Id,
+      'parentTeam2Id': match.parentTeam2Id,
+    };
+  }
+
+  /// Update playoff match (after semifinal completion)
+  Future<void> updatePlayoffMatch(
+    String userEmail,
+    String tournamentId,
+    Match updatedMatch,
+  ) async {
+    try {
+      final userRef = FirebaseFirestore.instance
+          .collection('tournaments')
+          .doc(userEmail)
+          .collection('tournaments')
+          .doc(tournamentId);
+
+      final docSnapshot = await userRef.get();
+      if (!docSnapshot.exists) {
+        throw Exception('Tournament not found');
+      }
+
+      final matches = List<Map<String, dynamic>>.from(
+        docSnapshot['matches'] ?? [],
+      );
+
+      // Find and update the playoff match
+      final matchIndex = matches.indexWhere((m) => m['id'] == updatedMatch.id);
+
+      if (matchIndex == -1) {
+        throw Exception('Match not found: ${updatedMatch.id}');
+      }
+
+      matches[matchIndex] = _matchToMap(updatedMatch);
+
+      // If this is a semifinal, update the final match with winner
+      if (updatedMatch.stage == 'Playoff' &&
+          updatedMatch.roundName?.contains('Semi') == true) {
+        _updateFinalWithWinner(matches, updatedMatch);
+      }
+
+      await userRef.update({'matches': matches});
+      debugPrint('✅ Playoff match updated successfully');
+    } catch (e) {
+      debugPrint('❌ Error updating playoff match: $e');
+      rethrow;
+    }
+  }
+
+  /// Helper to update final match with semifinal winner
+  void _updateFinalWithWinner(
+    List<Map<String, dynamic>> matches,
+    Match semifinalMatch,
+  ) {
+    // Find the final match
+    final finalIndex = matches.indexWhere(
+      (m) => m['roundName'] == 'Final' && m['stage'] == 'Playoff',
+    );
+
+    if (finalIndex == -1) return;
+
+    final final_ = matches[finalIndex];
+    final winner = semifinalMatch.score1 > semifinalMatch.score2
+        ? semifinalMatch.team1
+        : semifinalMatch.team2;
+
+    // Update final match based on which semifinal it was
+    if (semifinalMatch.roundName == 'Semi-Final 1') {
+      // Update team1 position
+      final_.update(
+        'team1',
+        (value) => {
+          'id': winner.id,
+          'name': winner.name,
+          'players': winner.players,
+        },
+      );
+    } else if (semifinalMatch.roundName == 'Semi-Final 2') {
+      // Update team2 position
+      final_.update(
+        'team2',
+        (value) => {
+          'id': winner.id,
+          'name': winner.name,
+          'players': winner.players,
+        },
+      );
+    }
+
+    // Update status when both semifinal winners are known
+    final team1Filled =
+        final_['team1'] != null &&
+        final_['team1']['id'] != null &&
+        !final_['team1']['id'].toString().startsWith('team');
+    final team2Filled =
+        final_['team2'] != null &&
+        final_['team2']['id'] != null &&
+        !final_['team2']['id'].toString().startsWith('team');
+
+    if (team1Filled && team2Filled) {
+      final_.update('status', (value) => 'Scheduled');
+    }
+  }
+
+  /// Get playoff status
+  Future<Map<String, dynamic>> getPlayoffStatus(
+    String userEmail,
+    String tournamentId,
+  ) async {
+    try {
+      final userRef = FirebaseFirestore.instance
+          .collection('tournaments')
+          .doc(userEmail)
+          .collection('tournaments')
+          .doc(tournamentId);
+
+      final docSnapshot = await userRef.get();
+      if (!docSnapshot.exists) {
+        throw Exception('Tournament not found');
+      }
+
+      final matches = List<Map<String, dynamic>>.from(
+        docSnapshot['matches'] ?? [],
+      );
+      final playoffMatches = matches
+          .where((m) => m['stage'] == 'Playoff')
+          .toList();
+
+      final semifinalMatches = playoffMatches
+          .where((m) => m['roundName']?.contains('Semi') == true)
+          .toList();
+      final finalMatches = playoffMatches
+          .where((m) => m['roundName'] == 'Final')
+          .toList();
+
+      final semifinalsCompleted =
+          semifinalMatches.isNotEmpty &&
+          semifinalMatches.every((m) => m['status'] == 'Completed');
+      final finalCompleted =
+          finalMatches.isNotEmpty &&
+          finalMatches.any((m) => m['status'] == 'Completed');
+
+      return {
+        'playoffsStarted': docSnapshot['playoffsStarted'] ?? false,
+        'playoffMatches': playoffMatches,
+        'semifinalsCompleted': semifinalsCompleted,
+        'finalCompleted': finalCompleted,
+        'touramentWinner': finalMatches.isNotEmpty && finalCompleted
+            ? finalMatches.first['winner']
+            : null,
+      };
+    } catch (e) {
+      debugPrint('❌ Error getting playoff status: $e');
+      rethrow;
     }
   }
 }

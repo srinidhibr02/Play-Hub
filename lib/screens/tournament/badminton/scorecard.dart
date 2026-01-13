@@ -4,15 +4,9 @@ import 'package:play_hub/constants/badminton.dart';
 
 class ScorecardScreen extends StatefulWidget {
   final Match match;
-  final String teamType;
-  final Function(Match) onScoreUpdate;
+  final Function(Match)? onScoreUpdate;
 
-  const ScorecardScreen({
-    super.key,
-    required this.match,
-    required this.teamType,
-    required this.onScoreUpdate,
-  });
+  const ScorecardScreen({super.key, required this.match, this.onScoreUpdate});
 
   @override
   State<ScorecardScreen> createState() => _ScorecardScreenState();
@@ -29,7 +23,141 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
     score2 = widget.match.score2;
   }
 
+  bool get _isMatchCompleted => widget.match.status == 'Completed';
+
+  bool get _hasScoreChanged =>
+      score1 != widget.match.score1 || score2 != widget.match.score2;
+
+  Future<bool> _onWillPop() async {
+    if (_isMatchCompleted) {
+      Navigator.pop(context);
+      return false;
+    }
+
+    if (_hasScoreChanged) {
+      return await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.save, size: 48, color: Colors.orange.shade600),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Save Match Progress?',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'You have unsaved changes. Do you want to save the current score?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              side: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 2,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Discard',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _saveMatchProgress();
+                              Navigator.pop(context, true);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange.shade600,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Save',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ) ??
+          false;
+    }
+
+    return true;
+  }
+
+  void _saveMatchProgress() {
+    final updatedMatch = Match(
+      id: widget.match.id,
+      team1: widget.match.team1,
+      team2: widget.match.team2,
+      date: widget.match.date,
+      time: widget.match.time,
+      status: 'Ongoing',
+      score1: score1,
+      score2: score2,
+      winner: null,
+      parentTeam1Id: widget.match.parentTeam1Id,
+      parentTeam2Id: widget.match.parentTeam2Id,
+    );
+    widget.onScoreUpdate!(updatedMatch);
+  }
+
   void _updateScore(bool isTeam1, bool increment) {
+    if (_isMatchCompleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Cannot update score. Match is already completed.',
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       if (isTeam1) {
         if (increment) {
@@ -187,7 +315,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                           parentTeam1Id: widget.match.parentTeam1Id,
                           parentTeam2Id: widget.match.parentTeam2Id,
                         );
-                        widget.onScoreUpdate(updatedMatch);
+                        widget.onScoreUpdate!(updatedMatch);
                         Navigator.pop(context);
                         Navigator.pop(context);
                       },
@@ -226,8 +354,13 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.grey.shade800),
-          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_back, color: Colors.white70),
+          onPressed: () async {
+            final shouldPop = await _onWillPop();
+            if (shouldPop && mounted) {
+              Navigator.pop(context);
+            }
+          },
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,6 +379,42 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
             ),
           ],
         ),
+        actions: [
+          if (_isMatchCompleted)
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(right: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade300),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green.shade700,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Completed',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -261,6 +430,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                   score: score1,
                   color: Colors.orange.shade600,
                   isLeading: score1 > score2,
+                  isDisabled: _isMatchCompleted,
                   onIncrement: () => _updateScore(true, true),
                   onDecrement: () => _updateScore(true, false),
                 ),
@@ -297,6 +467,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                   score: score2,
                   color: Colors.blue.shade600,
                   isLeading: score2 > score1,
+                  isDisabled: _isMatchCompleted,
                   onIncrement: () => _updateScore(false, true),
                   onDecrement: () => _updateScore(false, false),
                 ),
@@ -321,22 +492,56 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
             ),
             child: SafeArea(
               top: false,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
                 children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: Colors.grey.shade600,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'First to 21 • Win by 2 • Max 30',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
+                  if (_isMatchCompleted)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.lock,
+                            size: 16,
+                            color: Colors.orange.shade700,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'This match is locked. Score cannot be changed.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange.shade800,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'First to 21 • Win by 2 • Max 30',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -353,6 +558,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
     required int score,
     required Color color,
     required bool isLeading,
+    required bool isDisabled,
     required VoidCallback onIncrement,
     required VoidCallback onDecrement,
   }) {
@@ -472,18 +678,24 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: onDecrement,
+                  onTap: isDisabled ? null : onDecrement,
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: color.withOpacity(0.3),
+                        color: isDisabled
+                            ? Colors.grey.shade300
+                            : color.withOpacity(0.3),
                         width: 2,
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.remove, color: color, size: 28),
+                    child: Icon(
+                      Icons.remove,
+                      color: isDisabled ? Colors.grey.shade400 : color,
+                      size: 28,
+                    ),
                   ),
                 ),
               ),
@@ -496,14 +708,21 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                 height: 110,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [color.withOpacity(0.9), color],
+                    colors: [
+                      isDisabled
+                          ? Colors.grey.shade400.withOpacity(0.9)
+                          : color.withOpacity(0.9),
+                      isDisabled ? Colors.grey.shade400 : color,
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: color.withOpacity(0.3),
+                      color: isDisabled
+                          ? Colors.grey.shade400.withOpacity(0.3)
+                          : color.withOpacity(0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -527,16 +746,18 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: onIncrement,
+                  onTap: isDisabled ? null : onIncrement,
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: color,
+                      color: isDisabled ? Colors.grey.shade400 : color,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.3),
+                          color: isDisabled
+                              ? Colors.grey.shade400.withOpacity(0.3)
+                              : color.withOpacity(0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),

@@ -14,29 +14,6 @@ class MatchPair {
   MatchPair(this.team1, this.team2);
 }
 
-class DoublesPair {
-  final String player1;
-  final String player2;
-
-  DoublesPair(this.player1, this.player2);
-}
-
-class TeamWithDoublesPairs {
-  final Team team;
-  final List<DoublesPair> doublesPairs;
-
-  TeamWithDoublesPairs(this.team, this.doublesPairs);
-}
-
-class DoublesMatch {
-  final Team team1;
-  final Team team2;
-  final DoublesPair pair1;
-  final DoublesPair pair2;
-
-  DoublesMatch(this.team1, this.team2, this.pair1, this.pair2);
-}
-
 // Extended Match class with parent team tracking
 class Match {
   final String id;
@@ -53,6 +30,7 @@ class Match {
   final int? round; // ✅ ADD THIS
   final String? roundName; // ✅ ADD THIS
   final String? stage;
+  final int? rematchNumber;
 
   Match({
     required this.id,
@@ -69,6 +47,7 @@ class Match {
     this.round, // ✅ ADD THIS
     this.roundName, // ✅ ADD THIS
     this.stage,
+    this.rematchNumber,
   });
 
   // Update your toMap() method to include new fields:
@@ -88,6 +67,34 @@ class Match {
       'round': round, // ✅ ADD THIS
       'roundName': roundName, // ✅ ADD THIS
     };
+  }
+
+  factory Match.fromJson(Map<String, dynamic> json) {
+    return Match(
+      id: json['id'] ?? '',
+      team1: Team(
+        id: json['team1']['id'] ?? '',
+        name: json['team1']['name'] ?? '',
+        players: List<String>.from(json['team1']['players'] ?? []),
+      ),
+      team2: Team(
+        id: json['team2']['id'] ?? '',
+        name: json['team2']['name'] ?? '',
+        players: List<String>.from(json['team2']['players'] ?? []),
+      ),
+      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
+      time: json['time'] ?? '',
+      status: json['status'] ?? 'Scheduled',
+      score1: json['score1'] ?? 0,
+      score2: json['score2'] ?? 0,
+      winner: json['winner'],
+      parentTeam1Id: json['parentTeam1Id'],
+      parentTeam2Id: json['parentTeam2Id'],
+      round: json['round'],
+      roundName: json['roundName'],
+      stage: json['stage'],
+      rematchNumber: json['rematchNumber'],
+    );
   }
 
   // Update your fromMap() method:
@@ -155,4 +162,35 @@ class TeamStats {
     required this.lost,
     required this.points,
   });
+}
+
+// ==================== HELPER CLASSES ====================
+class TeamPairing {
+  final Team team1;
+  final Team team2;
+
+  TeamPairing(this.team1, this.team2);
+}
+
+class TeamWithDoublesPairs {
+  final Team team;
+  final List<DoublesPair> doublesPairs;
+
+  TeamWithDoublesPairs(this.team, this.doublesPairs);
+}
+
+class DoublesMatch {
+  final Team team1;
+  final Team team2;
+  final DoublesPair pair1;
+  final DoublesPair pair2;
+
+  DoublesMatch(this.team1, this.team2, this.pair1, this.pair2);
+}
+
+class DoublesPair {
+  final String player1;
+  final String player2;
+
+  DoublesPair(this.player1, this.player2);
 }
