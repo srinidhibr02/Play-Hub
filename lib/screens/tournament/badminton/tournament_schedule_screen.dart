@@ -373,8 +373,8 @@ class _BadmintonMatchScheduleScreenState
             minutes: (widget.matchDuration ?? 30) + (widget.breakDuration ?? 5),
           ),
         );
+        debugPrint('New Order $updatedMatches');
       }
-
       await _badmintonService.updateMatchOrder(
         _authService.currentUserEmailId ?? '',
         _tournamentId ?? '',
@@ -626,6 +626,10 @@ class _BadmintonMatchScheduleScreenState
 
   Future<void> _initiatePlayout() async {
     try {
+      final tournament = await _badmintonService.getTournament(
+        _authService.currentUserEmailId ?? '',
+        _tournamentId ?? '',
+      );
       final allMatches = await _badmintonService
           .getMatches(
             _authService.currentUserEmailId ?? '',
@@ -644,8 +648,58 @@ class _BadmintonMatchScheduleScreenState
         _showErrorSnackBar('All league matches must be completed first');
         return;
       }
+      debugPrint(
+        'Printing to see teams count : ${tournament?["stats"]?["totalTeams"]}',
+      );
+      final teamsCount = tournament?["stats"]?["totalTeams"];
 
-      final topTeams = await _getTopTeams(4);
+      List<Team> topTeams;
+
+      switch (teamsCount) {
+        case 2:
+          // Direct Final: Team 1 vs Team 2
+          topTeams = await _getTopTeams(2);
+          break;
+
+        case 3:
+          // Round Robin → Top 2 play final
+          topTeams = await _getTopTeams(2);
+          break;
+
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+          // Semifinals: Top 4 play semis → Final
+          topTeams = await _getTopTeams(4);
+          break;
+
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+        case 13:
+        case 14:
+        case 15:
+          // Full Playoffs: Top 8 play full knockout
+          topTeams = await _getTopTeams(8);
+          break;
+
+        default:
+          if (teamsCount > 15) {
+            // Large tournament: Top 8 playoffs
+            topTeams = await _getTopTeams(8);
+            print('🌟 $teamsCount teams → Top 8 Playoffs');
+          } else {
+            // Less than 2 teams - no playoffs
+            topTeams = [];
+          }
+          break;
+      }
+
+      debugPrint('Total teams $teamsCount');
+      debugPrint('Top Teams $topTeams');
 
       if (topTeams.length < 2) {
         _showErrorSnackBar('Not enough teams to conduct playoffs');
@@ -715,7 +769,12 @@ class _BadmintonMatchScheduleScreenState
 
       final teamPoints = <String, TeamRanking>{};
 
-      for (final team in widget.teams ?? []) {
+      // ✅ FIX - Get teams from matches
+      final allTeams = allMatches
+          .expand((m) => [m.team1, m.team2])
+          .toSet()
+          .toList();
+      for (final team in allTeams) {
         teamPoints[team.id] = TeamRanking(
           team: team,
           points: 0,

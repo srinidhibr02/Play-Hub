@@ -1125,7 +1125,7 @@ class DraggableMatchCard extends StatelessWidget {
 }
 
 class EmptyMatchesWidget extends StatelessWidget {
-  const EmptyMatchesWidget();
+  const EmptyMatchesWidget({super.key});
 
   @override
   Widget build(BuildContext context) {

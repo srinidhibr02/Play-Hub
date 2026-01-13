@@ -7,13 +7,8 @@ class TournamentFirestoreService {
 
   // Get user's local tournaments collection reference
   CollectionReference _getUserTournamentsCollection(String userEmail) {
-    return _firestore
-        .collection('users')
-        .doc(userEmail)
-        .collection('localTournament');
+    return _firestore.collection('sharedTournaments');
   }
-
-  // Add to TournamentFirestoreService class
 
   Future<void> updateMatchOrder(
     String userEmail,
@@ -22,9 +17,7 @@ class TournamentFirestoreService {
   ) async {
     try {
       await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userEmail)
-          .collection('tournaments')
+          .collection('sharedTournaments')
           .doc(tournamentId)
           .collection('matches')
           .doc('_metadata')
@@ -46,37 +39,6 @@ class TournamentFirestoreService {
       }
     } catch (e) {
       debugPrint('❌ Error updating match order: $e');
-      rethrow;
-    }
-  }
-
-  // In TournamentFirestoreService class
-  Future<List<Match>> getMatchesOnce(
-    String userEmail,
-    String tournamentId,
-  ) async {
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userEmail)
-          .collection('localTournaments')
-          .doc(tournamentId)
-          .collection('matches')
-          .orderBy('orderIndex') // ✅ Order by position
-          .get();
-
-      final matches = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return Match.fromJson({
-          ...data,
-          'id': doc.id,
-        }); // Assuming you have fromJson
-      }).toList();
-
-      debugPrint('✅ getMatchesOnce: Retrieved ${matches.length} matches');
-      return matches;
-    } catch (e) {
-      debugPrint('❌ getMatchesOnce error: $e');
       rethrow;
     }
   }
@@ -603,18 +565,10 @@ class TournamentFirestoreService {
     String tournamentId,
   ) async {
     try {
-      DocumentReference shareRef = await _firestore
-          .collection('sharedTournaments')
-          .add({
-            'ownerEmail': userEmail,
-            'tournamentId': tournamentId,
-            'createdAt': FieldValue.serverTimestamp(),
-            'expiresAt': Timestamp.fromDate(
-              DateTime.now().add(const Duration(days: 30)),
-            ), // Link expires in 30 days
-          });
+      String shareCode =
+          '${tournamentId}_${DateTime.now().millisecondsSinceEpoch}';
 
-      return shareRef.id; // This is the share code
+      return shareCode; // This is the share code
     } catch (e) {
       throw Exception('Failed to create shareable link: $e');
     }
@@ -705,33 +659,48 @@ extension PlayoffMethods on TournamentFirestoreService {
         throw Exception('No playoff matches to add');
       }
 
-      final userRef = FirebaseFirestore.instance
-          .collection('tournaments')
-          .doc(userEmail)
-          .collection('tournaments')
-          .doc(tournamentId);
+      final matchesRef = FirebaseFirestore.instance
+          .collection('sharedTournament')
+          .doc(tournamentId)
+          .collection('matches');
 
       // Get existing matches
-      final docSnapshot = await userRef.get();
-      if (!docSnapshot.exists) {
-        throw Exception('Tournament not found');
-      }
+      final QuerySnapshot querySnapshot = await matchesRef.get();
 
-      final existingMatches = List<Map<String, dynamic>>.from(
-        docSnapshot['matches'] ?? [],
-      );
+      // ✅ FIX 1: Use querySnapshot.docs (NOT querySnapshot['matches'])
+      final existingMatches = querySnapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
 
-      // Convert playoff matches to maps and add to existing matches
+      // Convert playoff matches to maps
       final newMatches = playoffMatches
           .map((match) => _matchToMap(match))
           .toList();
 
-      // Update tournament with new playoff matches
-      await userRef.update({
-        'matches': [...existingMatches, ...newMatches],
+      // ✅ FIX 2: Use matchesRef (NOT userRef) + collection.add()
+      // Add NEW playoff matches to subcollection
+      final WriteBatch batch = FirebaseFirestore.instance.batch();
+
+      for (int i = 0; i < playoffMatches.length; i++) {
+        final matchDocRef = matchesRef.doc('P${i + 1}');
+        batch.set(matchDocRef, {
+          ...newMatches[i],
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // Update tournament metadata
+      final tournamentRef = FirebaseFirestore.instance
+          .collection('sharedTournament')
+          .doc(tournamentId);
+
+      batch.update(tournamentRef, {
         'playoffsStarted': true,
         'playoffsStartedAt': FieldValue.serverTimestamp(),
+        'playoffMatchCount': playoffMatches.length,
       });
+
+      await batch.commit();
 
       debugPrint('✅ Playoff matches added successfully');
     } catch (e) {

@@ -218,6 +218,9 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
   }
 
   void _navigateToSchedule() {
+    Navigator.pop(context);
+    Navigator.pop(context);
+    Navigator.pop(context);
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -664,16 +667,18 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
       itemBuilder: (context, index) {
         final team = teams[index];
         final color = teamColors[index % teamColors.length];
+        final bool showExpanded = _expandedTeams.contains(team.id);
 
-        return Container(
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: color.withOpacity(0.12),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -707,7 +712,11 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                           ),
                         ],
                       ),
-                      child: Icon(Icons.groups, color: Colors.white, size: 24),
+                      child: const Icon(
+                        Icons.groups,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -723,13 +732,38 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                             ),
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            '${team.players.length} members',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                '${team.players.length} members',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (team.players.length > 6) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade100,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '+${team.players.length - 6}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.orange.shade700,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ],
                       ),
@@ -762,168 +796,240 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    // Expand Button
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (showExpanded) {
+                            _expandedTeams.remove(team.id);
+                          } else {
+                            _expandedTeams.add(team.id);
+                          }
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(showExpanded ? 0.15 : 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          showExpanded ? Icons.expand_less : Icons.expand_more,
+                          color: color,
+                          size: 20,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
 
-                // Players in Single Line
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: team.players.asMap().entries.map((entry) {
-                      int playerIndex = entry.key;
-                      String player = entry.value;
+                // Compact Preview
+                if (!showExpanded) _buildCompactPlayersPreview(team, color),
 
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          right: playerIndex < team.players.length - 1 ? 10 : 0,
-                        ),
-                        child: Draggable<Map<String, dynamic>>(
-                          data: {
-                            'teamId': team.id,
-                            'playerIndex': playerIndex,
-                            'player': player,
-                          },
-                          feedback: Material(
-                            elevation: 12,
-                            borderRadius: BorderRadius.circular(14),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [color.withOpacity(0.9), color],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: color.withOpacity(0.5),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 24,
-                                    height: 24,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white.withOpacity(0.3),
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '${playerIndex + 1}',
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    player,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          childWhenDragging: Opacity(
-                            opacity: 0.3,
-                            child: _buildPlayerChip(player, color, playerIndex),
-                          ),
-                          child: DragTarget<Map<String, dynamic>>(
-                            onWillAcceptWithDetails: (details) {
-                              final data = details.data;
-                              return data['teamId'] != team.id ||
-                                  data['playerIndex'] != playerIndex;
-                            },
-                            onAcceptWithDetails: (details) {
-                              final data = details.data;
-                              _swapPlayers(
-                                data['teamId'],
-                                data['playerIndex'],
-                                team.id,
-                                playerIndex,
-                              );
-                              _showSnackBar(
-                                '${data['player']} ↔ $player swapped!',
-                                Colors.green.shade600,
-                              );
-                            },
-                            builder: (context, candidateData, rejectedData) {
-                              final isHovering = candidateData.isNotEmpty;
-
-                              return AnimatedScale(
-                                scale: isHovering ? 1.1 : 1.0,
-                                duration: const Duration(milliseconds: 200),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(14),
-                                    boxShadow: isHovering
-                                        ? [
-                                            BoxShadow(
-                                              color: Colors.orange.withOpacity(
-                                                0.4,
-                                              ),
-                                              blurRadius: 12,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ]
-                                        : [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(
-                                                0.08,
-                                              ),
-                                              blurRadius: 4,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
-                                    border: Border.all(
-                                      color: isHovering
-                                          ? Colors.orange.shade600
-                                          : Colors.transparent,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: _buildPlayerChip(
-                                    player,
-                                    color,
-                                    playerIndex,
-                                    isHovering,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                // Expanded Grid
+                if (showExpanded)
+                  AnimatedOpacity(
+                    opacity: 1.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 12),
+                        _buildExpandedPlayersGrid(team, color),
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  // Track expanded teams
+  Set<String> _expandedTeams = {};
+
+  Widget _buildCompactPlayersPreview(Team team, Color color) {
+    final previewPlayers = team.players.take(3).toList();
+    final hasMore = team.players.length > 3;
+
+    return Row(
+      children: [
+        ...previewPlayers.asMap().entries.map((entry) {
+          final playerIndex = entry.key;
+          final player = entry.value;
+          return Padding(
+            padding: EdgeInsets.only(
+              right: playerIndex < previewPlayers.length - 1 ? 8 : 0,
+            ),
+            child: _buildPlayerChip(player, color, playerIndex),
+          );
+        }).toList(),
+        if (hasMore)
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: const Color.fromRGBO(224, 224, 224, 1)),
+            ),
+            child: Text(
+              '+${team.players.length - 3}',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildExpandedPlayersGrid(Team team, Color color) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final chipsPerRow = (constraints.maxWidth / 140).floor().clamp(1, 6);
+
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: team.players.asMap().entries.map((entry) {
+            final playerIndex = entry.key;
+            final player = entry.value;
+            return _buildDraggablePlayerChip(
+              team.id,
+              playerIndex,
+              player,
+              color,
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildDraggablePlayerChip(
+    String teamId,
+    int playerIndex,
+    String player,
+    Color color,
+  ) {
+    return Draggable<Map<String, dynamic>>(
+      data: {'teamId': teamId, 'playerIndex': playerIndex, 'player': player},
+      feedback: Material(
+        elevation: 12,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [color.withOpacity(0.9), color],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.5),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.3),
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                child: Center(
+                  child: Text(
+                    '${playerIndex + 1}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                player,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      childWhenDragging: Opacity(
+        opacity: 0.3,
+        child: _buildPlayerChip(player, color, playerIndex),
+      ),
+      child: DragTarget<Map<String, dynamic>>(
+        onWillAcceptWithDetails: (details) {
+          final data = details.data;
+          return data['teamId'] != teamId || data['playerIndex'] != playerIndex;
+        },
+        onAcceptWithDetails: (details) {
+          final data = details.data;
+          _swapPlayers(
+            data['teamId'],
+            data['playerIndex'],
+            teamId,
+            playerIndex,
+          );
+          _showSnackBar(
+            '${data['player']} ↔ $player swapped!',
+            Colors.green.shade600,
+          );
+        },
+        builder: (context, candidateData, rejectedData) {
+          final isHovering = candidateData.isNotEmpty;
+          return AnimatedScale(
+            scale: isHovering ? 1.1 : 1.0,
+            duration: const Duration(milliseconds: 200),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: isHovering
+                    ? [
+                        BoxShadow(
+                          color: Colors.orange.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                border: Border.all(
+                  color: isHovering
+                      ? Colors.orange.shade600
+                      : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: _buildPlayerChip(player, color, playerIndex, isHovering),
+            ),
+          );
+        },
+      ),
     );
   }
 

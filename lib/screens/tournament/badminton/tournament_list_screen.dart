@@ -16,7 +16,7 @@ class TournamentListScreen extends StatefulWidget {
 class _TournamentListScreenState extends State<TournamentListScreen> {
   final TournamentFirestoreService _firestoreService =
       TournamentFirestoreService();
-  String _selectedFilter = 'all'; // all, active, singles, doubles, custom
+  final String _selectedFilter = 'all';
   String? _userEmail;
   bool _isFabExpanded = false;
 
@@ -50,27 +50,6 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
             color: Colors.white,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.white),
-            onPressed: () {
-              // Navigate to create tournament
-            },
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list, color: Colors.white),
-            onSelected: (value) {
-              setState(() => _selectedFilter = value);
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all', child: Text('All Tournaments')),
-              const PopupMenuItem(value: 'active', child: Text('Active Only')),
-              const PopupMenuItem(value: 'Singles', child: Text('Singles')),
-              const PopupMenuItem(value: 'Doubles', child: Text('Doubles')),
-              const PopupMenuItem(value: 'Custom', child: Text('Custom')),
-            ],
-          ),
-        ],
       ),
       body: _userEmail == null
           ? Center(
