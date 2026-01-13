@@ -357,11 +357,13 @@ enum PlayoffFormat { directFinal, semisAndFinal }
 
 class MatchesListView extends StatelessWidget {
   final List<Match> matches;
+  final Function(Match)? onScoreUpdate; // ✅ Add this callback
   final Function(Match) onMatchTap;
 
   const MatchesListView({
     super.key,
     required this.matches,
+    required this.onScoreUpdate,
     required this.onMatchTap,
   });
 
@@ -715,7 +717,14 @@ class MatchesListView extends StatelessWidget {
   void _openScorecard(Match match, BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ScorecardScreen(match: match)),
+      MaterialPageRoute(
+        builder: (_) => ScorecardScreen(
+          match: match,
+          onScoreUpdate: (updatedMatch) {
+            onScoreUpdate?.call(updatedMatch); // ✅ Safe call to parent callback
+          },
+        ),
+      ),
     );
   }
 

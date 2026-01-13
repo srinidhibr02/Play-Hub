@@ -4,9 +4,13 @@ import 'package:play_hub/constants/badminton.dart';
 
 class ScorecardScreen extends StatefulWidget {
   final Match match;
-  final Function(Match)? onScoreUpdate;
+  final Function(Match) onScoreUpdate;
 
-  const ScorecardScreen({super.key, required this.match, this.onScoreUpdate});
+  const ScorecardScreen({
+    super.key,
+    required this.match,
+    required this.onScoreUpdate,
+  });
 
   @override
   State<ScorecardScreen> createState() => _ScorecardScreenState();
@@ -141,7 +145,9 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       parentTeam1Id: widget.match.parentTeam1Id,
       parentTeam2Id: widget.match.parentTeam2Id,
     );
-    widget.onScoreUpdate!(updatedMatch);
+    if (widget.onScoreUpdate != null) {
+      widget.onScoreUpdate!(updatedMatch);
+    }
   }
 
   void _updateScore(bool isTeam1, bool increment) {
@@ -195,7 +201,14 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
     }
   }
 
+  bool _isShowingWinDialog = false; // ✅ Add this class field
+
   void _showMatchCompleteDialog() {
+    // ✅ Prevent multiple dialogs & state conflicts
+    if (_isShowingWinDialog || !mounted) return;
+
+    _isShowingWinDialog = true;
+
     String winnerName = score1 > score2
         ? widget.match.team1.name
         : widget.match.team2.name;
@@ -207,143 +220,170 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Container(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Trophy Icon
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.amber.shade400, Colors.amber.shade600],
+      builder: (dialogContext) => WillPopScope(
+        // ✅ Prevent back button during dialog
+        onWillPop: () async => false,
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Trophy Icon
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.amber.shade400, Colors.amber.shade600],
+                    ),
+                    shape: BoxShape.circle,
                   ),
-                  shape: BoxShape.circle,
+                  child: const Icon(
+                    Icons.emoji_events,
+                    size: 48,
+                    color: Colors.white,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.emoji_events,
-                  size: 48,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              const Text(
-                'Match Complete!',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-
-              Text(
-                'Winner',
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 8),
-
-              Text(
-                winnerName,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.amber.shade700,
+                const Text(
+                  'Match Complete!',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 8),
 
-              // Final Score
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 32,
+                Text(
+                  'Winner',
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '$score1 - $score2',
-                  style: const TextStyle(
-                    fontSize: 32,
+                const SizedBox(height: 8),
+
+                Text(
+                  winnerName,
+                  style: TextStyle(
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
+                    color: Colors.amber.shade700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+
+                // Final Score
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 32,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$score1 - $score2',
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 28),
+                const SizedBox(height: 28),
 
-              // Actions
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: Colors.grey.shade300, width: 2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                // Actions
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          if (mounted) {
+                            setState(() => _isShowingWinDialog = false);
+                            Navigator.of(dialogContext).pop();
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        final updatedMatch = Match(
-                          id: widget.match.id,
-                          team1: widget.match.team1,
-                          team2: widget.match.team2,
-                          date: widget.match.date,
-                          time: widget.match.time,
-                          status: 'Completed',
-                          score1: score1,
-                          score2: score2,
-                          winner: winnerId,
-                          parentTeam1Id: widget.match.parentTeam1Id,
-                          parentTeam2Id: widget.match.parentTeam2Id,
-                        );
-                        widget.onScoreUpdate!(updatedMatch);
-                        Navigator.pop(context);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Save Result',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final updatedMatch = Match(
+                            id: widget.match.id,
+                            team1: widget.match.team1,
+                            team2: widget.match.team2,
+                            date: widget.match.date,
+                            time: widget.match.time,
+                            status: 'Completed',
+                            score1: score1,
+                            score2: score2,
+                            winner: winnerId,
+                            parentTeam1Id: widget.match.parentTeam2Id,
+                            parentTeam2Id: widget.match.parentTeam2Id,
+                          );
+
+                          if (widget.onScoreUpdate != null && mounted) {
+                            widget.onScoreUpdate!(updatedMatch);
+                          }
+
+                          // ✅ Sequential navigation - no conflicts
+                          Navigator.of(dialogContext).pop(); // Close dialog
+                          if (mounted) {
+                            Navigator.of(context).pop(); // Close scorecard
+                            setState(() => _isShowingWinDialog = false);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Save Result',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    );
+    ).then((_) {
+      // ✅ Cleanup when dialog closes
+      if (mounted) {
+        setState(() => _isShowingWinDialog = false);
+      }
+    });
   }
 
   @override
@@ -354,7 +394,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white70),
+          icon: Icon(Icons.arrow_back, color: Colors.black45),
           onPressed: () async {
             final shouldPop = await _onWillPop();
             if (shouldPop && mounted) {
@@ -585,117 +625,121 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       child: Column(
         children: [
           // Team Name & Players
-          Column(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      players.length == 1 ? Icons.person : Icons.people,
-                      color: color,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade800,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (players.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            players.join(' & '),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (isLeading)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.green.shade300),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.arrow_upward,
-                            color: Colors.green.shade700,
-                            size: 12,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Leading',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  players.length == 1 ? Icons.person : Icons.people,
+                  color: color,
+                  size: 20,
+                ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (players.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        players.join(' & '),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (isLeading)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.green.shade300),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.arrow_upward,
+                        color: Colors.green.shade700,
+                        size: 12,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Leading',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
 
           const SizedBox(height: 24),
 
-          // Score Controls
+          // ✅ FIXED Score Controls - GestureDetector + HitTestBehavior.opaque
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Decrement
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: isDisabled ? null : onDecrement,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: isDisabled
-                            ? Colors.grey.shade300
-                            : color.withOpacity(0.3),
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
+              // Decrement Button
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: isDisabled ? null : onDecrement,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: isDisabled
+                          ? Colors.grey.shade300
+                          : color.withOpacity(0.3),
+                      width: 2,
                     ),
-                    child: Icon(
-                      Icons.remove,
-                      color: isDisabled ? Colors.grey.shade400 : color,
-                      size: 28,
-                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.transparent,
+                    boxShadow: isDisabled
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: color.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                  ),
+                  child: Icon(
+                    Icons.remove,
+                    color: isDisabled ? Colors.grey.shade400 : color,
+                    size: 28,
                   ),
                 ),
               ),
@@ -742,29 +786,27 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
 
               const SizedBox(width: 32),
 
-              // Increment
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: isDisabled ? null : onIncrement,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isDisabled ? Colors.grey.shade400 : color,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isDisabled
-                              ? Colors.grey.shade400.withOpacity(0.3)
-                              : color.withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.add, color: Colors.white, size: 28),
+              // Increment Button
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: isDisabled ? null : onIncrement,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDisabled ? Colors.grey.shade400 : color,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: isDisabled
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: color.withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                   ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 28),
                 ),
               ),
             ],
