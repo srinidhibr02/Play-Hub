@@ -136,6 +136,104 @@ class TournamentDialogs {
     );
   }
 
+  static Future<PlayoffChoice?> showPlayoffOptionsDialog(
+    BuildContext context,
+    int teamCount,
+  ) async {
+    return showDialog<PlayoffChoice>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.emoji_events, color: Colors.amber.shade600),
+            const SizedBox(width: 12),
+            const Text('Playoff Options'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'You have $teamCount teams. How would you like to proceed?',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 24),
+            _buildPlayoffOption(
+              icon: Icons.flash_on,
+              title: 'Direct Final',
+              subtitle: 'Top 2 teams play the final',
+              onTap: () => Navigator.pop(context, PlayoffChoice.directFinal),
+            ),
+            const SizedBox(height: 16),
+            _buildPlayoffOption(
+              icon: Icons.stairs,
+              title: 'Semis & Final',
+              subtitle: 'Top 4 teams battle for semis & final',
+              onTap: () => Navigator.pop(context, PlayoffChoice.semisAndFinal),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildPlayoffOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.amber.shade300, width: 2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: Colors.amber.shade700, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.amber.shade600,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   static Widget _infoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -155,3 +253,5 @@ class TournamentDialogs {
     );
   }
 }
+
+enum PlayoffChoice { directFinal, semisAndFinal }

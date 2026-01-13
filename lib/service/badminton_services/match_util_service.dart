@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
+import 'package:play_hub/screens/tournament/badminton/scorecard.dart';
 
 // ============= MATCH GENERATION LOGIC =============
+// CORRECTED MATCH GENERATION LOGIC FOR ROUND ROBIN
+
 class MatchGenerator {
   final List<Team> teams;
   final int totalMatches;
@@ -29,9 +32,103 @@ class MatchGenerator {
   List<Match> generate() {
     if (teams.length < 2) return [];
 
-    return tournamentFormat == 'knockout'
-        ? _generateKnockout()
-        : _generateRoundRobin();
+    if (tournamentFormat == 'knockout') {
+      return _generateKnockout();
+    } else {
+      return _generateRoundRobin();
+    }
+  }
+
+  /// Calculate total matches that should be generated
+  /// Formula: C(n, 2) * rematchCount
+  /// where n = number of teams, C(n,2) = n * (n-1) / 2
+  int _calculateTotalRoundRobinMatches() {
+    final teamCount = teams.length;
+
+    // Unique matchups between all teams: C(n, 2) = n * (n-1) / 2
+    final uniqueMatchups = (teamCount * (teamCount - 1)) ~/ 2;
+
+    // If rematches are allowed, multiply by rematch value
+    // rematchValue represents how many times each unique matchup occurs
+    final matchesPerMatchup = allowRematches ? rematches : 1;
+
+    return uniqueMatchups * matchesPerMatchup;
+  }
+
+  List<Match> _generateRoundRobin() {
+    debugPrint('🔄 ROUND ROBIN GENERATION');
+    debugPrint('Teams: ${teams.length}');
+    debugPrint('Allow Rematches: $allowRematches');
+    debugPrint('Rematch Value: $rematches');
+
+    final totalCalculatedMatches = _calculateTotalRoundRobinMatches();
+    debugPrint('Calculated Total Matches: $totalCalculatedMatches');
+    debugPrint('User Requested Matches: $totalMatches');
+
+    final matches = <Match>[];
+    var currentTime = _getStartDateTime();
+
+    // Generate all unique matchups
+    final allMatchups = <List<Team>>[];
+    for (int i = 0; i < teams.length; i++) {
+      for (int j = i + 1; j < teams.length; j++) {
+        allMatchups.add([teams[i], teams[j]]);
+      }
+    }
+
+    debugPrint('Total Unique Matchups: ${allMatchups.length}');
+
+    // Track how many times each matchup has occurred
+    final matchupCount = <String, int>{};
+    for (final matchup in allMatchups) {
+      final key = '${matchup[0].id}_${matchup[1].id}';
+      matchupCount[key] = 0;
+    }
+
+    int generated = 0;
+    final maxMatchesPerMatchup = allowRematches ? rematches : 1;
+
+    // Generate matches round by round
+    // In each round, try to generate one match from each unique matchup
+    while (generated < totalMatches && generated < totalCalculatedMatches) {
+      for (final matchup in allMatchups) {
+        if (generated >= totalMatches) break;
+
+        final team1 = matchup[0];
+        final team2 = matchup[1];
+        final key = '${team1.id}_${team2.id}';
+
+        // Check if this matchup can be repeated more times
+        if ((matchupCount[key] ?? 0) < maxMatchesPerMatchup) {
+          matches.add(
+            Match(
+              id: 'M${matches.length + 1}',
+              team1: team1,
+              team2: team2,
+              date: currentTime,
+              time: DateFormat('h:mm a').format(currentTime),
+              status: 'Scheduled',
+              score1: 0,
+              score2: 0,
+              winner: null,
+              roundName: 'Match ${matches.length + 1}',
+              stage: 'League',
+              rematchNumber: (matchupCount[key] ?? 0) + 1,
+            ),
+          );
+
+          matchupCount[key] = (matchupCount[key] ?? 0) + 1;
+          generated++;
+
+          currentTime = currentTime.add(
+            Duration(minutes: matchDuration + breakDuration),
+          );
+        }
+      }
+    }
+
+    debugPrint('✅ Generated $generated matches');
+    return matches;
   }
 
   List<Match> _generateKnockout() {
@@ -67,106 +164,8 @@ class MatchGenerator {
       );
     }
 
+    debugPrint('✅ Generated ${matches.length} knockout matches');
     return matches;
-  }
-
-  List<Match> _generateRoundRobin() {
-    final matches = <Match>[];
-    var currentTime = _getStartDateTime();
-    final matchupCount = <String, int>{};
-    final recentOpponents = <String, Set<String>>{};
-    final lastMatchTime = <String, DateTime>{};
-
-    // Initialize
-    for (final team in teams) {
-      recentOpponents[team.id] = <String>{};
-    }
-
-    // Generate all matchups
-    final allMatchups = <List<Team>>[];
-    for (int i = 0; i < teams.length; i++) {
-      for (int j = i + 1; j < teams.length; j++) {
-        final key = '${teams[i].id}_${teams[j].id}';
-        matchupCount[key] = 0;
-        allMatchups.add([teams[i], teams[j]]);
-      }
-    }
-
-    int generated = 0;
-    final maxMatchesPerMatchup = allowRematches ? rematches : 1;
-
-    while (generated < totalMatches) {
-      final matchup = _findBestMatchup(
-        allMatchups,
-        matchupCount,
-        maxMatchesPerMatchup,
-        recentOpponents,
-        lastMatchTime,
-        currentTime,
-      );
-
-      if (matchup.isEmpty) break;
-
-      final team1 = matchup[0];
-      final team2 = matchup[1];
-      final key = '${team1.id}_${team2.id}';
-
-      matches.add(
-        Match(
-          id: 'M${matches.length + 1}',
-          team1: team1,
-          team2: team2,
-          date: currentTime,
-          time: DateFormat('h:mm a').format(currentTime),
-          status: 'Scheduled',
-          score1: 0,
-          score2: 0,
-          winner: null,
-          roundName: 'Match ${matches.length + 1}',
-          stage: 'League',
-          rematchNumber: (matchupCount[key] ?? 0) + 1,
-        ),
-      );
-
-      matchupCount[key] = (matchupCount[key] ?? 0) + 1;
-      recentOpponents[team1.id]!.add(team2.id);
-      recentOpponents[team2.id]!.add(team1.id);
-      lastMatchTime[team1.id] = currentTime;
-      lastMatchTime[team2.id] = currentTime;
-      generated++;
-
-      currentTime = currentTime.add(
-        Duration(minutes: matchDuration + breakDuration),
-      );
-    }
-
-    return matches;
-  }
-
-  List<Team> _findBestMatchup(
-    List<List<Team>> allMatchups,
-    Map<String, int> matchupCount,
-    int maxPerMatchup,
-    Map<String, Set<String>> recentOpponents,
-    Map<String, DateTime> lastMatchTime,
-    DateTime currentTime,
-  ) {
-    for (final matchup in allMatchups) {
-      final team1 = matchup[0];
-      final team2 = matchup[1];
-      final key = '${team1.id}_${team2.id}';
-
-      if ((matchupCount[key] ?? 0) >= maxPerMatchup) continue;
-      if (recentOpponents[team1.id]!.contains(team2.id)) continue;
-
-      final team1Last = lastMatchTime[team1.id] ?? DateTime(1970);
-      final team2Last = lastMatchTime[team2.id] ?? DateTime(1970);
-      if (currentTime.isBefore(team1Last.add(Duration(minutes: 15)))) continue;
-      if (currentTime.isBefore(team2Last.add(Duration(minutes: 15)))) continue;
-
-      return matchup;
-    }
-    return [];
   }
 
   String _getKnockoutRoundName(int matchNumber) {
@@ -213,13 +212,158 @@ class MatchGenerator {
   }
 }
 
+class PlayoffGenerator {
+  final List<Team> topTeams;
+  final DateTime startDate;
+  final TimeOfDay startTime;
+  final int matchDuration;
+  final int breakDuration;
+  final PlayoffFormat format;
+
+  PlayoffGenerator({
+    required this.topTeams,
+    required this.startDate,
+    required this.startTime,
+    required this.matchDuration,
+    required this.breakDuration,
+    required this.format,
+  });
+
+  List<Match> generate() {
+    return switch (format) {
+      PlayoffFormat.directFinal => _generateDirectFinal(),
+      PlayoffFormat.semisAndFinal => _generateSemisAndFinal(),
+    };
+  }
+
+  List<Match> _generateDirectFinal() {
+    final matches = <Match>[];
+    var currentTime = _getStartDateTime();
+
+    if (topTeams.length >= 2) {
+      matches.add(
+        Match(
+          id: 'P1',
+          team1: topTeams[0],
+          team2: topTeams[1],
+          date: currentTime,
+          time: DateFormat('h:mm a').format(currentTime),
+          status: 'Scheduled',
+          score1: 0,
+          score2: 0,
+          winner: null,
+          round: 1,
+          roundName: 'Final',
+          stage: 'Playoff',
+        ),
+      );
+    }
+
+    return matches;
+  }
+
+  List<Match> _generateSemisAndFinal() {
+    final matches = <Match>[];
+    var currentTime = _getStartDateTime();
+    int matchCounter = 1;
+
+    // Semi-Final 1: 1st vs 4th
+    if (topTeams.length >= 4) {
+      matches.add(
+        Match(
+          id: 'P$matchCounter',
+          team1: topTeams[0],
+          team2: topTeams[3],
+          date: currentTime,
+          time: DateFormat('h:mm a').format(currentTime),
+          status: 'Scheduled',
+          score1: 0,
+          score2: 0,
+          winner: null,
+          round: 1,
+          roundName: 'Semi-Final 1',
+          stage: 'Playoff',
+          parentTeam1Id: topTeams[0].id,
+          parentTeam2Id: topTeams[3].id,
+        ),
+      );
+
+      matchCounter++;
+      currentTime = currentTime.add(
+        Duration(minutes: matchDuration + breakDuration),
+      );
+
+      // Semi-Final 2: 2nd vs 3rd
+      matches.add(
+        Match(
+          id: 'P$matchCounter',
+          team1: topTeams[1],
+          team2: topTeams[2],
+          date: currentTime,
+          time: DateFormat('h:mm a').format(currentTime),
+          status: 'Scheduled',
+          score1: 0,
+          score2: 0,
+          winner: null,
+          round: 1,
+          roundName: 'Semi-Final 2',
+          stage: 'Playoff',
+          parentTeam1Id: topTeams[1].id,
+          parentTeam2Id: topTeams[2].id,
+        ),
+      );
+
+      matchCounter++;
+      currentTime = currentTime.add(
+        Duration(minutes: matchDuration + breakDuration),
+      );
+
+      // Final (placeholder - winners determined after semis)
+      matches.add(
+        Match(
+          id: 'P$matchCounter',
+          team1: topTeams[0],
+          team2: topTeams[1],
+          date: currentTime,
+          time: DateFormat('h:mm a').format(currentTime),
+          status: 'Pending',
+          score1: 0,
+          score2: 0,
+          winner: null,
+          round: 2,
+          roundName: 'Final',
+          stage: 'Playoff',
+        ),
+      );
+    }
+
+    return matches;
+  }
+
+  DateTime _getStartDateTime() {
+    return DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+      startTime.hour,
+      startTime.minute,
+    );
+  }
+}
+
+enum PlayoffFormat { directFinal, semisAndFinal }
+
 // ============= UI WIDGETS =============
 
 class MatchesListView extends StatelessWidget {
   final List<Match> matches;
   final Function(Match) onMatchTap;
 
-  const MatchesListView({required this.matches, required this.onMatchTap});
+  const MatchesListView({
+    super.key,
+    required this.matches,
+    required this.onMatchTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +375,21 @@ class MatchesListView extends StatelessWidget {
         .where((m) => m.stage == 'Knockout')
         .toList();
 
+    int leagueCompletedCount = leagueMatches
+        .where((m) => m.status == 'Completed')
+        .length;
+    int leagueTotalCount = leagueMatches.length;
+
+    int playoffCompletedCount = playoffMatches
+        .where((m) => m.status == 'Completed')
+        .length;
+    int playoffTotalCount = playoffMatches.length;
+
+    int knockoutCompletedCount = knockoutMatches
+        .where((m) => m.status == 'Completed')
+        .length;
+    int knockoutTotalCount = knockoutMatches.length;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -239,12 +398,12 @@ class MatchesListView extends StatelessWidget {
             icon: Icons.sports_tennis,
             title: 'League Stage',
             color: Colors.blue,
-            count: leagueMatches.length,
+            completedMatches: leagueCompletedCount,
+            totalMatches: leagueTotalCount,
           ),
-          ...leagueMatches.map(
-            (m) =>
-                MatchCard(match: m, onTap: () => onMatchTap(m), isLeague: true),
-          ),
+          ...leagueMatches
+              .map((match) => _buildMatchCard(match, isLeague: true))
+              .toList(),
           const SizedBox(height: 24),
         ],
         if (playoffMatches.isNotEmpty) ...[
@@ -252,15 +411,12 @@ class MatchesListView extends StatelessWidget {
             icon: Icons.emoji_events,
             title: 'Playoff Stage',
             color: Colors.amber,
-            count: playoffMatches.length,
+            completedMatches: playoffCompletedCount,
+            totalMatches: playoffTotalCount,
           ),
-          ...playoffMatches.map(
-            (m) => MatchCard(
-              match: m,
-              onTap: () => onMatchTap(m),
-              isLeague: false,
-            ),
-          ),
+          ...playoffMatches
+              .map((match) => _buildMatchCard(match, isLeague: false))
+              .toList(),
           const SizedBox(height: 24),
         ],
         if (knockoutMatches.isNotEmpty) ...[
@@ -268,15 +424,12 @@ class MatchesListView extends StatelessWidget {
             icon: Icons.military_tech,
             title: 'Knockout Stage',
             color: Colors.red,
-            count: knockoutMatches.length,
+            completedMatches: knockoutCompletedCount,
+            totalMatches: knockoutTotalCount,
           ),
-          ...knockoutMatches.map(
-            (m) => MatchCard(
-              match: m,
-              onTap: () => onMatchTap(m),
-              isLeague: false,
-            ),
-          ),
+          ...knockoutMatches
+              .map((match) => _buildMatchCard(match, isLeague: false))
+              .toList(),
         ],
       ],
     );
@@ -286,7 +439,8 @@ class MatchesListView extends StatelessWidget {
     required IconData icon,
     required String title,
     required Color color,
-    required int count,
+    required int completedMatches,
+    required int totalMatches,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -313,29 +467,271 @@ class MatchesListView extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '$count matches',
+                  '$completedMatches / $totalMatches matches completed',
                   style: TextStyle(fontSize: 12, color: color.withOpacity(0.7)),
                 ),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              count.toString(),
+              '${((completedMatches / totalMatches) * 100).toStringAsFixed(0)}%',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
+                fontSize: 12,
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildMatchCard(Match match, {required bool isLeague}) {
+    final color = isLeague ? Colors.blue : Colors.amber;
+
+    return Builder(
+      builder: (BuildContext context) {
+        // ✅ Proper syntax with {}
+        return GestureDetector(
+          // ✅ GestureDetector inside builder
+          onTap: () =>
+              _openScorecard(match, context), // ✅ Context now available
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.shade300, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Header with round name and status
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [color.shade600, color.shade400],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(14),
+                      topRight: Radius.circular(14),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (match.roundName != null)
+                            Text(
+                              match.roundName!,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          Text(
+                            match.id,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(match.status),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          match.status,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Match details
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Team 1
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  match.team1.name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (match.team1.players.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    match.team1.players.join(' & '),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Text(
+                            '${match.score1}',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: color.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Team 2
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  match.team2.name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (match.team2.players.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    match.team2.players.join(' & '),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Text(
+                            '${match.score2}',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: color.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+
+                      // Date and time
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            size: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            DateFormat('MMM dd, yyyy').format(match.date),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            match.time,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openScorecard(Match match, BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ScorecardScreen(match: match)),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Scheduled':
+        return Colors.blue;
+      case 'Ongoing':
+        return Colors.orange;
+      case 'Completed':
+        return Colors.green;
+      case 'Pending':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
   }
 }
 
@@ -514,6 +910,7 @@ class MatchCard extends StatelessWidget {
       'Scheduled' => Colors.blue,
       'Ongoing' => Colors.orange,
       'Completed' => Colors.green,
+      'Pending' => Colors.grey,
       _ => Colors.grey,
     };
   }
@@ -781,7 +1178,11 @@ class TournamentMenuButton extends StatelessWidget {
   final VoidCallback onShare;
   final VoidCallback onInfo;
 
-  const TournamentMenuButton({required this.onShare, required this.onInfo});
+  const TournamentMenuButton({
+    super.key,
+    required this.onShare,
+    required this.onInfo,
+  });
 
   @override
   Widget build(BuildContext context) {

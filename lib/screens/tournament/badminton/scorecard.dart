@@ -4,15 +4,9 @@ import 'package:play_hub/constants/badminton.dart';
 
 class ScorecardScreen extends StatefulWidget {
   final Match match;
-  final String teamType;
-  final Function(Match) onScoreUpdate;
+  final Function(Match)? onScoreUpdate;
 
-  const ScorecardScreen({
-    super.key,
-    required this.match,
-    required this.teamType,
-    required this.onScoreUpdate,
-  });
+  const ScorecardScreen({super.key, required this.match, this.onScoreUpdate});
 
   @override
   State<ScorecardScreen> createState() => _ScorecardScreenState();
@@ -147,7 +141,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       parentTeam1Id: widget.match.parentTeam1Id,
       parentTeam2Id: widget.match.parentTeam2Id,
     );
-    widget.onScoreUpdate(updatedMatch);
+    widget.onScoreUpdate!(updatedMatch);
   }
 
   void _updateScore(bool isTeam1, bool increment) {
@@ -321,7 +315,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                           parentTeam1Id: widget.match.parentTeam1Id,
                           parentTeam2Id: widget.match.parentTeam2Id,
                         );
-                        widget.onScoreUpdate(updatedMatch);
+                        widget.onScoreUpdate!(updatedMatch);
                         Navigator.pop(context);
                         Navigator.pop(context);
                       },
@@ -360,7 +354,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.grey.shade800),
+          icon: Icon(Icons.arrow_back, color: Colors.white70),
           onPressed: () async {
             final shouldPop = await _onWillPop();
             if (shouldPop && mounted) {

@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -948,7 +946,8 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
       );
       return;
     }
-
+    totalMatches = _calculateTotalMatchesMaximum();
+    debugPrint('total matches : $totalMatches');
     Navigator.push(
       context,
       MaterialPageRoute(
