@@ -21,8 +21,8 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
   DateTime selectedDate = DateTime.now();
   TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
   int totalMatches = 1;
-  int breakBetweenMatches = 15;
-  int matchDuration = 15;
+  int breakBetweenMatches = 10;
+  int matchDuration = 20;
   bool allowRematches = false;
   int? customTeamSize;
   int rematches = 1;
@@ -40,7 +40,6 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
       }
     }
 
-    final teamsCount = _getTeamsCount();
     if (!allowRematches) {
       totalMatches = _getBaseMaxMatches();
     } else {
@@ -416,7 +415,22 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                 ),
               ),
             ],
-
+            _buildSectionTitle('Match Duration'),
+            const SizedBox(height: 12),
+            _buildSliderCard(
+              value: matchDuration.toDouble(),
+              min: 15,
+              max: 45,
+              divisions: 6,
+              label: matchDuration.toString(),
+              onChanged: (value) {
+                setState(() {
+                  matchDuration = value.toInt();
+                });
+              },
+              suffix: 'minutes',
+            ),
+            const SizedBox(height: 20),
             _buildSectionTitle('Break Between Matches'),
             const SizedBox(height: 12),
             _buildSliderCard(
@@ -434,22 +448,6 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
             ),
 
             const SizedBox(height: 24),
-            _buildSectionTitle('Match Duration'),
-            const SizedBox(height: 12),
-            _buildSliderCard(
-              value: matchDuration.toDouble(),
-              min: 15,
-              max: 45,
-              divisions: 6,
-              label: matchDuration.toString(),
-              onChanged: (value) {
-                setState(() {
-                  matchDuration = value.toInt();
-                });
-              },
-              suffix: 'minutes',
-            ),
-            const SizedBox(height: 32),
 
             SizedBox(
               width: double.infinity,
