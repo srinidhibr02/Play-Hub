@@ -705,33 +705,52 @@ extension PlayoffMethods on TournamentFirestoreService {
         throw Exception('No playoff matches to add');
       }
 
-      final userRef = FirebaseFirestore.instance
-          .collection('tournaments')
+      final matchesRef = FirebaseFirestore.instance
+          .collection('users')
           .doc(userEmail)
-          .collection('tournaments')
-          .doc(tournamentId);
+          .collection('localTournament')
+          .doc(tournamentId)
+          .collection('matches');
 
       // Get existing matches
-      final docSnapshot = await userRef.get();
-      if (!docSnapshot.exists) {
-        throw Exception('Tournament not found');
-      }
+      final QuerySnapshot querySnapshot = await matchesRef.get();
 
-      final existingMatches = List<Map<String, dynamic>>.from(
-        docSnapshot['matches'] ?? [],
-      );
+      // ✅ FIX 1: Use querySnapshot.docs (NOT querySnapshot['matches'])
+      final existingMatches = querySnapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
 
-      // Convert playoff matches to maps and add to existing matches
+      // Convert playoff matches to maps
       final newMatches = playoffMatches
           .map((match) => _matchToMap(match))
           .toList();
 
-      // Update tournament with new playoff matches
-      await userRef.update({
-        'matches': [...existingMatches, ...newMatches],
+      // ✅ FIX 2: Use matchesRef (NOT userRef) + collection.add()
+      // Add NEW playoff matches to subcollection
+      final WriteBatch batch = FirebaseFirestore.instance.batch();
+
+      for (int i = 0; i < playoffMatches.length; i++) {
+        final matchDocRef = matchesRef.doc('P${i + 1}');
+        batch.set(matchDocRef, {
+          ...newMatches[i],
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // Update tournament metadata
+      final tournamentRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userEmail)
+          .collection('localTournament')
+          .doc(tournamentId);
+
+      batch.update(tournamentRef, {
         'playoffsStarted': true,
         'playoffsStartedAt': FieldValue.serverTimestamp(),
+        'playoffMatchCount': playoffMatches.length,
       });
+
+      await batch.commit();
 
       debugPrint('✅ Playoff matches added successfully');
     } catch (e) {
