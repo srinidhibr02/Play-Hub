@@ -1048,7 +1048,15 @@ class _BadmintonMatchScheduleScreenState
 
         return MatchesListView(
           matches: snapshot.data!,
-          onMatchTap: _openScorecard,
+          onScoreUpdate: (updatedMatch) {
+            // ✅ Proper Function(Match)
+            _badmintonService.updateMatch(
+              _authService.currentUserEmailId ?? '',
+              _tournamentId ?? '',
+              updatedMatch,
+            );
+          },
+          onMatchTap: _openScorecard, // ✅ Only for tap handler
         );
       },
     );
