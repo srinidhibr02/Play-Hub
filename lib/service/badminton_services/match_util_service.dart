@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
@@ -750,6 +752,7 @@ class MatchCard extends StatelessWidget {
   final bool isLeague;
 
   const MatchCard({
+    super.key,
     required this.match,
     required this.onTap,
     required this.isLeague,
@@ -1157,7 +1160,11 @@ class ErrorStateWidget extends StatelessWidget {
   final Object? error;
   final VoidCallback onRetry;
 
-  const ErrorStateWidget({required this.error, required this.onRetry});
+  const ErrorStateWidget({
+    super.key,
+    required this.error,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1214,6 +1221,140 @@ class TournamentMenuButton extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class CustomMatchGenerator {
+  final List<Team> teams;
+  final int totalMatches;
+  final bool allowRematches;
+  final int rematches;
+  final DateTime startDate;
+  final TimeOfDay startTime;
+  final int matchDuration;
+  final int breakDuration;
+  final String tournamentFormat;
+
+  CustomMatchGenerator({
+    required this.teams,
+    required this.totalMatches,
+    required this.allowRematches,
+    required this.rematches,
+    required this.startDate,
+    required this.startTime,
+    required this.matchDuration,
+    required this.breakDuration,
+    required this.tournamentFormat,
+  });
+
+  List<Match> generate() {
+    if (teams.length < 2) return [];
+
+    debugPrint('🔄 2vs2 LEAGUE: ${teams.length} teams, $totalMatches matches');
+
+    final matches = <Match>[];
+    var currentTime = _getStartDateTime();
+
+    // Generate ALL possible 2vs2 player matchups
+    final allPlayerMatchups = _generateAllPlayerMatchups();
+    debugPrint('📊 Total 2vs2 combinations: ${allPlayerMatchups.length}');
+
+    int generated = 0;
+
+    // Generate EXACTLY totalMatches
+    while (generated < totalMatches && generated < allPlayerMatchups.length) {
+      final matchup = allPlayerMatchups[generated];
+      final team1Pair = matchup[0]; // ["Nandish", "Pramod"]
+      final team2Pair = matchup[1]; // ["Vinod", "Vinay"]
+
+      // Create Team objects with ONLY playing players
+      final playingTeam1 = Team(
+        id: '${teams[0].id}_p${team1Pair.join()}', // T1_NandishPramod
+        name: '${teams[0].name} (${team1Pair[0]}+${team1Pair[1]})',
+        players: team1Pair, // Only 2 players!
+      );
+
+      final playingTeam2 = Team(
+        id: '${teams[1].id}_p${team2Pair.join()}', // T2_VinodVinay
+        name: '${teams[1].name} (${team2Pair[0]}+${team2Pair[1]})',
+        players: team2Pair, // Only 2 players!
+      );
+
+      final newMatch = Match(
+        id: 'M${generated + 1}',
+        team1: playingTeam1,
+        team2: playingTeam2,
+        date: currentTime,
+        time: DateFormat('HH:mm').format(currentTime),
+        status: 'scheduled',
+        score1: 0,
+        score2: 0,
+        winner: null,
+        parentTeam1Id: teams[0].id, // T1 (full team reference)
+        parentTeam2Id: teams[1].id, // T2 (full team reference)
+        round: (generated ~/ 6) + 1,
+        roundName: 'League Stage',
+        stage: 'league',
+        rematchNumber: (generated ~/ allPlayerMatchups.length) + 1,
+      );
+
+      matches.add(newMatch);
+      generated++;
+
+      debugPrint(
+        '✅ Match #$generated: ${team1Pair.join("+")} vs ${team2Pair.join("+")}',
+      );
+
+      currentTime = currentTime.add(
+        Duration(minutes: matchDuration + breakDuration),
+      );
+    }
+
+    debugPrint('🎉 GENERATED ${matches.length} 2vs2 matches');
+    return matches;
+  }
+
+  List<List<List<String>>> _generateAllPlayerMatchups() {
+    final matchups = <List<List<String>>>[];
+
+    // Team 1 vs Team 2 (assuming 2 teams)
+    final team1Players =
+        teams[0].players; // ["Nandish", "Pramod", "Arjun", "Bharat"]
+    final team2Players =
+        teams[1].players; // ["Vinod", "Vinay", "Pavan", "Sanjay"]
+
+    // Generate all pairs for Team 1: C(4,2) = 6 pairs
+    final team1Pairs = _generatePairs(team1Players);
+    final team2Pairs = _generatePairs(team2Players);
+
+    // Every Team1 pair vs every Team2 pair: 6 × 6 = 36 combinations
+    for (final pair1 in team1Pairs) {
+      for (final pair2 in team2Pairs) {
+        matchups.add([pair1, pair2]);
+      }
+    }
+
+    return matchups;
+  }
+
+  List<List<String>> _generatePairs(List<String> players) {
+    final pairs = <List<String>>[];
+    for (int i = 0; i < players.length; i++) {
+      for (int j = i + 1; j < players.length; j++) {
+        pairs.add([players[i], players[j]]);
+      }
+    }
+    return pairs;
+  }
+
+  DateTime _getStartDateTime() {
+    return DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+      startTime.hour,
+      startTime.minute,
     );
   }
 }

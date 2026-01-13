@@ -122,18 +122,33 @@ class _BadmintonMatchScheduleScreenState
       if (!_validateTournamentData()) {
         throw Exception('Missing required tournament parameters');
       }
-
-      final matches = MatchGenerator(
-        teams: widget.teams!,
-        totalMatches: widget.totalMatches!,
-        allowRematches: widget.allowRematches!,
-        rematches: widget.rematches!,
-        startDate: widget.startDate!,
-        startTime: widget.startTime!,
-        matchDuration: widget.matchDuration!,
-        breakDuration: widget.breakDuration!,
-        tournamentFormat: widget.tournamentFormat ?? 'round_robin',
-      ).generate();
+      List<Match> matches = [];
+      if (widget.teamType == 'Custom') {
+        print('Custom Tournament Match Generator');
+        matches = CustomMatchGenerator(
+          teams: widget.teams!,
+          totalMatches: widget.totalMatches!,
+          allowRematches: widget.allowRematches!,
+          rematches: widget.rematches!,
+          startDate: widget.startDate!,
+          startTime: widget.startTime!,
+          matchDuration: widget.matchDuration!,
+          breakDuration: widget.breakDuration!,
+          tournamentFormat: widget.tournamentFormat ?? 'Custom',
+        ).generate();
+      } else {
+        matches = MatchGenerator(
+          teams: widget.teams!,
+          totalMatches: widget.totalMatches!,
+          allowRematches: widget.allowRematches!,
+          rematches: widget.rematches!,
+          startDate: widget.startDate!,
+          startTime: widget.startTime!,
+          matchDuration: widget.matchDuration!,
+          breakDuration: widget.breakDuration!,
+          tournamentFormat: widget.tournamentFormat ?? 'round_robin',
+        ).generate();
+      }
 
       if (matches.isEmpty) throw Exception('Could not generate matches');
 
