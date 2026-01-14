@@ -1260,14 +1260,15 @@ class CustomMatchGenerator {
 
     // Generate ALL possible matchups between teams
     final allMatchups = _generateAllMatchups();
-    debugPrint('📊 Total matchups: ${allMatchups.length}');
+    debugPrint('📊 Total possible matchups: ${allMatchups.length}');
+
+    // Select matches fairly if totalMatches < allMatchups.length
+    final selectedMatchups = _selectMatchupsFairly(allMatchups);
+    debugPrint('📊 Selected matchups: ${selectedMatchups.length}');
 
     int generated = 0;
 
-    // Generate EXACTLY totalMatches
-    while (generated < totalMatches && generated < allMatchups.length) {
-      final matchup = allMatchups[generated];
-
+    for (final matchup in selectedMatchups) {
       final parentTeam1 = matchup['parentTeam1'] as Team;
       final parentTeam2 = matchup['parentTeam2'] as Team;
       final team1Pair = matchup['team1Pair'] as List<String>;
@@ -1296,8 +1297,8 @@ class CustomMatchGenerator {
         score1: 0,
         score2: 0,
         winner: null,
-        parentTeam1Id: parentTeam1.id, // ✅ Correct parent
-        parentTeam2Id: parentTeam2.id, // ✅ Correct parent
+        parentTeam1Id: parentTeam1.id,
+        parentTeam2Id: parentTeam2.id,
         round: (generated ~/ 6) + 1,
         roundName: 'League Stage',
         stage: 'league',
@@ -1316,27 +1317,130 @@ class CustomMatchGenerator {
       );
     }
 
-    debugPrint('🎉 GENERATED ${matches.length} matches');
+    // Print player statistics
+    _printPlayerStats(matches);
+
+    debugPrint('🎉 GENERATED ${matches.length} matches with fair distribution');
     return matches;
+  }
+
+  List<Map<String, dynamic>> _selectMatchupsFairly(
+    List<Map<String, dynamic>> allMatchups,
+  ) {
+    if (totalMatches >= allMatchups.length) {
+      return allMatchups;
+    }
+
+    // Track how many times each player plays
+    final playerMatchCount = <String, int>{};
+
+    // Initialize all players with 0 matches
+    for (final team in teams) {
+      for (final player in team.players) {
+        playerMatchCount[player] = 0;
+      }
+    }
+
+    final selectedMatchups = <Map<String, dynamic>>[];
+    final availableMatchups = List<Map<String, dynamic>>.from(allMatchups);
+
+    // Shuffle to randomize selection order (ensures variety)
+    availableMatchups.shuffle();
+
+    // Greedy algorithm: Select matches that balance player participation
+    while (selectedMatchups.length < totalMatches &&
+        availableMatchups.isNotEmpty) {
+      // Sort available matchups by total play count of involved players
+      // (prefer matchups with players who have played less)
+      availableMatchups.sort((a, b) {
+        final aPair1 = a['team1Pair'] as List<String>;
+        final aPair2 = a['team2Pair'] as List<String>;
+        final bPair1 = b['team1Pair'] as List<String>;
+        final bPair2 = b['team2Pair'] as List<String>;
+
+        final aTotal =
+            (playerMatchCount[aPair1[0]] ?? 0) +
+            (playerMatchCount[aPair1[1]] ?? 0) +
+            (playerMatchCount[aPair2[0]] ?? 0) +
+            (playerMatchCount[aPair2[1]] ?? 0);
+
+        final bTotal =
+            (playerMatchCount[bPair1[0]] ?? 0) +
+            (playerMatchCount[bPair1[1]] ?? 0) +
+            (playerMatchCount[bPair2[0]] ?? 0) +
+            (playerMatchCount[bPair2[1]] ?? 0);
+
+        return aTotal.compareTo(bTotal);
+      });
+
+      // Select the matchup with least-played players
+      final selected = availableMatchups.removeAt(0);
+      selectedMatchups.add(selected);
+
+      // Update player counts
+      final pair1 = selected['team1Pair'] as List<String>;
+      final pair2 = selected['team2Pair'] as List<String>;
+
+      playerMatchCount[pair1[0]] = (playerMatchCount[pair1[0]] ?? 0) + 1;
+      playerMatchCount[pair1[1]] = (playerMatchCount[pair1[1]] ?? 0) + 1;
+      playerMatchCount[pair2[0]] = (playerMatchCount[pair2[0]] ?? 0) + 1;
+      playerMatchCount[pair2[1]] = (playerMatchCount[pair2[1]] ?? 0) + 1;
+    }
+
+    debugPrint('📊 Player participation after fair selection:');
+    playerMatchCount.forEach((player, count) {
+      debugPrint('   $player: $count matches');
+    });
+
+    return selectedMatchups;
+  }
+
+  void _printPlayerStats(List<Match> matches) {
+    final playerStats = <String, int>{};
+
+    for (final match in matches) {
+      for (final player in match.team1.players) {
+        playerStats[player] = (playerStats[player] ?? 0) + 1;
+      }
+      for (final player in match.team2.players) {
+        playerStats[player] = (playerStats[player] ?? 0) + 1;
+      }
+    }
+
+    debugPrint('');
+    debugPrint('📊 FINAL PLAYER STATISTICS:');
+    debugPrint('─' * 40);
+
+    final sortedPlayers = playerStats.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    for (final entry in sortedPlayers) {
+      debugPrint('   ${entry.key.padRight(15)}: ${entry.value} matches');
+    }
+
+    final maxMatches = sortedPlayers.first.value;
+    final minMatches = sortedPlayers.last.value;
+    final difference = maxMatches - minMatches;
+
+    debugPrint('─' * 40);
+    debugPrint('   Max: $maxMatches | Min: $minMatches | Diff: $difference');
+    debugPrint('');
   }
 
   List<Map<String, dynamic>> _generateAllMatchups() {
     final matchups = <Map<String, dynamic>>[];
 
-    // Generate matchups between ALL team combinations (not just teams[0] vs teams[1])
     for (int i = 0; i < teams.length; i++) {
       for (int j = i + 1; j < teams.length; j++) {
         final team1 = teams[i];
         final team2 = teams[j];
 
-        // Get all possible pairs from each team
         final team1Pairs = _generatePairs(team1.players);
         final team2Pairs = _generatePairs(team2.players);
 
         debugPrint('${team1.name} has ${team1Pairs.length} pairs');
         debugPrint('${team2.name} has ${team2Pairs.length} pairs');
 
-        // Create every combination: Team1's pair vs Team2's pair
         for (final pair1 in team1Pairs) {
           for (final pair2 in team2Pairs) {
             matchups.add({
@@ -1352,7 +1456,6 @@ class CustomMatchGenerator {
 
     debugPrint('Total unique matchups (without rematches): ${matchups.length}');
 
-    // Handle rematches
     if (allowRematches && rematches > 1) {
       final baseMatchups = List<Map<String, dynamic>>.from(matchups);
       matchups.clear();
