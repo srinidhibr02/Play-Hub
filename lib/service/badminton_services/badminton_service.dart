@@ -407,6 +407,9 @@ class TournamentFirestoreService {
     Match match,
   ) async {
     try {
+      debugPrint(
+        'Checking to see ${match.parentTeam1Id} & ${match.parentTeam2Id}',
+      );
       await _getUserTournamentsCollection(
         userEmail,
       ).doc(tournamentId).collection('matches').doc(match.id).update({
@@ -429,55 +432,121 @@ class TournamentFirestoreService {
     }
   }
 
-  /// Update team statistics after match completion
   Future<void> _updateTeamStats(
     String userEmail,
     String tournamentId,
     Match match,
   ) async {
-    // Determine winner and loser team IDs (considering parent teams)
-    String winnerTeamId =
-        match.parentTeam1Id != null &&
-            match.winner?.contains(match.parentTeam1Id!) == true
-        ? match.parentTeam1Id!
-        : match.parentTeam2Id != null &&
-              match.winner?.contains(match.parentTeam2Id!) == true
-        ? match.parentTeam2Id!
-        : match.winner!;
+    String? winnerParentTeamId;
+    String? loserParentTeamId;
 
-    String loserTeamId =
-        match.parentTeam1Id != null && winnerTeamId == match.parentTeam1Id
-        ? match.parentTeam2Id!
-        : match.parentTeam1Id != null
-        ? match.parentTeam1Id!
-        : match.winner == match.team1.id
-        ? match.team2.id
-        : match.team1.id;
+    debugPrint('${match.toMap()}');
 
-    WriteBatch batch = _firestore.batch();
+    // Check if this is a custom tournament match (has parent team references)
+    if (match.parentTeam1Id != null && match.parentTeam2Id != null) {
+      debugPrint('🔍 Match Details:');
+      debugPrint('   Match ID: ${match.id}');
+      debugPrint('   Playing Team 1: ${match.team1.name} (${match.team1.id})');
+      debugPrint('   Playing Team 2: ${match.team2.name} (${match.team2.id})');
+      debugPrint('   Winner ID: ${match.winner}');
+      debugPrint('   Parent Team 1 ID: ${match.parentTeam1Id}');
+      debugPrint('   Parent Team 2 ID: ${match.parentTeam2Id}');
+      debugPrint('   Score: ${match.score1}-${match.score2}');
 
-    // Update winner stats
-    DocumentReference winnerRef = _getUserTournamentsCollection(
-      userEmail,
-    ).doc(tournamentId).collection('teams').doc(winnerTeamId);
+      // Compare winner ID with playing team IDs (exact match)
+      if (match.winner == match.team1.id) {
+        // Team 1's pair won → Parent Team 1 gets points
+        winnerParentTeamId = match.parentTeam1Id;
+        loserParentTeamId = match.parentTeam2Id;
+        debugPrint(
+          '   ✅ ${match.team1.name} won → ${match.parentTeam1Id} gets +2 points',
+        );
+      } else if (match.winner == match.team2.id) {
+        // Team 2's pair won → Parent Team 2 gets points
+        winnerParentTeamId = match.parentTeam2Id;
+        loserParentTeamId = match.parentTeam1Id;
+        debugPrint(
+          '   ✅ ${match.team2.name} won → ${match.parentTeam2Id} gets +2 points',
+        );
+      } else {
+        debugPrint(
+          '   ❌ ERROR: Winner ID "${match.winner}" does not match either:',
+        );
+        debugPrint('      - Team 1: "${match.team1.id}"');
+        debugPrint('      - Team 2: "${match.team2.id}"');
+        return;
+      }
+    } else {
+      // Singles/Doubles tournament: use direct team IDs
+      debugPrint('🔍 Singles/Doubles Match:');
+      debugPrint('   Winner: ${match.winner}');
 
-    batch.update(winnerRef, {
-      'stats.matchesPlayed': FieldValue.increment(1),
-      'stats.won': FieldValue.increment(1),
-      'stats.points': FieldValue.increment(2),
-    });
+      winnerParentTeamId = match.winner;
+      loserParentTeamId = match.winner == match.team1.id
+          ? match.team2.id
+          : match.team1.id;
+    }
 
-    // Update loser stats
-    DocumentReference loserRef = _getUserTournamentsCollection(
-      userEmail,
-    ).doc(tournamentId).collection('teams').doc(loserTeamId);
+    // Validate we have valid team IDs
+    if (winnerParentTeamId == null || loserParentTeamId == null) {
+      debugPrint('❌ ERROR: Could not determine winner/loser team IDs');
+      debugPrint('   Winner Parent: $winnerParentTeamId');
+      debugPrint('   Loser Parent: $loserParentTeamId');
+      return;
+    }
 
-    batch.update(loserRef, {
-      'stats.matchesPlayed': FieldValue.increment(1),
-      'stats.lost': FieldValue.increment(1),
-    });
+    // Critical validation: Winner and loser MUST be different
+    if (winnerParentTeamId == loserParentTeamId) {
+      debugPrint('❌ CRITICAL ERROR: Winner and loser are the same team!');
+      debugPrint('   Team ID: $winnerParentTeamId');
+      debugPrint('   Match data may be corrupted. Aborting update.');
+      return;
+    }
 
-    await batch.commit();
+    debugPrint('');
+    debugPrint('📊 Updating Firestore Stats:');
+    debugPrint('   Winner: $winnerParentTeamId (+2 points, +1 win)');
+    debugPrint('   Loser: $loserParentTeamId (+0 points, +1 loss)');
+
+    try {
+      WriteBatch batch = _firestore.batch();
+
+      // Update winner stats
+      DocumentReference winnerRef = _getUserTournamentsCollection(
+        userEmail,
+      ).doc(tournamentId).collection('teams').doc(winnerParentTeamId);
+
+      batch.update(winnerRef, {
+        'stats.matchesPlayed': FieldValue.increment(1),
+        'stats.won': FieldValue.increment(1),
+        'stats.points': FieldValue.increment(2),
+      });
+
+      debugPrint('   ✓ Winner batch queued: teams/$winnerParentTeamId');
+
+      // Update loser stats
+      DocumentReference loserRef = _getUserTournamentsCollection(
+        userEmail,
+      ).doc(tournamentId).collection('teams').doc(loserParentTeamId);
+
+      batch.update(loserRef, {
+        'stats.matchesPlayed': FieldValue.increment(1),
+        'stats.lost': FieldValue.increment(1),
+      });
+
+      debugPrint('   ✓ Loser batch queued: teams/$loserParentTeamId');
+
+      await batch.commit();
+
+      debugPrint('');
+      debugPrint('✅ Stats updated successfully in Firestore!');
+      debugPrint('═══════════════════════════════════════════════');
+    } catch (e) {
+      debugPrint('');
+      debugPrint('❌ ERROR updating stats: $e');
+      debugPrint('═══════════════════════════════════════════════');
+      rethrow;
+    }
   }
 
   /// Update overall tournament statistics
