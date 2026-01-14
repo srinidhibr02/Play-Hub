@@ -1251,34 +1251,39 @@ class CustomMatchGenerator {
   List<Match> generate() {
     if (teams.length < 2) return [];
 
-    debugPrint('🔄 2vs2 LEAGUE: ${teams.length} teams, $totalMatches matches');
+    debugPrint(
+      '🔄 Custom Tournament: ${teams.length} teams, $totalMatches matches',
+    );
 
     final matches = <Match>[];
     var currentTime = _getStartDateTime();
 
-    // Generate ALL possible 2vs2 player matchups
-    final allPlayerMatchups = _generateAllPlayerMatchups();
-    debugPrint('📊 Total 2vs2 combinations: ${allPlayerMatchups.length}');
+    // Generate ALL possible matchups between teams
+    final allMatchups = _generateAllMatchups();
+    debugPrint('📊 Total matchups: ${allMatchups.length}');
 
     int generated = 0;
 
     // Generate EXACTLY totalMatches
-    while (generated < totalMatches && generated < allPlayerMatchups.length) {
-      final matchup = allPlayerMatchups[generated];
-      final team1Pair = matchup[0]; // ["Nandish", "Pramod"]
-      final team2Pair = matchup[1]; // ["Vinod", "Vinay"]
+    while (generated < totalMatches && generated < allMatchups.length) {
+      final matchup = allMatchups[generated];
 
-      // Create Team objects with ONLY playing players
+      final parentTeam1 = matchup['parentTeam1'] as Team;
+      final parentTeam2 = matchup['parentTeam2'] as Team;
+      final team1Pair = matchup['team1Pair'] as List<String>;
+      final team2Pair = matchup['team2Pair'] as List<String>;
+
+      // Create playing pair teams with correct parent references
       final playingTeam1 = Team(
-        id: '${teams[0].id}_p${team1Pair.join()}', // T1_NandishPramod
-        name: '${teams[0].name} (${team1Pair[0]}+${team1Pair[1]})',
-        players: team1Pair, // Only 2 players!
+        id: '${parentTeam1.id}_p${team1Pair.join('')}',
+        name: '${parentTeam1.name} (${team1Pair[0]}+${team1Pair[1]})',
+        players: team1Pair,
       );
 
       final playingTeam2 = Team(
-        id: '${teams[1].id}_p${team2Pair.join()}', // T2_VinodVinay
-        name: '${teams[1].name} (${team2Pair[0]}+${team2Pair[1]})',
-        players: team2Pair, // Only 2 players!
+        id: '${parentTeam2.id}_p${team2Pair.join('')}',
+        name: '${parentTeam2.name} (${team2Pair[0]}+${team2Pair[1]})',
+        players: team2Pair,
       );
 
       final newMatch = Match(
@@ -1291,19 +1296,19 @@ class CustomMatchGenerator {
         score1: 0,
         score2: 0,
         winner: null,
-        parentTeam1Id: teams[0].id, // T1 (full team reference)
-        parentTeam2Id: teams[1].id, // T2 (full team reference)
+        parentTeam1Id: parentTeam1.id, // ✅ Correct parent
+        parentTeam2Id: parentTeam2.id, // ✅ Correct parent
         round: (generated ~/ 6) + 1,
         roundName: 'League Stage',
         stage: 'league',
-        rematchNumber: (generated ~/ allPlayerMatchups.length) + 1,
+        rematchNumber: (generated ~/ allMatchups.length) + 1,
       );
 
       matches.add(newMatch);
       generated++;
 
       debugPrint(
-        '✅ Match #$generated: ${team1Pair.join("+")} vs ${team2Pair.join("+")}',
+        '✅ Match #$generated: ${parentTeam1.name} (${team1Pair.join("+")}) vs ${parentTeam2.name} (${team2Pair.join("+")})',
       );
 
       currentTime = currentTime.add(
@@ -1311,28 +1316,52 @@ class CustomMatchGenerator {
       );
     }
 
-    debugPrint('🎉 GENERATED ${matches.length} 2vs2 matches');
+    debugPrint('🎉 GENERATED ${matches.length} matches');
     return matches;
   }
 
-  List<List<List<String>>> _generateAllPlayerMatchups() {
-    final matchups = <List<List<String>>>[];
+  List<Map<String, dynamic>> _generateAllMatchups() {
+    final matchups = <Map<String, dynamic>>[];
 
-    // Team 1 vs Team 2 (assuming 2 teams)
-    final team1Players =
-        teams[0].players; // ["Nandish", "Pramod", "Arjun", "Bharat"]
-    final team2Players =
-        teams[1].players; // ["Vinod", "Vinay", "Pavan", "Sanjay"]
+    // Generate matchups between ALL team combinations (not just teams[0] vs teams[1])
+    for (int i = 0; i < teams.length; i++) {
+      for (int j = i + 1; j < teams.length; j++) {
+        final team1 = teams[i];
+        final team2 = teams[j];
 
-    // Generate all pairs for Team 1: C(4,2) = 6 pairs
-    final team1Pairs = _generatePairs(team1Players);
-    final team2Pairs = _generatePairs(team2Players);
+        // Get all possible pairs from each team
+        final team1Pairs = _generatePairs(team1.players);
+        final team2Pairs = _generatePairs(team2.players);
 
-    // Every Team1 pair vs every Team2 pair: 6 × 6 = 36 combinations
-    for (final pair1 in team1Pairs) {
-      for (final pair2 in team2Pairs) {
-        matchups.add([pair1, pair2]);
+        debugPrint('${team1.name} has ${team1Pairs.length} pairs');
+        debugPrint('${team2.name} has ${team2Pairs.length} pairs');
+
+        // Create every combination: Team1's pair vs Team2's pair
+        for (final pair1 in team1Pairs) {
+          for (final pair2 in team2Pairs) {
+            matchups.add({
+              'parentTeam1': team1,
+              'parentTeam2': team2,
+              'team1Pair': pair1,
+              'team2Pair': pair2,
+            });
+          }
+        }
       }
+    }
+
+    debugPrint('Total unique matchups (without rematches): ${matchups.length}');
+
+    // Handle rematches
+    if (allowRematches && rematches > 1) {
+      final baseMatchups = List<Map<String, dynamic>>.from(matchups);
+      matchups.clear();
+
+      for (int r = 0; r < rematches; r++) {
+        matchups.addAll(baseMatchups);
+      }
+
+      debugPrint('With $rematches rematches: ${matchups.length} total matches');
     }
 
     return matchups;

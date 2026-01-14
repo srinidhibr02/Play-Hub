@@ -338,7 +338,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                             score1: score1,
                             score2: score2,
                             winner: winnerId,
-                            parentTeam1Id: widget.match.parentTeam2Id,
+                            parentTeam1Id: widget.match.parentTeam1Id,
                             parentTeam2Id: widget.match.parentTeam2Id,
                           );
 

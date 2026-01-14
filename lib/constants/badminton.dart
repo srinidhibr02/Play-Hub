@@ -7,13 +7,6 @@ class Team {
   Team({required this.id, required this.name, required this.players});
 }
 
-class MatchPair {
-  final Team team1;
-  final Team team2;
-
-  MatchPair(this.team1, this.team2);
-}
-
 // Extended Match class with parent team tracking
 class Match {
   final String id;
