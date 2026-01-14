@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
@@ -543,20 +541,13 @@ class MatchesListView extends StatelessWidget {
                         children: [
                           if (match.roundName != null)
                             Text(
-                              match.roundName!,
+                              match.id,
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
                             ),
-                          Text(
-                            match.id,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.white70,
-                            ),
-                          ),
                         ],
                       ),
                       Container(

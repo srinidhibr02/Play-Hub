@@ -352,13 +352,7 @@ class _BadmintonMatchScheduleScreenState
 
   Future<void> _saveReorderedMatches() async {
     try {
-      var currentTime = DateTime(
-        widget.startDate!.year,
-        widget.startDate!.month,
-        widget.startDate!.day,
-        widget.startTime!.hour,
-        widget.startTime!.minute,
-      );
+      setState(() => _isLoading = true);
 
       final updatedMatches = <Match>[];
       for (int i = 0; i < _reorderMatches.length; i++) {
@@ -369,8 +363,8 @@ class _BadmintonMatchScheduleScreenState
             id: 'M${i + 1}',
             team1: match.team1,
             team2: match.team2,
-            date: currentTime,
-            time: DateFormat('h:mm a').format(currentTime),
+            date: DateTime.now(),
+            time: DateFormat('h:mm a').format(DateTime.now()),
             status: match.status,
             score1: match.score1,
             score2: match.score2,
@@ -382,19 +376,15 @@ class _BadmintonMatchScheduleScreenState
             parentTeam2Id: match.parentTeam2Id,
           ),
         );
-
-        currentTime = currentTime.add(
-          Duration(
-            minutes: (widget.matchDuration ?? 30) + (widget.breakDuration ?? 5),
-          ),
-        );
-        debugPrint('New Order $updatedMatches');
       }
+
       await _badmintonService.updateMatchOrder(
         _authService.currentUserEmailId ?? '',
         _tournamentId ?? '',
         updatedMatches,
       );
+
+      if (!mounted) return;
 
       setState(() {
         _isReorderMode = false;
@@ -405,7 +395,75 @@ class _BadmintonMatchScheduleScreenState
     } catch (e) {
       debugPrint('❌ Error saving reorder: $e');
       _showErrorSnackBar('Failed to save match order: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  Widget _buildSavingOverlay(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      color: Colors.black.withOpacity(0.45),
+      child: Center(
+        child: AnimatedScale(
+          scale: 1,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          child: AnimatedOpacity(
+            opacity: 1,
+            duration: const Duration(milliseconds: 200),
+            child: Material(
+              color: theme.colorScheme.surface,
+              elevation: 8,
+              borderRadius: BorderRadius.circular(20),
+              shadowColor: Colors.black26,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 18),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Saving order',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Hang tight, this won’t take long',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showGenerateRoundDialog() async {
@@ -905,6 +963,17 @@ class _BadmintonMatchScheduleScreenState
 
   @override
   Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Your existing content
+        _buildMainContent(),
+
+        if (_isLoading) _buildSavingOverlay(context),
+      ],
+    );
+  }
+
+  Widget _buildMainContent() {
     if (_isLoading) {
       return Scaffold(
         backgroundColor: Colors.grey.shade50,

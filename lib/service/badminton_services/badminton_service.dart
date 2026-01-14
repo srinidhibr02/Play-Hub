@@ -29,9 +29,7 @@ class TournamentFirestoreService {
       // Update each match individually
       for (var match in reorderedMatches) {
         await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userEmail)
-            .collection('tournaments')
+            .collection('sharedTournaments')
             .doc(tournamentId)
             .collection('matches')
             .doc(match.id)
