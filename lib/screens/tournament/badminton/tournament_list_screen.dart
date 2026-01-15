@@ -14,17 +14,52 @@ class TournamentListScreen extends StatefulWidget {
   State createState() => _TournamentListScreenState();
 }
 
-class _TournamentListScreenState extends State<TournamentListScreen> {
+class _TournamentListScreenState extends State<TournamentListScreen>
+    with TickerProviderStateMixin {
   final TournamentFirestoreService _firestoreService =
       TournamentFirestoreService();
   final String _selectedFilter = 'all';
   String? _userEmail;
   bool _isFabExpanded = false;
 
+  late AnimationController _pulseController;
+  late AnimationController _bounceController;
+  late Animation<double> _pulseAnim;
+  late Animation<Offset> _bounceAnim;
+
   @override
   void initState() {
     super.initState();
     _loadUserEmail();
+    _initAnimations();
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _bounceController.dispose();
+    super.dispose();
+  }
+
+  void _initAnimations() {
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _bounceController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _pulseAnim = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _bounceAnim = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
+        );
   }
 
   Future<void> _loadUserEmail() async {
@@ -34,6 +69,234 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
     setState(() {
       _userEmail = email;
     });
+  }
+
+  // 🎨 ULTIMATE EMPTY SCREEN - TOP POSITIONED
+  Widget _buildEmptyScreen() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 48),
+
+          // 🎾 Animated Hero Illustration
+          Center(
+            child: ScaleTransition(
+              scale: _pulseAnim,
+              child: Container(
+                width: 140,
+                height: 140,
+                margin: const EdgeInsets.only(bottom: 32),
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.orange.shade300.withOpacity(0.6),
+                      Colors.yellow.shade200.withOpacity(0.3),
+                      Colors.transparent,
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withOpacity(0.3),
+                      blurRadius: 40,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.orange.shade500,
+                            Colors.orange.shade700,
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.sports_tennis_rounded,
+                        size: 60,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.flash_on,
+                          size: 16,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: Text(
+              'No Active Tournaments',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1A1A1A),
+                height: 1.1,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          SizedBox(height: 10),
+          Center(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: const Text(
+                'Create your first tournament or join existing ones using share codes to start playing!',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF666666),
+                  height: 1.6,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 40),
+
+          // 🔥 Hero Action Buttons
+          Column(
+            children: [
+              // Primary CTA - Create
+              GestureDetector(
+                onTap: () {
+                  _bounceController.forward().then(
+                    (_) => _bounceController.reverse(),
+                  );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const BadmintonTournamentSetupScreen(),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.orange.shade600,
+                        Colors.deepOrange.shade500,
+                      ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.4),
+                        blurRadius: 25,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.add_circle,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Create First Tournament',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Secondary CTA - Join
+              GestureDetector(
+                onTap: () {
+                  _bounceController.forward().then(
+                    (_) => _bounceController.reverse(),
+                  );
+                  _showJoinTournamentDialog();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade500, Colors.blue.shade600],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.blue.shade200),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.2),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.qr_code_scanner,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Join with Code',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const Spacer(),
+        ],
+      ),
+    );
   }
 
   @override
@@ -267,40 +530,15 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
           );
         }
 
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.sports_tennis,
-                  size: 80,
-                  color: Colors.grey.shade300,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No tournaments found',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Create a new tournament to get started',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-                ),
-              ],
-            ),
-          );
-        }
-
         final data = snapshot.data!;
         final createdTournaments =
             data['created'] as List<Map<String, dynamic>>? ?? [];
         final joinedTournaments =
             data['joined'] as List<Map<String, dynamic>>? ?? [];
+
+        if (createdTournaments.isEmpty && joinedTournaments.isEmpty) {
+          return _buildEmptyScreen(); // 🎯 Premium empty screen
+        }
 
         return ListView(
           padding: const EdgeInsets.all(16),

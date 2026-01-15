@@ -9,6 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:play_hub/constants/constants.dart';
 import 'package:play_hub/screens/home_screen.dart';
+import 'package:play_hub/service/auth_service.dart';
 import 'src/web/web_wrapper.dart' as web;
 
 class GoogleSignInButton extends StatefulWidget {
@@ -21,6 +22,7 @@ class GoogleSignInButton extends StatefulWidget {
 class _GoogleSignInState extends State<GoogleSignInButton> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final currentUser = AuthService().currentUser;
 
   static const String _clientId =
       '371130915379-54ket1adu7iqt2lqdoh4oqhvi3fedlnj.apps.googleusercontent.com';
@@ -43,10 +45,12 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
         signIn.authenticationEvents
             .listen(_handleAuthenticationEvent)
             .onError(_handleAuthenticationError);
-
-        signIn.attemptLightweightAuthentication();
       }),
     );
+    if (currentUser == null) {
+      print(currentUser);
+      signIn.attemptLightweightAuthentication();
+    }
   }
 
   Widget _buildSocialButton(IconData icon, VoidCallback? onPressed) {
@@ -88,9 +92,11 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
         .authorizationForScopes(scopes);
     // #enddocregion CheckAuthorization
 
-    _currentUser = user;
-    _isAuthorized = authorization != null;
-    _errorMessage = '';
+    setState(() {
+      _currentUser = user;
+      _isAuthorized = authorization != null;
+      _errorMessage = '';
+    });
 
     // If the user has already granted access to the required scopes, call the
     // REST API.
@@ -100,6 +106,8 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
   }
 
   Future<void> _handleAuthenticationError(Object e) async {
+    if (!mounted) return;
+
     setState(() {
       _currentUser = null;
       _isAuthorized = false;
