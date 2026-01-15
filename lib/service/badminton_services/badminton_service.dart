@@ -514,15 +514,39 @@ class TournamentFirestoreService {
   }
 
   Stream<List<Match>> getMatches(String userEmail, String tournamentId) {
-    // ✅ FIXED
-    return _firestore
-        .collection('sharedTournaments')
+    return _getUserTournamentsCollection(userEmail)
         .doc(tournamentId)
         .collection('matches')
         .orderBy('scheduledDate')
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs.map((doc) => Match.fromMap(doc.data())).toList();
+          return snapshot.docs.map((doc) {
+            Map<String, dynamic> data = doc.data();
+
+            return Match(
+              id: data['id'],
+              team1: Team(
+                id: data['team1']['id'],
+                name: data['team1']['name'],
+                players: List<String>.from(data['team1']['players']),
+              ),
+              team2: Team(
+                id: data['team2']['id'],
+                name: data['team2']['name'],
+                players: List<String>.from(data['team2']['players']),
+              ),
+              date: (data['scheduledDate'] as Timestamp).toDate(),
+              time: data['time'],
+              status: data['status'],
+              score1: data['score1'],
+              score2: data['score2'],
+              winner: data['winner'],
+              parentTeam1Id: data['parentTeam1Id'],
+              parentTeam2Id: data['parentTeam2Id'],
+              round: data['round'],
+              roundName: data['roundName'],
+            );
+          }).toList();
         });
   }
 
