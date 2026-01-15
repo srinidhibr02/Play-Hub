@@ -5,6 +5,20 @@ class Team {
   final List<String> players;
 
   Team({required this.id, required this.name, required this.players});
+
+  // 🔥 NEW: toMap() - Convert Team to Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {'id': id, 'name': name, 'players': players};
+  }
+
+  // 🔥 NEW: fromMap() - Create Team from Firestore Map
+  factory Team.fromMap(Map<String, dynamic> map) {
+    return Team(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      players: List<String>.from(map['players'] ?? []),
+    );
+  }
 }
 
 // Extended Match class with parent team tracking
