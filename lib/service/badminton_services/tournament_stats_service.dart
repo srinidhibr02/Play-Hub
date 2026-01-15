@@ -1,17 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:play_hub/constants/badminton.dart';
-import 'package:play_hub/widgets/shared_tournament_badminton_stats.dart';
 
 class TournamentStatsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Get user's tournaments collection
   CollectionReference _getUserTournamentsCollection(String userEmail) {
-    return _firestore
-        .collection('users')
-        .doc(userEmail)
-        .collection('tournaments');
+    return _firestore.collection('sharedTournaments');
   }
 
   /// Fetch all completed matches for a tournament

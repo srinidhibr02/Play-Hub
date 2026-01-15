@@ -735,11 +735,9 @@ class _BadmintonMatchScheduleScreenState
           break;
 
         case 3:
-          // Round Robin → Top 2 play final
+        case 4:
           topTeams = await _getTopTeams(2);
           break;
-
-        case 4:
         case 5:
         case 6:
         case 7:

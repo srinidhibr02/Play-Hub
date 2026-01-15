@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:play_hub/constants/badminton.dart';
 import 'package:play_hub/service/badminton_services/tournament_stats_service.dart';
-import 'package:play_hub/widgets/shared_tournament_badminton_stats.dart';
 
 class TournamentFirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -1005,14 +1004,6 @@ extension PlayoffMethods on TournamentFirestoreService {
           .collection('sharedTournament')
           .doc(tournamentId)
           .collection('matches');
-
-      // Get existing matches
-      final QuerySnapshot querySnapshot = await matchesRef.get();
-
-      // ✅ FIX 1: Use querySnapshot.docs (NOT querySnapshot['matches'])
-      final existingMatches = querySnapshot.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
-          .toList();
 
       // Convert playoff matches to maps
       final newMatches = playoffMatches
