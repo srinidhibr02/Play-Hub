@@ -811,12 +811,40 @@ class TournamentFirestoreService {
     String tournamentId,
   ) async {
     try {
-      String shareCode =
-          '${tournamentId}_${DateTime.now().millisecondsSinceEpoch}';
+      String shareCode = tournamentId;
 
       return shareCode; // This is the share code
     } catch (e) {
       throw Exception('Failed to create shareable link: $e');
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> getJoinedTournaments(String userEmail) {
+    return _firestore
+        .collection('sharedTournaments')
+        .where('joinedPlayers', arrayContains: userEmail)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList(),
+        );
+  }
+
+  Future<void> addPlayerToTournament(
+    String tournamentId,
+    String userEmail,
+  ) async {
+    try {
+      await _firestore.collection('sharedTournaments').doc(tournamentId).update(
+        {
+          'joinedPlayers': FieldValue.arrayUnion([userEmail]),
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to add player to tournament: $e');
     }
   }
 
@@ -825,20 +853,26 @@ class TournamentFirestoreService {
     String shareCode,
   ) async {
     try {
-      DocumentSnapshot shareDoc = await _firestore
+      // ✅ Get tournament directly by tournamentId
+      DocumentSnapshot doc = await _firestore
           .collection('sharedTournaments')
-          .doc(shareCode)
+          .doc(shareCode) // Use tournamentId, not shareCode
           .get();
 
-      if (!shareDoc.exists) return null;
+      if (!doc.exists) {
+        debugPrint('❌ Tournament not found: $shareCode');
+        return null;
+      }
 
-      Map<String, dynamic> shareData = shareDoc.data() as Map<String, dynamic>;
-      String ownerEmail = shareData['ownerEmail'];
-      String tournamentId = shareData['tournamentId'];
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      data['id'] = doc.id;
+      data['shareCode'] =
+          shareCode; // Optional: include shareCode for convenience
 
-      // Get the actual tournament
-      return await getTournament(ownerEmail, tournamentId);
+      debugPrint('✅ Found tournament: ${data['name'] ?? 'Unnamed'}');
+      return data;
     } catch (e) {
+      debugPrint('❌ Error getting tournament by share code: $e');
       throw Exception('Failed to get tournament by share code: $e');
     }
   }

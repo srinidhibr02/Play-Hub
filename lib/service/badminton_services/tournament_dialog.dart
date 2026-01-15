@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:play_hub/service/badminton_services/badminton_service.dart';
 
 class TournamentDialogs {
@@ -67,10 +68,38 @@ class TournamentDialogs {
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.copy, color: Colors.orange.shade600),
-                      onPressed: () {
-                        showSuccess('Code copied!');
-                        Navigator.pop(context);
+                      icon: const Icon(Icons.copy, color: Colors.orange),
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: shareCode));
+
+                        // Show success feedback
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Code copied!'),
+                                ],
+                              ),
+                              backgroundColor: Colors.green.shade600,
+                              duration: const Duration(seconds: 1),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          );
+
+                          // Optional: Close dialog after copy
+                          Navigator.pop(context);
+                        }
                       },
                     ),
                   ],

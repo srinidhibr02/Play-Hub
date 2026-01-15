@@ -5,12 +5,13 @@ import 'package:intl/intl.dart';
 import 'package:play_hub/screens/tournament/badminton/badminton_tournament_setup_screen.dart';
 import 'package:play_hub/screens/tournament/badminton/tournament_schedule_screen.dart';
 import 'package:play_hub/service/badminton_services/badminton_service.dart';
+import 'package:rxdart/rxdart.dart';
 
 class TournamentListScreen extends StatefulWidget {
   const TournamentListScreen({super.key});
 
   @override
-  State<TournamentListScreen> createState() => _TournamentListScreenState();
+  State createState() => _TournamentListScreenState();
 }
 
 class _TournamentListScreenState extends State<TournamentListScreen> {
@@ -31,7 +32,7 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
     String? email = user?.email;
 
     setState(() {
-      _userEmail = email; // Placeholder
+      _userEmail = email;
     });
   }
 
@@ -61,7 +62,6 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (_isFabExpanded) ...[
-            // Create New Tournament FAB
             FloatingActionButton.extended(
               onPressed: () {
                 setState(() => _isFabExpanded = false);
@@ -84,7 +84,6 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            // Join with Code FAB
             FloatingActionButton.extended(
               onPressed: () {
                 setState(() => _isFabExpanded = false);
@@ -103,7 +102,6 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
             ),
             const SizedBox(height: 12),
           ],
-          // Main FAB
           FloatingActionButton(
             onPressed: () {
               setState(() => _isFabExpanded = !_isFabExpanded);
@@ -188,7 +186,6 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
 
   Future<void> _joinTournamentWithCode(String shareCode) async {
     try {
-      // Show loading
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -197,29 +194,27 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
         ),
       );
 
-      // Get tournament via share code
       Map<String, dynamic>? tournament = await _firestoreService
           .getTournamentByShareCode(shareCode);
 
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
 
       if (tournament == null) {
         _showError('Invalid or expired share code');
         return;
       }
 
-      // Navigate to tournament (read-only mode)
+      // Add current user to joinedPlayers array
+      await _firestoreService.addPlayerToTournament(shareCode, _userEmail!);
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => BadmintonMatchScheduleScreen(
-            tournamentId: shareCode, // Use share code as ID
-            // Pass other necessary params
-          ),
+          builder: (_) => BadmintonMatchScheduleScreen(tournamentId: shareCode),
         ),
       );
     } catch (e) {
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
       _showError('Failed to join tournament: $e');
     }
   }
@@ -241,26 +236,8 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
   }
 
   Widget _buildTournamentList() {
-    Stream<List<Map<String, dynamic>>> stream;
-
-    switch (_selectedFilter) {
-      case 'active':
-        stream = _firestoreService.getActiveTournaments(_userEmail!);
-        break;
-      case 'Singles':
-      case 'Doubles':
-      case 'Custom':
-        stream = _firestoreService.getTournamentsByType(
-          _userEmail!,
-          _selectedFilter,
-        );
-        break;
-      default:
-        stream = _firestoreService.getUserTournaments(_userEmail!);
-    }
-
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: stream,
+    return StreamBuilder<Map<String, dynamic>>(
+      stream: _getCombinedTournaments(_userEmail!),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -319,19 +296,80 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
           );
         }
 
-        List<Map<String, dynamic>> tournaments = snapshot.data!;
+        final data = snapshot.data!;
+        final createdTournaments =
+            data['created'] as List<Map<String, dynamic>>? ?? [];
+        final joinedTournaments =
+            data['joined'] as List<Map<String, dynamic>>? ?? [];
 
-        return ListView.builder(
+        return ListView(
           padding: const EdgeInsets.all(16),
-          itemCount: tournaments.length,
-          itemBuilder: (context, index) =>
-              _buildTournamentCard(tournaments[index]),
+          children: [
+            if (createdTournaments.isNotEmpty) ...[
+              _buildSectionHeader('Created Tournaments', Colors.orange),
+              ...createdTournaments.map(
+                (t) => _buildTournamentCard(t, isCreator: true),
+              ),
+            ],
+            if (createdTournaments.isNotEmpty && joinedTournaments.isNotEmpty)
+              const SizedBox(height: 24),
+            if (joinedTournaments.isNotEmpty) ...[
+              _buildSectionHeader('Joined Tournaments', Colors.blue),
+              ...joinedTournaments.map(
+                (t) => _buildTournamentCard(t, isCreator: false),
+              ),
+            ],
+          ],
         );
       },
     );
   }
 
-  Widget _buildTournamentCard(Map<String, dynamic> tournament) {
+  Stream<Map<String, dynamic>> _getCombinedTournaments(String userEmail) {
+    // Get created tournaments
+    final createdStream = _firestoreService.getUserTournaments(userEmail);
+
+    // Get joined tournaments
+    final joinedStream = _firestoreService.getJoinedTournaments(userEmail);
+
+    return Rx.combineLatest2(
+      createdStream,
+      joinedStream,
+      (created, joined) => {'created': created, 'joined': joined},
+    );
+  }
+
+  Widget _buildSectionHeader(String title, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 24,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTournamentCard(
+    Map<String, dynamic> tournament, {
+    required bool isCreator,
+  }) {
     String tournamentId = tournament['id'];
     String teamType = tournament['teamType'] ?? 'Unknown';
     String status = tournament['status'] ?? 'active';
@@ -361,6 +399,9 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: !isCreator
+              ? Border.all(color: Colors.blue.shade200, width: 2)
+              : null,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -376,7 +417,9 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.orange.shade600, Colors.orange.shade400],
+                  colors: isCreator
+                      ? [Colors.orange.shade600, Colors.orange.shade400]
+                      : [Colors.blue.shade600, Colors.blue.shade400],
                 ),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
@@ -402,13 +445,47 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          teamType,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              teamType,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (!isCreator)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.person_add,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Joined',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
                         ),
                         if (createdAt != null)
                           Text(
@@ -448,7 +525,6 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Stats Row
                   Row(
                     children: [
                       Expanded(
@@ -503,7 +579,6 @@ class _TournamentListScreenState extends State<TournamentListScreen> {
                     ),
                   ],
 
-                  // Progress Bar
                   if (totalMatches > 0) ...[
                     const SizedBox(height: 16),
                     Column(
