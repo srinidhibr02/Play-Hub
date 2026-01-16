@@ -47,10 +47,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
             .onError(_handleAuthenticationError);
       }),
     );
-    if (currentUser == null) {
-      print(currentUser);
-      signIn.attemptLightweightAuthentication();
-    }
   }
 
   Widget _buildSocialButton(IconData icon, VoidCallback? onPressed) {
@@ -91,7 +87,7 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
         ?.authorizationClient
         .authorizationForScopes(scopes);
     // #enddocregion CheckAuthorization
-
+    if (!mounted) return;
     setState(() {
       _currentUser = user;
       _isAuthorized = authorization != null;

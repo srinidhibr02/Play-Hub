@@ -1001,7 +1001,7 @@ extension PlayoffMethods on TournamentFirestoreService {
       }
 
       final matchesRef = FirebaseFirestore.instance
-          .collection('sharedTournament')
+          .collection('sharedTournaments')
           .doc(tournamentId)
           .collection('matches');
 
@@ -1024,7 +1024,7 @@ extension PlayoffMethods on TournamentFirestoreService {
 
       // Update tournament metadata
       final tournamentRef = FirebaseFirestore.instance
-          .collection('sharedTournament')
+          .collection('sharedTournaments')
           .doc(tournamentId);
 
       batch.update(tournamentRef, {
@@ -1079,9 +1079,7 @@ extension PlayoffMethods on TournamentFirestoreService {
   ) async {
     try {
       final userRef = FirebaseFirestore.instance
-          .collection('tournaments')
-          .doc(userEmail)
-          .collection('tournaments')
+          .collection('sharedTournaments')
           .doc(tournamentId);
 
       final docSnapshot = await userRef.get();
@@ -1172,52 +1170,28 @@ extension PlayoffMethods on TournamentFirestoreService {
   }
 
   /// Get playoff status
-  Future<Map<String, dynamic>> getPlayoffStatus(
+  Future<List<Map<String, dynamic>>> getPlayoffMatches(
     String userEmail,
     String tournamentId,
   ) async {
     try {
       final userRef = FirebaseFirestore.instance
-          .collection('tournaments')
-          .doc(userEmail)
-          .collection('tournaments')
-          .doc(tournamentId);
+          .collection('sharedTournaments')
+          .doc(tournamentId)
+          .collection('matches')
+          .where('stage', isEqualTo: 'Playoff');
 
-      final docSnapshot = await userRef.get();
-      if (!docSnapshot.exists) {
-        throw Exception('Tournament not found');
-      }
+      final querySnapshot = await userRef.get(); // ✅ QuerySnapshot
 
-      final matches = List<Map<String, dynamic>>.from(
-        docSnapshot['matches'] ?? [],
-      );
-      final playoffMatches = matches
-          .where((m) => m['stage'] == 'Playoff')
-          .toList();
+      // ✅ CORRECT: Access docs from QuerySnapshot
+      final matches = querySnapshot.docs.map((doc) => doc.data()).toList();
 
-      final semifinalMatches = playoffMatches
-          .where((m) => m['roundName']?.contains('Semi') == true)
-          .toList();
-      final finalMatches = playoffMatches
-          .where((m) => m['roundName'] == 'Final')
-          .toList();
+      // ✅ Convert to List<Map<String, dynamic>>
+      final playoffMatches = List<Map<String, dynamic>>.from(matches);
 
-      final semifinalsCompleted =
-          semifinalMatches.isNotEmpty &&
-          semifinalMatches.every((m) => m['status'] == 'Completed');
-      final finalCompleted =
-          finalMatches.isNotEmpty &&
-          finalMatches.any((m) => m['status'] == 'Completed');
+      print('Play off match $playoffMatches');
 
-      return {
-        'playoffsStarted': docSnapshot['playoffsStarted'] ?? false,
-        'playoffMatches': playoffMatches,
-        'semifinalsCompleted': semifinalsCompleted,
-        'finalCompleted': finalCompleted,
-        'touramentWinner': finalMatches.isNotEmpty && finalCompleted
-            ? finalMatches.first['winner']
-            : null,
-      };
+      return playoffMatches;
     } catch (e) {
       debugPrint('❌ Error getting playoff status: $e');
       rethrow;

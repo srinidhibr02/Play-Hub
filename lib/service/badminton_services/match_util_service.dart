@@ -1,7 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
 import 'package:play_hub/screens/tournament/badminton/scorecard.dart';
+import 'package:play_hub/service/auth_service.dart';
+import 'package:play_hub/service/badminton_services/badminton_service.dart';
 
 // ============= MATCH GENERATION LOGIC =============
 // CORRECTED MATCH GENERATION LOGIC FOR ROUND ROBIN
@@ -355,85 +358,171 @@ enum PlayoffFormat { directFinal, semisAndFinal }
 
 // ============= UI WIDGETS =============
 
-class MatchesListView extends StatelessWidget {
+class MatchesListView extends StatefulWidget {
   final List<Match> matches;
-  final Function(Match)? onScoreUpdate; // ✅ Add this callback
+  final String tournamentId;
+  final Function(Match)? onScoreUpdate;
   final Function(Match) onMatchTap;
 
   const MatchesListView({
     super.key,
     required this.matches,
+    required this.tournamentId,
     required this.onScoreUpdate,
     required this.onMatchTap,
   });
 
   @override
+  State<MatchesListView> createState() => _MatchesListViewState();
+}
+
+class _MatchesListViewState extends State<MatchesListView> {
+  final _firestore = FirebaseFirestore.instance;
+
+  Stream<List<Match>> _getPlayoffMatches() {
+    return _firestore
+        .collection('sharedTournaments')
+        .doc(widget.tournamentId)
+        .collection('matches')
+        .where('stage', isEqualTo: 'Playoff')
+        .snapshots()
+        .map((snapshot) {
+          debugPrint(
+            '📥 Playoff matches stream: ${snapshot.docs.length} documents',
+          );
+
+          final matches = <Match>[];
+          for (final doc in snapshot.docs) {
+            try {
+              final match = Match.fromMap(doc.data());
+              matches.add(match);
+              debugPrint(
+                '✅ Parsed playoff match: ${match.id} - ${match.roundName}',
+              );
+            } catch (e) {
+              debugPrint('⚠️ Error parsing match ${doc.id}: $e');
+            }
+          }
+          return matches;
+        });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final leagueMatches = matches
+    // Sync data - League and Knockout from widget.matches
+    final leagueMatches = widget.matches
         .where((m) => m.stage == 'League' || m.stage == null)
         .toList();
-    final playoffMatches = matches.where((m) => m.stage == 'Playoff').toList();
-    final knockoutMatches = matches
+    final knockoutMatches = widget.matches
         .where((m) => m.stage == 'Knockout')
         .toList();
 
-    int leagueCompletedCount = leagueMatches
+    final leagueCompletedCount = leagueMatches
         .where((m) => m.status == 'Completed')
         .length;
-    int leagueTotalCount = leagueMatches.length;
+    final leagueTotalCount = leagueMatches.length;
 
-    int playoffCompletedCount = playoffMatches
+    final knockoutCompletedCount = knockoutMatches
         .where((m) => m.status == 'Completed')
         .length;
-    int playoffTotalCount = playoffMatches.length;
+    final knockoutTotalCount = knockoutMatches.length;
 
-    int knockoutCompletedCount = knockoutMatches
-        .where((m) => m.status == 'Completed')
-        .length;
-    int knockoutTotalCount = knockoutMatches.length;
+    return StreamBuilder<List<Match>>(
+      stream: _getPlayoffMatches(),
+      builder: (context, playoffSnapshot) {
+        // Get playoff matches from stream
+        List<Match> playoffMatches = [];
+        if (playoffSnapshot.hasData) {
+          playoffMatches = playoffSnapshot.data ?? [];
+          debugPrint('🎯 Playoff matches available: ${playoffMatches.length}');
+        }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (leagueMatches.isNotEmpty) ...[
-          _buildSectionHeader(
-            icon: Icons.sports_tennis,
-            title: 'League Stage',
-            color: Colors.blue,
-            completedMatches: leagueCompletedCount,
-            totalMatches: leagueTotalCount,
-          ),
-          ...leagueMatches
-              .map((match) => _buildMatchCard(match, isLeague: true))
-              .toList(),
-          const SizedBox(height: 24),
-        ],
-        if (playoffMatches.isNotEmpty) ...[
-          _buildSectionHeader(
-            icon: Icons.emoji_events,
-            title: 'Playoff Stage',
-            color: Colors.amber,
-            completedMatches: playoffCompletedCount,
-            totalMatches: playoffTotalCount,
-          ),
-          ...playoffMatches
-              .map((match) => _buildMatchCard(match, isLeague: false))
-              .toList(),
-          const SizedBox(height: 24),
-        ],
-        if (knockoutMatches.isNotEmpty) ...[
-          _buildSectionHeader(
-            icon: Icons.military_tech,
-            title: 'Knockout Stage',
-            color: Colors.red,
-            completedMatches: knockoutCompletedCount,
-            totalMatches: knockoutTotalCount,
-          ),
-          ...knockoutMatches
-              .map((match) => _buildMatchCard(match, isLeague: false))
-              .toList(),
-        ],
-      ],
+        if (playoffSnapshot.hasError) {
+          debugPrint('❌ Playoff stream error: ${playoffSnapshot.error}');
+        }
+
+        final playoffCompletedCount = playoffMatches
+            .where((m) => m.status == 'Completed')
+            .length;
+        final playoffTotalCount = playoffMatches.length;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Playoffs Section (Shown first with real-time updates)
+            if (playoffMatches.isNotEmpty) ...[
+              _buildSectionHeader(
+                icon: Icons.emoji_events,
+                title: 'Playoff Stage',
+                color: Colors.amber,
+                completedMatches: playoffCompletedCount,
+                totalMatches: playoffTotalCount,
+              ),
+              ...playoffMatches
+                  .map((match) => _buildMatchCard(match, isLeague: false))
+                  .toList(),
+              const SizedBox(height: 24),
+            ],
+
+            // League Section
+            if (leagueMatches.isNotEmpty) ...[
+              _buildSectionHeader(
+                icon: Icons.sports_tennis,
+                title: 'League Stage',
+                color: Colors.blue,
+                completedMatches: leagueCompletedCount,
+                totalMatches: leagueTotalCount,
+              ),
+              ...leagueMatches
+                  .map((match) => _buildMatchCard(match, isLeague: true))
+                  .toList(),
+              const SizedBox(height: 24),
+            ],
+
+            // Knockout Section
+            if (knockoutMatches.isNotEmpty) ...[
+              _buildSectionHeader(
+                icon: Icons.military_tech,
+                title: 'Knockout Stage',
+                color: Colors.red,
+                completedMatches: knockoutCompletedCount,
+                totalMatches: knockoutTotalCount,
+              ),
+              ...knockoutMatches
+                  .map((match) => _buildMatchCard(match, isLeague: false))
+                  .toList(),
+            ],
+
+            // Empty state
+            if (playoffMatches.isEmpty &&
+                leagueMatches.isEmpty &&
+                knockoutMatches.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.sports_tennis,
+                        size: 80,
+                        color: Colors.grey.shade300,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No matches found',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -444,6 +533,10 @@ class MatchesListView extends StatelessWidget {
     required int completedMatches,
     required int totalMatches,
   }) {
+    final percentage = totalMatches > 0
+        ? ((completedMatches / totalMatches) * 100).toStringAsFixed(0)
+        : '0';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
@@ -482,7 +575,7 @@ class MatchesListView extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '${((completedMatches / totalMatches) * 100).toStringAsFixed(0)}%',
+              '$percentage%',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -500,11 +593,8 @@ class MatchesListView extends StatelessWidget {
 
     return Builder(
       builder: (BuildContext context) {
-        // ✅ Proper syntax with {}
         return GestureDetector(
-          // ✅ GestureDetector inside builder
-          onTap: () =>
-              _openScorecard(match, context), // ✅ Context now available
+          onTap: () => _openScorecard(match, context),
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
@@ -539,15 +629,14 @@ class MatchesListView extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (match.roundName != null)
-                            Text(
-                              match.id,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                          Text(
+                            match.roundName ?? match.id,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
+                          ),
                         ],
                       ),
                       Container(
@@ -714,7 +803,7 @@ class MatchesListView extends StatelessWidget {
         builder: (_) => ScorecardScreen(
           match: match,
           onScoreUpdate: (updatedMatch) {
-            onScoreUpdate?.call(updatedMatch); // ✅ Safe call to parent callback
+            widget.onScoreUpdate?.call(updatedMatch);
           },
         ),
       ),

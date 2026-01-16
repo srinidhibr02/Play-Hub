@@ -218,8 +218,12 @@ class _BadmintonMatchScheduleScreenState
     if (_leagueCompletionDialogShown) return;
 
     final allCompleted = await _checkAllLeagueMatchesCompleted();
+    final playoffMatches = await _badmintonService.getPlayoffMatches(
+      _authService.currentUserEmailId ?? '',
+      _tournamentId ?? '',
+    );
 
-    if (allCompleted && mounted) {
+    if (allCompleted && mounted && playoffMatches.isEmpty) {
       setState(() => _leagueCompletionDialogShown = true);
       _showLeagueCompletionDialog();
     }
@@ -1165,7 +1169,7 @@ class _BadmintonMatchScheduleScreenState
 
   Widget _buildMatchesTab() {
     return StreamBuilder<List<Match>>(
-      stream: _badmintonService.getMatches(
+      stream: _badmintonService.getAllMatchesStream(
         _authService.currentUserEmailId ?? '',
         _tournamentId ?? '',
       ),
@@ -1187,7 +1191,10 @@ class _BadmintonMatchScheduleScreenState
           return const EmptyMatchesWidget();
         }
 
+        print(snapshot.data!.length);
+
         return MatchesListView(
+          tournamentId: _tournamentId as String,
           matches: snapshot.data!,
           onScoreUpdate: (updatedMatch) {
             // ✅ Proper Function(Match)
