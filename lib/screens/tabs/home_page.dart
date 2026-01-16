@@ -244,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.orange,
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute<void>(
+                    MaterialPageRoute(
                       builder: (_) => const TournamentSetupScreen(),
                     ),
                   );
@@ -569,137 +569,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Register',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMyBookings(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'My Bookings',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Colors.teal.shade900,
-            fontSize: 22,
-          ),
-        ),
-        const SizedBox(height: 18),
-        _buildBookingCard(
-          court: 'Court 3',
-          date: 'Today, 6:00 PM - 7:00 PM',
-          club: 'Elite Sports Club',
-          sport: 'Badminton',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBookingCard({
-    required String court,
-    required String date,
-    required String club,
-    required String sport,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.teal.shade700, Colors.teal.shade900],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.teal.shade300.withOpacity(0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.sports_tennis,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      court,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      sport,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade400,
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: const Text(
-                  'Confirmed',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              const Icon(Icons.access_time, size: 18, color: Colors.white70),
-              const SizedBox(width: 8),
-              Text(
-                date,
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.location_on, size: 18, color: Colors.white70),
-              const SizedBox(width: 8),
-              Text(
-                club,
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
             ],
           ),
