@@ -1,10 +1,26 @@
 // Models
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Team {
   final String id;
   final String name;
   final List<String> players;
 
   Team({required this.id, required this.name, required this.players});
+
+  // 🔥 NEW: toMap() - Convert Team to Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {'id': id, 'name': name, 'players': players};
+  }
+
+  // 🔥 NEW: fromMap() - Create Team from Firestore Map
+  factory Team.fromMap(Map<String, dynamic> map) {
+    return Team(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      players: List<String>.from(map['players'] ?? []),
+    );
+  }
 }
 
 // Extended Match class with parent team tracking
@@ -63,58 +79,115 @@ class Match {
   }
 
   factory Match.fromJson(Map<String, dynamic> json) {
-    return Match(
-      id: json['id'] ?? '',
-      team1: Team(
-        id: json['team1']['id'] ?? '',
-        name: json['team1']['name'] ?? '',
-        players: List<String>.from(json['team1']['players'] ?? []),
-      ),
-      team2: Team(
-        id: json['team2']['id'] ?? '',
-        name: json['team2']['name'] ?? '',
-        players: List<String>.from(json['team2']['players'] ?? []),
-      ),
-      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
-      time: json['time'] ?? '',
-      status: json['status'] ?? 'Scheduled',
-      score1: json['score1'] ?? 0,
-      score2: json['score2'] ?? 0,
-      winner: json['winner'],
-      parentTeam1Id: json['parentTeam1Id'],
-      parentTeam2Id: json['parentTeam2Id'],
-      round: json['round'],
-      roundName: json['roundName'],
-      stage: json['stage'],
-      rematchNumber: json['rematchNumber'],
-    );
+    try {
+      // Safely extract team1 data
+      final team1Data = json['team1'] as Map<String, dynamic>?;
+      if (team1Data == null) {
+        throw Exception('team1 data is missing');
+      }
+
+      final team1 = Team(
+        id: team1Data['id'] as String? ?? '',
+        name: team1Data['name'] as String? ?? '',
+        players: List<String>.from(team1Data['players'] as List? ?? []),
+      );
+
+      // Safely extract team2 data
+      final team2Data = json['team2'] as Map<String, dynamic>?;
+      if (team2Data == null) {
+        throw Exception('team2 data is missing');
+      }
+
+      final team2 = Team(
+        id: team2Data['id'] as String? ?? '',
+        name: team2Data['name'] as String? ?? '',
+        players: List<String>.from(team2Data['players'] as List? ?? []),
+      );
+
+      // Parse date safely
+      final dateStr = json['date'] as String?;
+      late DateTime parsedDate;
+      if (dateStr != null && dateStr.isNotEmpty) {
+        parsedDate = DateTime.parse(dateStr);
+      } else {
+        parsedDate = DateTime.now();
+      }
+
+      return Match(
+        id: json['id'] as String? ?? '',
+        team1: team1,
+        team2: team2,
+        date: parsedDate,
+        time: json['time'] as String? ?? '',
+        status: json['status'] as String? ?? 'Scheduled',
+        score1: (json['score1'] as num?)?.toInt() ?? 0,
+        score2: (json['score2'] as num?)?.toInt() ?? 0,
+        winner: json['winner'] as String?,
+        parentTeam1Id: json['parentTeam1Id'] as String?,
+        parentTeam2Id: json['parentTeam2Id'] as String?,
+        round: (json['round'] as num?)?.toInt(),
+        roundName: json['roundName'] as String?,
+        stage: json['stage'] as String?,
+        rematchNumber: (json['rematchNumber'] as num?)?.toInt(),
+      );
+    } catch (e) {
+      rethrow;
+    }
   }
 
   // Update your fromMap() method:
   factory Match.fromMap(Map<String, dynamic> map) {
-    return Match(
-      id: map['id'],
-      team1: Team(
-        id: map['team1']['id'],
-        name: map['team1']['name'],
-        players: List<String>.from(map['team1']['players']),
-      ),
-      team2: Team(
-        id: map['team2']['id'],
-        name: map['team2']['name'],
-        players: List<String>.from(map['team2']['players']),
-      ),
-      date: DateTime.parse(map['date']),
-      time: map['time'],
-      status: map['status'],
-      score1: map['score1'],
-      score2: map['score2'],
-      winner: map['winner'],
-      parentTeam1Id: map['parentTeam1Id'],
-      parentTeam2Id: map['parentTeam2Id'],
-      round: map['round'], // ✅ ADD THIS
-      roundName: map['roundName'], // ✅ ADD THIS
-    );
+    try {
+      // ✅ Safe team1 extraction (same as fromJson)
+      final team1Data = map['team1'] as Map<String, dynamic>?;
+      final team1 = Team(
+        id: team1Data?['id'] as String? ?? '',
+        name: team1Data?['name'] as String? ?? '',
+        players: List<String>.from(team1Data?['players'] as List? ?? []),
+      );
+
+      // ✅ Safe team2 extraction
+      final team2Data = map['team2'] as Map<String, dynamic>?;
+      final team2 = Team(
+        id: team2Data?['id'] as String? ?? '',
+        name: team2Data?['name'] as String? ?? '',
+        players: List<String>.from(team2Data?['players'] as List? ?? []),
+      );
+
+      // ✅ Safe date parsing
+      final scheduledDate = map['scheduledDate'] as Timestamp?;
+      final date = scheduledDate?.toDate() ?? DateTime.now();
+
+      return Match(
+        id: map['id'] as String? ?? '',
+        team1: team1,
+        team2: team2,
+        date: date,
+        time: map['time'] as String? ?? '',
+        status: map['status'] as String? ?? 'Scheduled',
+        score1: (map['score1'] as num?)?.toInt() ?? 0,
+        score2: (map['score2'] as num?)?.toInt() ?? 0,
+        winner: map['winner'] as String?,
+        parentTeam1Id: map['parentTeam1Id'] as String?,
+        parentTeam2Id: map['parentTeam2Id'] as String?,
+        round: (map['round'] as num?)?.toInt(),
+        roundName: map['roundName'] as String?,
+        stage: map['stage'] as String?,
+        rematchNumber: (map['rematchNumber'] as num?)?.toInt(),
+      );
+    } catch (e) {
+      // Return default match to prevent crash
+      return Match(
+        id: '',
+        team1: Team(id: '', name: 'Error', players: []),
+        team2: Team(id: '', name: 'Error', players: []),
+        date: DateTime.now(),
+        time: '',
+        status: 'Error',
+        score1: 0,
+        score2: 0,
+      );
+    }
   }
 
   // Update copyWith method:
@@ -186,4 +259,32 @@ class DoublesPair {
   final String player2;
 
   DoublesPair(this.player1, this.player2);
+}
+
+class PlayerStats {
+  final String playerName;
+  final String teamId;
+  final String teamName;
+  int matchesPlayed;
+  int wins;
+  int losses;
+  int totalPoints; // Points scored in matches they played
+  int totalPointsAgainst; // Points conceded in matches they played
+
+  PlayerStats({
+    required this.playerName,
+    required this.teamId,
+    required this.teamName,
+    this.matchesPlayed = 0,
+    this.wins = 0,
+    this.losses = 0,
+    this.totalPoints = 0,
+    this.totalPointsAgainst = 0,
+  });
+
+  double get winRate => matchesPlayed > 0 ? (wins / matchesPlayed) * 100 : 0.0;
+  double get avgPointsScored =>
+      matchesPlayed > 0 ? totalPoints / matchesPlayed : 0.0;
+  double get avgPointsConceded =>
+      matchesPlayed > 0 ? totalPointsAgainst / matchesPlayed : 0.0;
 }

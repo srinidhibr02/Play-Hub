@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:play_hub/constants/badminton.dart';
+import 'package:play_hub/service/badminton_services/tournament_stats_service.dart';
 
 class TournamentFirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -8,6 +9,12 @@ class TournamentFirestoreService {
   // Get user's local tournaments collection reference
   CollectionReference _getUserTournamentsCollection(String userEmail) {
     return _firestore.collection('sharedTournaments');
+  }
+
+  Query _getUserTournamentsQuery(String userEmail) {
+    return _getUserTournamentsCollection(
+      userEmail,
+    ).where('creatorEmail', isEqualTo: userEmail);
   }
 
   Future<void> updateMatchOrder(
@@ -29,9 +36,7 @@ class TournamentFirestoreService {
       // Update each match individually
       for (var match in reorderedMatches) {
         await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userEmail)
-            .collection('tournaments')
+            .collection('sharedTournaments')
             .doc(tournamentId)
             .collection('matches')
             .doc(match.id)
@@ -62,17 +67,16 @@ class TournamentFirestoreService {
     int? customTeamSize,
   }) async {
     try {
-      CollectionReference tournamentsRef = _getUserTournamentsCollection(
-        userEmail,
-      );
+      // ✅ FIXED: Use CollectionReference for .add()
+      final tournamentsRef = _getUserTournamentsCollection(userEmail);
 
       // Create tournament document
-      DocumentReference tournamentRef = await tournamentsRef.add({
+      final tournamentRef = await tournamentsRef.add({
         'creatorEmail': userEmail,
         'creatorName': creatorName,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-        'status': 'active', // active, completed, cancelled
+        'status': 'active',
         'teamType': teamType,
         'members': members,
         'customTeamSize': customTeamSize,
@@ -94,16 +98,15 @@ class TournamentFirestoreService {
         },
       });
 
-      String tournamentId = tournamentRef.id;
+      final String tournamentId = tournamentRef.id;
 
-      // Add teams as subcollection
+      // Add teams and matches
       await _addTeamsToTournament(userEmail, tournamentId, teams);
-
-      // Add matches as subcollection
       await _addMatchesToTournament(userEmail, tournamentId, matches);
 
       return tournamentId;
     } catch (e) {
+      debugPrint('❌ createTournament error: $e');
       throw Exception('Failed to create tournament: $e');
     }
   }
@@ -117,9 +120,12 @@ class TournamentFirestoreService {
     WriteBatch batch = _firestore.batch();
 
     for (Team team in teams) {
-      DocumentReference teamRef = _getUserTournamentsCollection(
-        userEmail,
-      ).doc(tournamentId).collection('teams').doc(team.id);
+      // ✅ FIXED: Go directly to matches subcollection
+      DocumentReference teamRef = _firestore
+          .collection('sharedTournaments')
+          .doc(tournamentId) // Tournament document
+          .collection('teams') // Teams subcollection
+          .doc(team.id); // Team document
 
       batch.set(teamRef, {
         'id': team.id,
@@ -147,9 +153,12 @@ class TournamentFirestoreService {
       List<Match> batchMatches = matches.sublist(i, end);
 
       for (Match match in batchMatches) {
-        DocumentReference matchRef = _getUserTournamentsCollection(
-          userEmail,
-        ).doc(tournamentId).collection('matches').doc(match.id);
+        // ✅ FIXED: Direct path to matches subcollection
+        DocumentReference matchRef = _firestore
+            .collection('sharedTournaments')
+            .doc(tournamentId)
+            .collection('matches')
+            .doc(match.id);
 
         batch.set(matchRef, {
           'id': match.id,
@@ -182,6 +191,166 @@ class TournamentFirestoreService {
     }
   }
 
+  Future<List<Match>> getCompletedMatches(
+    String userEmail,
+    String tournamentId,
+  ) async {
+    try {
+      debugPrint('📥 Fetching completed matches for tournament: $tournamentId');
+
+      // ✅ FIXED: Direct path to tournament matches subcollection
+      final matchesSnapshot = await _firestore
+          .collection('sharedTournaments')
+          .doc(tournamentId)
+          .collection('matches')
+          .where('status', isEqualTo: 'Completed')
+          .orderBy('scheduledDate')
+          .get();
+
+      final matches = matchesSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return Match.fromMap(data);
+      }).toList();
+
+      debugPrint('✅ Fetched ${matches.length} completed matches');
+      return matches;
+    } catch (e) {
+      debugPrint('❌ Error fetching completed matches: $e');
+      rethrow;
+    }
+  }
+
+  /// Stream of completed matches (real-time updates)
+  Stream<List<Match>> getCompletedMatchesStream(
+    String userEmail,
+    String tournamentId,
+  ) {
+    return _firestore
+        .collection('sharedTournaments')
+        .doc(tournamentId)
+        .collection('matches')
+        .where('status', isEqualTo: 'Completed')
+        .orderBy('scheduledDate')
+        .snapshots()
+        .map((snapshot) {
+          debugPrint(
+            '🔄 Real-time update: ${snapshot.docs.length} completed matches',
+          );
+          return snapshot.docs.map((doc) => Match.fromMap(doc.data())).toList();
+        });
+  }
+
+  Future<TournamentStatsSummary> getTournamentStats(
+    String userEmail,
+    String tournamentId,
+  ) async {
+    try {
+      final matches = await getAllMatches(userEmail, tournamentId);
+      final teams = await getTeams(userEmail, tournamentId);
+
+      final completedMatches = matches
+          .where((m) => m.status == 'Completed')
+          .toList();
+      final scheduledMatches = matches
+          .where((m) => m.status == 'scheduled')
+          .toList();
+      final ongoingMatches = matches
+          .where((m) => m.status == 'ongoing')
+          .toList();
+
+      return TournamentStatsSummary(
+        totalMatches: matches.length,
+        completedMatches: completedMatches.length,
+        scheduledMatches: scheduledMatches.length,
+        ongoingMatches: ongoingMatches.length,
+        totalTeams: teams.length as int,
+        playerStats: calculatePlayerStats(
+          completedMatches,
+          teams as List<Team>,
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Error getting tournament stats: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Match>> getAllMatches(
+    String userEmail,
+    String tournamentId,
+  ) async {
+    try {
+      debugPrint('📥 Fetching all matches for tournament: $tournamentId');
+
+      // ✅ FIXED: Direct path to tournament matches subcollection
+      final matchesSnapshot = await _firestore
+          .collection('sharedTournaments')
+          .doc(tournamentId)
+          .collection('matches')
+          .orderBy('scheduledDate')
+          .get();
+
+      final matches = matchesSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return Match.fromMap(data);
+      }).toList();
+
+      debugPrint('✅ Fetched ${matches.length} total matches');
+      return matches;
+    } catch (e) {
+      debugPrint('❌ Error fetching matches: $e');
+      rethrow;
+    }
+  }
+
+  /// Stream of all matches (real-time updates)
+  Stream<List<Match>> getAllMatchesStream(
+    String userEmail,
+    String tournamentId,
+  ) {
+    return _firestore
+        .collection('sharedTournaments')
+        .doc(tournamentId)
+        .collection('matches')
+        .orderBy('scheduledDate')
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => Match.fromMap(doc.data())).toList();
+        });
+  }
+
+  /// Stream of tournament statistics (real-time)
+  Stream<TournamentStatsSummary> getTournamentStatsStream(
+    String userEmail,
+    String tournamentId,
+  ) async* {
+    await for (final matches in getAllMatchesStream(userEmail, tournamentId)) {
+      final teams = await getTeams(userEmail, tournamentId);
+
+      final completedMatches = matches
+          .where((m) => m.status == 'Completed')
+          .toList();
+      final scheduledMatches = matches
+          .where((m) => m.status == 'scheduled')
+          .toList();
+      final ongoingMatches = matches
+          .where((m) => m.status == 'ongoing')
+          .toList();
+
+      yield TournamentStatsSummary(
+        totalMatches: matches.length,
+        completedMatches: completedMatches.length,
+        scheduledMatches: scheduledMatches.length,
+        ongoingMatches: ongoingMatches.length,
+        totalTeams: teams.length as int,
+        playerStats: calculatePlayerStats(
+          completedMatches,
+          teams as List<Team>,
+        ),
+      );
+    }
+  }
+
   /// Add new matches to existing tournament (for knockout next rounds)
   Future<void> addMatches(
     String userEmail,
@@ -197,9 +366,12 @@ class TournamentFirestoreService {
         List<Match> batchMatches = matches.sublist(i, end);
 
         for (Match match in batchMatches) {
-          DocumentReference matchRef = _getUserTournamentsCollection(
-            userEmail,
-          ).doc(tournamentId).collection('matches').doc(match.id);
+          // ✅ FIXED
+          DocumentReference matchRef = _firestore
+              .collection('sharedTournaments')
+              .doc(tournamentId)
+              .collection('matches')
+              .doc(match.id);
 
           batch.set(matchRef, {
             'id': match.id,
@@ -231,22 +403,24 @@ class TournamentFirestoreService {
         await batch.commit();
       }
 
-      // Update tournament total matches count
-      DocumentSnapshot tournamentDoc = await _getUserTournamentsCollection(
-        userEmail,
-      ).doc(tournamentId).get();
+      // ✅ FIXED: Update tournament stats
+      DocumentSnapshot tournamentDoc = await _firestore
+          .collection('sharedTournaments')
+          .doc(tournamentId)
+          .get();
 
       if (tournamentDoc.exists) {
         Map<String, dynamic> data =
             tournamentDoc.data() as Map<String, dynamic>;
         int currentTotal = data['stats']['totalMatches'] ?? 0;
 
-        await _getUserTournamentsCollection(
-          userEmail,
-        ).doc(tournamentId).update({
-          'stats.totalMatches': currentTotal + matches.length,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        await _firestore
+            .collection('sharedTournaments')
+            .doc(tournamentId)
+            .update({
+              'stats.totalMatches': currentTotal + matches.length,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
       }
     } catch (e) {
       throw Exception('Failed to add matches: $e');
@@ -261,24 +435,25 @@ class TournamentFirestoreService {
     String tournamentId,
   ) async {
     try {
-      DocumentSnapshot doc = await _getUserTournamentsCollection(
-        userEmail,
-      ).doc(tournamentId).get();
+      // ✅ FIXED
+      DocumentSnapshot doc = await _firestore
+          .collection('sharedTournaments')
+          .doc(tournamentId)
+          .get();
 
       if (!doc.exists) return null;
 
       Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
       data['id'] = doc.id;
-
       return data;
     } catch (e) {
       throw Exception('Failed to get tournament: $e');
     }
   }
 
-  /// Get all tournaments for a user
   Stream<List<Map<String, dynamic>>> getUserTournaments(String userEmail) {
-    return _getUserTournamentsCollection(
+    // ✅ FIXED: This one is correct - queries TOP LEVEL collection
+    return _getUserTournamentsQuery(
       userEmail,
     ).orderBy('createdAt', descending: true).snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
@@ -289,12 +464,12 @@ class TournamentFirestoreService {
     });
   }
 
-  /// Get tournaments by type for a user
   Stream<List<Map<String, dynamic>>> getTournamentsByType(
     String userEmail,
     String teamType,
   ) {
-    return _getUserTournamentsCollection(userEmail)
+    // ✅ FIXED: This one is correct too
+    return _getUserTournamentsQuery(userEmail)
         .where('teamType', isEqualTo: teamType)
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -307,9 +482,9 @@ class TournamentFirestoreService {
         });
   }
 
-  /// Get active tournaments for a user
   Stream<List<Map<String, dynamic>>> getActiveTournaments(String userEmail) {
-    return _getUserTournamentsCollection(userEmail)
+    // ✅ FIXED: This one is correct too
+    return _getUserTournamentsQuery(userEmail)
         .where('status', isEqualTo: 'active')
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -322,23 +497,21 @@ class TournamentFirestoreService {
         });
   }
 
-  /// Get teams for a tournament
   Stream<List<Team>> getTeams(String userEmail, String tournamentId) {
-    return _getUserTournamentsCollection(
-      userEmail,
-    ).doc(tournamentId).collection('teams').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        Map<String, dynamic> data = doc.data();
-        return Team(
-          id: data['id'],
-          name: data['name'],
-          players: List<String>.from(data['players']),
-        );
-      }).toList();
-    });
+    // ✅ FIXED
+    return _firestore
+        .collection('sharedTournaments')
+        .doc(tournamentId)
+        .collection('teams')
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            Map<String, dynamic> data = doc.data();
+            return Team.fromMap(data);
+          }).toList();
+        });
   }
 
-  /// Get matches for a tournament
   Stream<List<Match>> getMatches(String userEmail, String tournamentId) {
     return _getUserTournamentsCollection(userEmail)
         .doc(tournamentId)
@@ -376,26 +549,29 @@ class TournamentFirestoreService {
         });
   }
 
-  /// Get team statistics
   Stream<List<TeamStats>> getTeamStats(String userEmail, String tournamentId) {
-    return _getUserTournamentsCollection(
-      userEmail,
-    ).doc(tournamentId).collection('teams').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        Map<String, dynamic> data = doc.data();
-        Map<String, dynamic> stats = data['stats'] ?? {};
+    // ✅ FIXED
+    return _firestore
+        .collection('sharedTournaments')
+        .doc(tournamentId)
+        .collection('teams')
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            Map<String, dynamic> data = doc.data();
+            Map<String, dynamic> stats = data['stats'] ?? {};
 
-        return TeamStats(
-          teamId: data['id'],
-          teamName: data['name'],
-          players: List<String>.from(data['players']),
-          matchesPlayed: stats['matchesPlayed'] ?? 0,
-          won: stats['won'] ?? 0,
-          lost: stats['lost'] ?? 0,
-          points: stats['points'] ?? 0,
-        );
-      }).toList();
-    });
+            return TeamStats(
+              teamId: data['id'],
+              teamName: data['name'],
+              players: List<String>.from(data['players']),
+              matchesPlayed: stats['matchesPlayed'] ?? 0,
+              won: stats['won'] ?? 0,
+              lost: stats['lost'] ?? 0,
+              points: stats['points'] ?? 0,
+            );
+          }).toList();
+        });
   }
 
   // ==================== UPDATE ====================
@@ -634,12 +810,40 @@ class TournamentFirestoreService {
     String tournamentId,
   ) async {
     try {
-      String shareCode =
-          '${tournamentId}_${DateTime.now().millisecondsSinceEpoch}';
+      String shareCode = tournamentId;
 
       return shareCode; // This is the share code
     } catch (e) {
       throw Exception('Failed to create shareable link: $e');
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> getJoinedTournaments(String userEmail) {
+    return _firestore
+        .collection('sharedTournaments')
+        .where('joinedPlayers', arrayContains: userEmail)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList(),
+        );
+  }
+
+  Future<void> addPlayerToTournament(
+    String tournamentId,
+    String userEmail,
+  ) async {
+    try {
+      await _firestore.collection('sharedTournaments').doc(tournamentId).update(
+        {
+          'joinedPlayers': FieldValue.arrayUnion([userEmail]),
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to add player to tournament: $e');
     }
   }
 
@@ -648,20 +852,26 @@ class TournamentFirestoreService {
     String shareCode,
   ) async {
     try {
-      DocumentSnapshot shareDoc = await _firestore
+      // ✅ Get tournament directly by tournamentId
+      DocumentSnapshot doc = await _firestore
           .collection('sharedTournaments')
-          .doc(shareCode)
+          .doc(shareCode) // Use tournamentId, not shareCode
           .get();
 
-      if (!shareDoc.exists) return null;
+      if (!doc.exists) {
+        debugPrint('❌ Tournament not found: $shareCode');
+        return null;
+      }
 
-      Map<String, dynamic> shareData = shareDoc.data() as Map<String, dynamic>;
-      String ownerEmail = shareData['ownerEmail'];
-      String tournamentId = shareData['tournamentId'];
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      data['id'] = doc.id;
+      data['shareCode'] =
+          shareCode; // Optional: include shareCode for convenience
 
-      // Get the actual tournament
-      return await getTournament(ownerEmail, tournamentId);
+      debugPrint('✅ Found tournament: ${data['name'] ?? 'Unnamed'}');
+      return data;
     } catch (e) {
+      debugPrint('❌ Error getting tournament by share code: $e');
       throw Exception('Failed to get tournament by share code: $e');
     }
   }
@@ -711,6 +921,68 @@ class TournamentFirestoreService {
       yield [];
     }
   }
+
+  Map<String, PlayerStats> calculatePlayerStats(
+    List<Match> completedMatches,
+    List<Team> teams,
+  ) {
+    final playerStatsMap = <String, PlayerStats>{};
+
+    // Initialize all players
+    for (final team in teams) {
+      for (final player in team.players) {
+        playerStatsMap[player] = PlayerStats(
+          playerName: player,
+          teamId: team.id,
+          teamName: team.name,
+        );
+      }
+    }
+
+    debugPrint('📊 Calculating stats for ${playerStatsMap.length} players');
+
+    // Process completed matches
+    for (final match in completedMatches) {
+      if (match.status != 'Completed' || match.winner == null) continue;
+
+      final team1Players = match.team1.players;
+      final team2Players = match.team2.players;
+      final team1Won = match.winner == match.team1.id;
+
+      // Update stats for team 1 players
+      for (final player in team1Players) {
+        if (playerStatsMap.containsKey(player)) {
+          playerStatsMap[player]!.matchesPlayed++;
+          playerStatsMap[player]!.totalPoints += match.score1;
+          playerStatsMap[player]!.totalPointsAgainst += match.score2;
+
+          if (team1Won) {
+            playerStatsMap[player]!.wins++;
+          } else {
+            playerStatsMap[player]!.losses++;
+          }
+        }
+      }
+
+      // Update stats for team 2 players
+      for (final player in team2Players) {
+        if (playerStatsMap.containsKey(player)) {
+          playerStatsMap[player]!.matchesPlayed++;
+          playerStatsMap[player]!.totalPoints += match.score2;
+          playerStatsMap[player]!.totalPointsAgainst += match.score1;
+
+          if (!team1Won) {
+            playerStatsMap[player]!.wins++;
+          } else {
+            playerStatsMap[player]!.losses++;
+          }
+        }
+      }
+    }
+
+    debugPrint('✅ Stats calculated for ${completedMatches.length} matches');
+    return playerStatsMap;
+  }
 }
 
 // Add this extension to your TournamentFirestoreService class
@@ -729,17 +1001,9 @@ extension PlayoffMethods on TournamentFirestoreService {
       }
 
       final matchesRef = FirebaseFirestore.instance
-          .collection('sharedTournament')
+          .collection('sharedTournaments')
           .doc(tournamentId)
           .collection('matches');
-
-      // Get existing matches
-      final QuerySnapshot querySnapshot = await matchesRef.get();
-
-      // ✅ FIX 1: Use querySnapshot.docs (NOT querySnapshot['matches'])
-      final existingMatches = querySnapshot.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
-          .toList();
 
       // Convert playoff matches to maps
       final newMatches = playoffMatches
@@ -760,7 +1024,7 @@ extension PlayoffMethods on TournamentFirestoreService {
 
       // Update tournament metadata
       final tournamentRef = FirebaseFirestore.instance
-          .collection('sharedTournament')
+          .collection('sharedTournaments')
           .doc(tournamentId);
 
       batch.update(tournamentRef, {
@@ -815,9 +1079,7 @@ extension PlayoffMethods on TournamentFirestoreService {
   ) async {
     try {
       final userRef = FirebaseFirestore.instance
-          .collection('tournaments')
-          .doc(userEmail)
-          .collection('tournaments')
+          .collection('sharedTournaments')
           .doc(tournamentId);
 
       final docSnapshot = await userRef.get();
@@ -908,52 +1170,28 @@ extension PlayoffMethods on TournamentFirestoreService {
   }
 
   /// Get playoff status
-  Future<Map<String, dynamic>> getPlayoffStatus(
+  Future<List<Map<String, dynamic>>> getPlayoffMatches(
     String userEmail,
     String tournamentId,
   ) async {
     try {
       final userRef = FirebaseFirestore.instance
-          .collection('tournaments')
-          .doc(userEmail)
-          .collection('tournaments')
-          .doc(tournamentId);
+          .collection('sharedTournaments')
+          .doc(tournamentId)
+          .collection('matches')
+          .where('stage', isEqualTo: 'Playoff');
 
-      final docSnapshot = await userRef.get();
-      if (!docSnapshot.exists) {
-        throw Exception('Tournament not found');
-      }
+      final querySnapshot = await userRef.get(); // ✅ QuerySnapshot
 
-      final matches = List<Map<String, dynamic>>.from(
-        docSnapshot['matches'] ?? [],
-      );
-      final playoffMatches = matches
-          .where((m) => m['stage'] == 'Playoff')
-          .toList();
+      // ✅ CORRECT: Access docs from QuerySnapshot
+      final matches = querySnapshot.docs.map((doc) => doc.data()).toList();
 
-      final semifinalMatches = playoffMatches
-          .where((m) => m['roundName']?.contains('Semi') == true)
-          .toList();
-      final finalMatches = playoffMatches
-          .where((m) => m['roundName'] == 'Final')
-          .toList();
+      // ✅ Convert to List<Map<String, dynamic>>
+      final playoffMatches = List<Map<String, dynamic>>.from(matches);
 
-      final semifinalsCompleted =
-          semifinalMatches.isNotEmpty &&
-          semifinalMatches.every((m) => m['status'] == 'Completed');
-      final finalCompleted =
-          finalMatches.isNotEmpty &&
-          finalMatches.any((m) => m['status'] == 'Completed');
+      print('Play off match $playoffMatches');
 
-      return {
-        'playoffsStarted': docSnapshot['playoffsStarted'] ?? false,
-        'playoffMatches': playoffMatches,
-        'semifinalsCompleted': semifinalsCompleted,
-        'finalCompleted': finalCompleted,
-        'touramentWinner': finalMatches.isNotEmpty && finalCompleted
-            ? finalMatches.first['winner']
-            : null,
-      };
+      return playoffMatches;
     } catch (e) {
       debugPrint('❌ Error getting playoff status: $e');
       rethrow;

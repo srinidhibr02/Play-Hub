@@ -45,6 +45,7 @@ dependencies:
   http: ^1.6.0
   google_sign_in_web: ^1.1.0
   flutter_launcher_icons: ^0.14.4
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:

@@ -139,7 +139,10 @@ class ProfileScreen extends StatelessWidget {
                     MaterialPageRoute(builder: (_) => const AuthPage()),
                   );
                 },
-                child: const Text('Go to Login'),
+                child: const Text(
+                  'Go to Login',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),

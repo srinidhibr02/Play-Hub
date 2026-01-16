@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
 import 'package:play_hub/screens/tournament/badminton/points_table_screen.dart';
 import 'package:play_hub/screens/tournament/badminton/scorecard.dart';
@@ -75,9 +74,7 @@ class _BadmintonMatchScheduleScreenState
 
   String? _tournamentId;
   bool _isLoading = false;
-  bool _isReorderMode = false;
   bool _leagueCompletionDialogShown = false;
-  List<Match> _reorderMatches = [];
   late int _tabCount;
 
   @override
@@ -218,8 +215,12 @@ class _BadmintonMatchScheduleScreenState
     if (_leagueCompletionDialogShown) return;
 
     final allCompleted = await _checkAllLeagueMatchesCompleted();
+    final playoffMatches = await _badmintonService.getPlayoffMatches(
+      _authService.currentUserEmailId ?? '',
+      _tournamentId ?? '',
+    );
 
-    if (allCompleted && mounted) {
+    if (allCompleted && mounted && playoffMatches.isEmpty) {
       setState(() => _leagueCompletionDialogShown = true);
       _showLeagueCompletionDialog();
     }
@@ -342,70 +343,68 @@ class _BadmintonMatchScheduleScreenState
     );
   }
 
-  void _toggleReorderMode() {
-    if (!_isReorderMode) {
-      setState(() => _isReorderMode = true);
-    } else {
-      _saveReorderedMatches();
-    }
-  }
+  Widget _buildSavingOverlay(BuildContext context) {
+    final theme = Theme.of(context);
 
-  Future<void> _saveReorderedMatches() async {
-    try {
-      var currentTime = DateTime(
-        widget.startDate!.year,
-        widget.startDate!.month,
-        widget.startDate!.day,
-        widget.startTime!.hour,
-        widget.startTime!.minute,
-      );
-
-      final updatedMatches = <Match>[];
-      for (int i = 0; i < _reorderMatches.length; i++) {
-        final match = _reorderMatches[i];
-
-        updatedMatches.add(
-          Match(
-            id: 'M${i + 1}',
-            team1: match.team1,
-            team2: match.team2,
-            date: currentTime,
-            time: DateFormat('h:mm a').format(currentTime),
-            status: match.status,
-            score1: match.score1,
-            score2: match.score2,
-            winner: match.winner,
-            round: match.round,
-            roundName: match.roundName,
-            stage: match.stage,
-            parentTeam1Id: match.parentTeam1Id,
-            parentTeam2Id: match.parentTeam2Id,
+    return Container(
+      color: Colors.black.withOpacity(0.45),
+      child: Center(
+        child: AnimatedScale(
+          scale: 1,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          child: AnimatedOpacity(
+            opacity: 1,
+            duration: const Duration(milliseconds: 200),
+            child: Material(
+              color: theme.colorScheme.surface,
+              elevation: 8,
+              borderRadius: BorderRadius.circular(20),
+              shadowColor: Colors.black26,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 18),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Saving order',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Hang tight, this won’t take long',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        );
-
-        currentTime = currentTime.add(
-          Duration(
-            minutes: (widget.matchDuration ?? 30) + (widget.breakDuration ?? 5),
-          ),
-        );
-        debugPrint('New Order $updatedMatches');
-      }
-      await _badmintonService.updateMatchOrder(
-        _authService.currentUserEmailId ?? '',
-        _tournamentId ?? '',
-        updatedMatches,
-      );
-
-      setState(() {
-        _isReorderMode = false;
-        _reorderMatches = [];
-      });
-
-      _showSuccessSnackBar('Match order updated successfully!');
-    } catch (e) {
-      debugPrint('❌ Error saving reorder: $e');
-      _showErrorSnackBar('Failed to save match order: $e');
-    }
+        ),
+      ),
+    );
   }
 
   void _showGenerateRoundDialog() async {
@@ -677,11 +676,9 @@ class _BadmintonMatchScheduleScreenState
           break;
 
         case 3:
-          // Round Robin → Top 2 play final
+        case 4:
           topTeams = await _getTopTeams(2);
           break;
-
-        case 4:
         case 5:
         case 6:
         case 7:
@@ -905,6 +902,17 @@ class _BadmintonMatchScheduleScreenState
 
   @override
   Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Your existing content
+        _buildMainContent(),
+
+        if (_isLoading) _buildSavingOverlay(context),
+      ],
+    );
+  }
+
+  Widget _buildMainContent() {
     if (_isLoading) {
       return Scaffold(
         backgroundColor: Colors.grey.shade50,
@@ -941,25 +949,14 @@ class _BadmintonMatchScheduleScreenState
       _checkAndShowLeagueCompletionDialog();
     });
 
-    return WillPopScope(
-      onWillPop: () async {
-        if (_isReorderMode) {
-          setState(() => _isReorderMode = false);
-          return false;
-        }
-        return true;
-      },
-      child: Scaffold(
-        backgroundColor: Colors.grey.shade50,
-        appBar: _buildAppBar(),
-        body: Column(
-          children: [
-            _buildTabBar(),
-            Expanded(
-              child: _isReorderMode ? _buildReorderTab() : _buildTabContent(),
-            ),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: _buildAppBar(),
+      body: Column(
+        children: [
+          _buildTabBar(),
+          Expanded(child: _buildTabContent()),
+        ],
       ),
     );
   }
@@ -970,7 +967,7 @@ class _BadmintonMatchScheduleScreenState
       elevation: 0,
       centerTitle: false,
       title: Text(
-        _isReorderMode ? 'Reorder Matches' : 'Tournament Schedule',
+        'Tournament Schedule',
         style: const TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
@@ -978,19 +975,10 @@ class _BadmintonMatchScheduleScreenState
         ),
       ),
       actions: [
-        IconButton(
-          tooltip: 'Reorder matches',
-          icon: Icon(
-            _isReorderMode ? Icons.done : Icons.swap_vert_rounded,
-            color: Colors.white,
-          ),
-          onPressed: _toggleReorderMode,
+        TournamentMenuButton(
+          onShare: _shareTournament,
+          onInfo: _showTournamentInfo,
         ),
-        if (!_isReorderMode)
-          TournamentMenuButton(
-            onShare: _shareTournament,
-            onInfo: _showTournamentInfo,
-          ),
       ],
     );
   }
@@ -999,24 +987,19 @@ class _BadmintonMatchScheduleScreenState
     return Container(
       color: Colors.orange.shade600,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: _isReorderMode
-          ? const SizedBox.shrink()
-          : TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.white,
-              ),
-              labelColor: Colors.orange.shade600,
-              unselectedLabelColor: Colors.white.withOpacity(0.7),
-              labelStyle: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              tabs: _buildTabs(),
-            ),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+        ),
+        labelColor: Colors.orange.shade600,
+        unselectedLabelColor: Colors.white.withOpacity(0.7),
+        labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        tabs: _buildTabs(),
+      ),
     );
   }
 
@@ -1062,43 +1045,9 @@ class _BadmintonMatchScheduleScreenState
           );
   }
 
-  Widget _buildReorderTab() {
-    return StreamBuilder<List<Match>>(
-      stream: _badmintonService.getMatches(
-        _authService.currentUserEmailId ?? '',
-        _tournamentId ?? '',
-      ),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(
-            child: Text(
-              'No matches to reorder',
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-            ),
-          );
-        }
-
-        if (_reorderMatches.isEmpty) {
-          _reorderMatches = List.from(snapshot.data!);
-        }
-
-        return ReorderableMatchList(
-          matches: _reorderMatches,
-          onReorder: (oldIndex, newIndex) {
-            setState(() {
-              if (newIndex > oldIndex) newIndex--;
-              final match = _reorderMatches.removeAt(oldIndex);
-              _reorderMatches.insert(newIndex, match);
-            });
-          },
-        );
-      },
-    );
-  }
-
   Widget _buildMatchesTab() {
     return StreamBuilder<List<Match>>(
-      stream: _badmintonService.getMatches(
+      stream: _badmintonService.getAllMatchesStream(
         _authService.currentUserEmailId ?? '',
         _tournamentId ?? '',
       ),
@@ -1120,7 +1069,10 @@ class _BadmintonMatchScheduleScreenState
           return const EmptyMatchesWidget();
         }
 
+        print(snapshot.data!.length);
+
         return MatchesListView(
+          tournamentId: _tournamentId as String,
           matches: snapshot.data!,
           onScoreUpdate: (updatedMatch) {
             // ✅ Proper Function(Match)

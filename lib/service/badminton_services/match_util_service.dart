@@ -1,9 +1,10 @@
-import 'dart:math';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
 import 'package:play_hub/screens/tournament/badminton/scorecard.dart';
+import 'package:play_hub/service/auth_service.dart';
+import 'package:play_hub/service/badminton_services/badminton_service.dart';
 
 // ============= MATCH GENERATION LOGIC =============
 // CORRECTED MATCH GENERATION LOGIC FOR ROUND ROBIN
@@ -357,85 +358,171 @@ enum PlayoffFormat { directFinal, semisAndFinal }
 
 // ============= UI WIDGETS =============
 
-class MatchesListView extends StatelessWidget {
+class MatchesListView extends StatefulWidget {
   final List<Match> matches;
-  final Function(Match)? onScoreUpdate; // ✅ Add this callback
+  final String tournamentId;
+  final Function(Match)? onScoreUpdate;
   final Function(Match) onMatchTap;
 
   const MatchesListView({
     super.key,
     required this.matches,
+    required this.tournamentId,
     required this.onScoreUpdate,
     required this.onMatchTap,
   });
 
   @override
+  State<MatchesListView> createState() => _MatchesListViewState();
+}
+
+class _MatchesListViewState extends State<MatchesListView> {
+  final _firestore = FirebaseFirestore.instance;
+
+  Stream<List<Match>> _getPlayoffMatches() {
+    return _firestore
+        .collection('sharedTournaments')
+        .doc(widget.tournamentId)
+        .collection('matches')
+        .where('stage', isEqualTo: 'Playoff')
+        .snapshots()
+        .map((snapshot) {
+          debugPrint(
+            '📥 Playoff matches stream: ${snapshot.docs.length} documents',
+          );
+
+          final matches = <Match>[];
+          for (final doc in snapshot.docs) {
+            try {
+              final match = Match.fromMap(doc.data());
+              matches.add(match);
+              debugPrint(
+                '✅ Parsed playoff match: ${match.id} - ${match.roundName}',
+              );
+            } catch (e) {
+              debugPrint('⚠️ Error parsing match ${doc.id}: $e');
+            }
+          }
+          return matches;
+        });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final leagueMatches = matches
+    // Sync data - League and Knockout from widget.matches
+    final leagueMatches = widget.matches
         .where((m) => m.stage == 'League' || m.stage == null)
         .toList();
-    final playoffMatches = matches.where((m) => m.stage == 'Playoff').toList();
-    final knockoutMatches = matches
+    final knockoutMatches = widget.matches
         .where((m) => m.stage == 'Knockout')
         .toList();
 
-    int leagueCompletedCount = leagueMatches
+    final leagueCompletedCount = leagueMatches
         .where((m) => m.status == 'Completed')
         .length;
-    int leagueTotalCount = leagueMatches.length;
+    final leagueTotalCount = leagueMatches.length;
 
-    int playoffCompletedCount = playoffMatches
+    final knockoutCompletedCount = knockoutMatches
         .where((m) => m.status == 'Completed')
         .length;
-    int playoffTotalCount = playoffMatches.length;
+    final knockoutTotalCount = knockoutMatches.length;
 
-    int knockoutCompletedCount = knockoutMatches
-        .where((m) => m.status == 'Completed')
-        .length;
-    int knockoutTotalCount = knockoutMatches.length;
+    return StreamBuilder<List<Match>>(
+      stream: _getPlayoffMatches(),
+      builder: (context, playoffSnapshot) {
+        // Get playoff matches from stream
+        List<Match> playoffMatches = [];
+        if (playoffSnapshot.hasData) {
+          playoffMatches = playoffSnapshot.data ?? [];
+          debugPrint('🎯 Playoff matches available: ${playoffMatches.length}');
+        }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (leagueMatches.isNotEmpty) ...[
-          _buildSectionHeader(
-            icon: Icons.sports_tennis,
-            title: 'League Stage',
-            color: Colors.blue,
-            completedMatches: leagueCompletedCount,
-            totalMatches: leagueTotalCount,
-          ),
-          ...leagueMatches
-              .map((match) => _buildMatchCard(match, isLeague: true))
-              .toList(),
-          const SizedBox(height: 24),
-        ],
-        if (playoffMatches.isNotEmpty) ...[
-          _buildSectionHeader(
-            icon: Icons.emoji_events,
-            title: 'Playoff Stage',
-            color: Colors.amber,
-            completedMatches: playoffCompletedCount,
-            totalMatches: playoffTotalCount,
-          ),
-          ...playoffMatches
-              .map((match) => _buildMatchCard(match, isLeague: false))
-              .toList(),
-          const SizedBox(height: 24),
-        ],
-        if (knockoutMatches.isNotEmpty) ...[
-          _buildSectionHeader(
-            icon: Icons.military_tech,
-            title: 'Knockout Stage',
-            color: Colors.red,
-            completedMatches: knockoutCompletedCount,
-            totalMatches: knockoutTotalCount,
-          ),
-          ...knockoutMatches
-              .map((match) => _buildMatchCard(match, isLeague: false))
-              .toList(),
-        ],
-      ],
+        if (playoffSnapshot.hasError) {
+          debugPrint('❌ Playoff stream error: ${playoffSnapshot.error}');
+        }
+
+        final playoffCompletedCount = playoffMatches
+            .where((m) => m.status == 'Completed')
+            .length;
+        final playoffTotalCount = playoffMatches.length;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Playoffs Section (Shown first with real-time updates)
+            if (playoffMatches.isNotEmpty) ...[
+              _buildSectionHeader(
+                icon: Icons.emoji_events,
+                title: 'Playoff Stage',
+                color: Colors.amber,
+                completedMatches: playoffCompletedCount,
+                totalMatches: playoffTotalCount,
+              ),
+              ...playoffMatches
+                  .map((match) => _buildMatchCard(match, isLeague: false))
+                  .toList(),
+              const SizedBox(height: 24),
+            ],
+
+            // League Section
+            if (leagueMatches.isNotEmpty) ...[
+              _buildSectionHeader(
+                icon: Icons.sports_tennis,
+                title: 'League Stage',
+                color: Colors.blue,
+                completedMatches: leagueCompletedCount,
+                totalMatches: leagueTotalCount,
+              ),
+              ...leagueMatches
+                  .map((match) => _buildMatchCard(match, isLeague: true))
+                  .toList(),
+              const SizedBox(height: 24),
+            ],
+
+            // Knockout Section
+            if (knockoutMatches.isNotEmpty) ...[
+              _buildSectionHeader(
+                icon: Icons.military_tech,
+                title: 'Knockout Stage',
+                color: Colors.red,
+                completedMatches: knockoutCompletedCount,
+                totalMatches: knockoutTotalCount,
+              ),
+              ...knockoutMatches
+                  .map((match) => _buildMatchCard(match, isLeague: false))
+                  .toList(),
+            ],
+
+            // Empty state
+            if (playoffMatches.isEmpty &&
+                leagueMatches.isEmpty &&
+                knockoutMatches.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.sports_tennis,
+                        size: 80,
+                        color: Colors.grey.shade300,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No matches found',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -446,6 +533,10 @@ class MatchesListView extends StatelessWidget {
     required int completedMatches,
     required int totalMatches,
   }) {
+    final percentage = totalMatches > 0
+        ? ((completedMatches / totalMatches) * 100).toStringAsFixed(0)
+        : '0';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
@@ -484,7 +575,7 @@ class MatchesListView extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '${((completedMatches / totalMatches) * 100).toStringAsFixed(0)}%',
+              '$percentage%',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -502,11 +593,8 @@ class MatchesListView extends StatelessWidget {
 
     return Builder(
       builder: (BuildContext context) {
-        // ✅ Proper syntax with {}
         return GestureDetector(
-          // ✅ GestureDetector inside builder
-          onTap: () =>
-              _openScorecard(match, context), // ✅ Context now available
+          onTap: () => _openScorecard(match, context),
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
@@ -541,20 +629,12 @@ class MatchesListView extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (match.roundName != null)
-                            Text(
-                              match.roundName!,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
                           Text(
-                            match.id,
+                            match.roundName ?? match.id,
                             style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.white70,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
                         ],
@@ -723,7 +803,7 @@ class MatchesListView extends StatelessWidget {
         builder: (_) => ScorecardScreen(
           match: match,
           onScoreUpdate: (updatedMatch) {
-            onScoreUpdate?.call(updatedMatch); // ✅ Safe call to parent callback
+            widget.onScoreUpdate?.call(updatedMatch);
           },
         ),
       ),
@@ -1260,14 +1340,15 @@ class CustomMatchGenerator {
 
     // Generate ALL possible matchups between teams
     final allMatchups = _generateAllMatchups();
-    debugPrint('📊 Total matchups: ${allMatchups.length}');
+    debugPrint('📊 Total possible matchups: ${allMatchups.length}');
+
+    // Select matches fairly if totalMatches < allMatchups.length
+    final selectedMatchups = _selectMatchupsFairly(allMatchups);
+    debugPrint('📊 Selected matchups: ${selectedMatchups.length}');
 
     int generated = 0;
 
-    // Generate EXACTLY totalMatches
-    while (generated < totalMatches && generated < allMatchups.length) {
-      final matchup = allMatchups[generated];
-
+    for (final matchup in selectedMatchups) {
       final parentTeam1 = matchup['parentTeam1'] as Team;
       final parentTeam2 = matchup['parentTeam2'] as Team;
       final team1Pair = matchup['team1Pair'] as List<String>;
@@ -1296,8 +1377,8 @@ class CustomMatchGenerator {
         score1: 0,
         score2: 0,
         winner: null,
-        parentTeam1Id: parentTeam1.id, // ✅ Correct parent
-        parentTeam2Id: parentTeam2.id, // ✅ Correct parent
+        parentTeam1Id: parentTeam1.id,
+        parentTeam2Id: parentTeam2.id,
         round: (generated ~/ 6) + 1,
         roundName: 'League Stage',
         stage: 'league',
@@ -1316,27 +1397,130 @@ class CustomMatchGenerator {
       );
     }
 
-    debugPrint('🎉 GENERATED ${matches.length} matches');
+    // Print player statistics
+    _printPlayerStats(matches);
+
+    debugPrint('🎉 GENERATED ${matches.length} matches with fair distribution');
     return matches;
+  }
+
+  List<Map<String, dynamic>> _selectMatchupsFairly(
+    List<Map<String, dynamic>> allMatchups,
+  ) {
+    if (totalMatches >= allMatchups.length) {
+      return allMatchups;
+    }
+
+    // Track how many times each player plays
+    final playerMatchCount = <String, int>{};
+
+    // Initialize all players with 0 matches
+    for (final team in teams) {
+      for (final player in team.players) {
+        playerMatchCount[player] = 0;
+      }
+    }
+
+    final selectedMatchups = <Map<String, dynamic>>[];
+    final availableMatchups = List<Map<String, dynamic>>.from(allMatchups);
+
+    // Shuffle to randomize selection order (ensures variety)
+    availableMatchups.shuffle();
+
+    // Greedy algorithm: Select matches that balance player participation
+    while (selectedMatchups.length < totalMatches &&
+        availableMatchups.isNotEmpty) {
+      // Sort available matchups by total play count of involved players
+      // (prefer matchups with players who have played less)
+      availableMatchups.sort((a, b) {
+        final aPair1 = a['team1Pair'] as List<String>;
+        final aPair2 = a['team2Pair'] as List<String>;
+        final bPair1 = b['team1Pair'] as List<String>;
+        final bPair2 = b['team2Pair'] as List<String>;
+
+        final aTotal =
+            (playerMatchCount[aPair1[0]] ?? 0) +
+            (playerMatchCount[aPair1[1]] ?? 0) +
+            (playerMatchCount[aPair2[0]] ?? 0) +
+            (playerMatchCount[aPair2[1]] ?? 0);
+
+        final bTotal =
+            (playerMatchCount[bPair1[0]] ?? 0) +
+            (playerMatchCount[bPair1[1]] ?? 0) +
+            (playerMatchCount[bPair2[0]] ?? 0) +
+            (playerMatchCount[bPair2[1]] ?? 0);
+
+        return aTotal.compareTo(bTotal);
+      });
+
+      // Select the matchup with least-played players
+      final selected = availableMatchups.removeAt(0);
+      selectedMatchups.add(selected);
+
+      // Update player counts
+      final pair1 = selected['team1Pair'] as List<String>;
+      final pair2 = selected['team2Pair'] as List<String>;
+
+      playerMatchCount[pair1[0]] = (playerMatchCount[pair1[0]] ?? 0) + 1;
+      playerMatchCount[pair1[1]] = (playerMatchCount[pair1[1]] ?? 0) + 1;
+      playerMatchCount[pair2[0]] = (playerMatchCount[pair2[0]] ?? 0) + 1;
+      playerMatchCount[pair2[1]] = (playerMatchCount[pair2[1]] ?? 0) + 1;
+    }
+
+    debugPrint('📊 Player participation after fair selection:');
+    playerMatchCount.forEach((player, count) {
+      debugPrint('   $player: $count matches');
+    });
+
+    return selectedMatchups;
+  }
+
+  void _printPlayerStats(List<Match> matches) {
+    final playerStats = <String, int>{};
+
+    for (final match in matches) {
+      for (final player in match.team1.players) {
+        playerStats[player] = (playerStats[player] ?? 0) + 1;
+      }
+      for (final player in match.team2.players) {
+        playerStats[player] = (playerStats[player] ?? 0) + 1;
+      }
+    }
+
+    debugPrint('');
+    debugPrint('📊 FINAL PLAYER STATISTICS:');
+    debugPrint('─' * 40);
+
+    final sortedPlayers = playerStats.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    for (final entry in sortedPlayers) {
+      debugPrint('   ${entry.key.padRight(15)}: ${entry.value} matches');
+    }
+
+    final maxMatches = sortedPlayers.first.value;
+    final minMatches = sortedPlayers.last.value;
+    final difference = maxMatches - minMatches;
+
+    debugPrint('─' * 40);
+    debugPrint('   Max: $maxMatches | Min: $minMatches | Diff: $difference');
+    debugPrint('');
   }
 
   List<Map<String, dynamic>> _generateAllMatchups() {
     final matchups = <Map<String, dynamic>>[];
 
-    // Generate matchups between ALL team combinations (not just teams[0] vs teams[1])
     for (int i = 0; i < teams.length; i++) {
       for (int j = i + 1; j < teams.length; j++) {
         final team1 = teams[i];
         final team2 = teams[j];
 
-        // Get all possible pairs from each team
         final team1Pairs = _generatePairs(team1.players);
         final team2Pairs = _generatePairs(team2.players);
 
         debugPrint('${team1.name} has ${team1Pairs.length} pairs');
         debugPrint('${team2.name} has ${team2Pairs.length} pairs');
 
-        // Create every combination: Team1's pair vs Team2's pair
         for (final pair1 in team1Pairs) {
           for (final pair2 in team2Pairs) {
             matchups.add({
@@ -1352,7 +1536,6 @@ class CustomMatchGenerator {
 
     debugPrint('Total unique matchups (without rematches): ${matchups.length}');
 
-    // Handle rematches
     if (allowRematches && rematches > 1) {
       final baseMatchups = List<Map<String, dynamic>>.from(matchups);
       matchups.clear();

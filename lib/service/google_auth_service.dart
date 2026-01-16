@@ -9,6 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:play_hub/constants/constants.dart';
 import 'package:play_hub/screens/home_screen.dart';
+import 'package:play_hub/service/auth_service.dart';
 import 'src/web/web_wrapper.dart' as web;
 
 class GoogleSignInButton extends StatefulWidget {
@@ -21,6 +22,7 @@ class GoogleSignInButton extends StatefulWidget {
 class _GoogleSignInState extends State<GoogleSignInButton> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final currentUser = AuthService().currentUser;
 
   static const String _clientId =
       '371130915379-54ket1adu7iqt2lqdoh4oqhvi3fedlnj.apps.googleusercontent.com';
@@ -30,6 +32,9 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
   String _contactText = '';
   String _errorMessage = '';
   String _serverAuthCode = '';
+  bool _isLoading = false;
+  String _loadingMessage = '';
+
   final List<String> scopes = <String>[
     'https://www.googleapis.com/auth/contacts.readonly',
   ];
@@ -43,8 +48,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
         signIn.authenticationEvents
             .listen(_handleAuthenticationEvent)
             .onError(_handleAuthenticationError);
-
-        signIn.attemptLightweightAuthentication();
       }),
     );
   }
@@ -72,34 +75,121 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
     );
   }
 
+  void _showLoadingDialog(String message) {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _loadingMessage = message;
+    });
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return PopScope(
+          canPop: false,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Animated loading indicator
+                    SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.teal.shade600,
+                        ),
+                        strokeWidth: 4,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Loading message
+                    Text(
+                      _loadingMessage,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Secondary message
+                    Text(
+                      'Please wait...',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _hideLoadingDialog() {
+    if (_isLoading && mounted) {
+      Navigator.of(context).pop();
+      setState(() {
+        _isLoading = false;
+        _loadingMessage = '';
+      });
+    }
+  }
+
   Future<void> _handleAuthenticationEvent(
     GoogleSignInAuthenticationEvent event,
   ) async {
-    // #docregion CheckAuthorization
-    final GoogleSignInAccount? user = // ...
-        // #enddocregion CheckAuthorization
-        switch (event) {
-          GoogleSignInAuthenticationEventSignIn() => event.user,
-          GoogleSignInAuthenticationEventSignOut() => null,
-        };
+    final GoogleSignInAccount? user = switch (event) {
+      GoogleSignInAuthenticationEventSignIn() => event.user,
+      GoogleSignInAuthenticationEventSignOut() => null,
+    };
 
     final GoogleSignInClientAuthorization? authorization = await user
         ?.authorizationClient
         .authorizationForScopes(scopes);
-    // #enddocregion CheckAuthorization
 
-    _currentUser = user;
-    _isAuthorized = authorization != null;
-    _errorMessage = '';
+    if (!mounted) return;
+    setState(() {
+      _currentUser = user;
+      _isAuthorized = authorization != null;
+      _errorMessage = '';
+    });
 
-    // If the user has already granted access to the required scopes, call the
-    // REST API.
     if (user != null && authorization != null) {
       unawaited(_handleGetContact(user));
     }
   }
 
   Future<void> _handleAuthenticationError(Object e) async {
+    if (!mounted) return;
+
     setState(() {
       _currentUser = null;
       _isAuthorized = false;
@@ -110,16 +200,12 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
   }
 
   String _errorMessageFromSignInException(GoogleSignInException e) {
-    // In practice, an application should likely have specific handling for most
-    // or all of the, but for simplicity this just handles cancel, and reports
-    // the rest as generic errors.
     return switch (e.code) {
       GoogleSignInExceptionCode.canceled => 'Sign in canceled',
       _ => 'GoogleSignInException ${e.code}: ${e.description}',
     };
   }
 
-  // Calls the People API REST endpoint for the signed-in user to retrieve information.
   Future<void> _handleGetContact(GoogleSignInAccount user) async {
     setState(() {
       _contactText = 'Loading contact info...';
@@ -197,11 +283,9 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
 
   Future<void> _handleGetAuthCode(GoogleSignInAccount user) async {
     try {
-      // #docregion RequestServerAuth
       final GoogleSignInServerAuthorization? serverAuth = await user
           .authorizationClient
           .authorizeServer(scopes);
-      // #enddocregion RequestServerAuth
 
       setState(() {
         _serverAuthCode = serverAuth == null ? '' : serverAuth.serverAuthCode;
@@ -212,8 +296,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
   }
 
   Future<void> _handleSignOut() async {
-    // Disconnect instead of just signing out, to reset the example state as
-    // much as possible.
     await GoogleSignIn.instance.disconnect();
   }
 
@@ -231,35 +313,70 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
 
   Future<void> handleGoogleSignIn() async {
     try {
+      _showLoadingDialog('Signing in with Google...');
+
       final result = await GoogleSignIn.instance.authenticate();
+
       if (result != null) {
+        if (mounted) {
+          _hideLoadingDialog();
+          _showLoadingDialog('Authenticating with Firebase...');
+        }
+
         final authResult = await _signInToFirebaseWithGoogle(result);
+
+        if (mounted) {
+          _hideLoadingDialog();
+        }
+
         if (authResult.success) {
-          // Successfully signed in
           _showMessage(authResult.message, isError: false);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomePage()),
-          );
+          if (mounted) {
+            Future.delayed(const Duration(milliseconds: 1500), () {
+              if (mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const HomePage()),
+                );
+              }
+            });
+          }
         } else {
-          // Sign-in failed
           setState(() {
             _errorMessage = authResult.message;
           });
+          _showMessage(authResult.message, isError: true);
         }
       }
     } catch (e) {
-      _errorMessage = e.toString();
+      if (mounted) {
+        _hideLoadingDialog();
+      }
+      setState(() {
+        _errorMessage = e.toString();
+      });
+      _showMessage('Sign in failed: $e', isError: true);
     }
   }
 
   void _showMessage(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -278,10 +395,8 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
     );
   }
 
-  /// Returns the list of widgets to include if the user is authenticated.
   List<Widget> _buildAuthenticatedWidgets(GoogleSignInAccount user) {
     return <Widget>[
-      // The user is Authenticated.
       ListTile(
         leading: GoogleUserCircleAvatar(identity: user),
         title: Text(user.displayName ?? ''),
@@ -289,7 +404,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
       ),
       const Text('Signed in successfully.'),
       if (_isAuthorized) ...<Widget>[
-        // The user has Authorized all required scopes.
         if (_contactText.isNotEmpty) Text(_contactText),
         ElevatedButton(
           child: const Text('REFRESH'),
@@ -303,7 +417,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
         else
           Text('Server auth code:\n$_serverAuthCode'),
       ] else ...<Widget>[
-        // The user has NOT Authorized all required scopes.
         const Text('Authorization needed to read your contacts.'),
         ElevatedButton(
           onPressed: () => _handleAuthorizeScopes(user),
@@ -316,7 +429,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
 
   Future<void> _handleAuthorizeScopes(GoogleSignInAccount user) async {
     try {
-      // #docregion RequestScopes
       final GoogleSignInClientAuthorization authorization = await user
           .authorizationClient
           .authorizeScopes(scopes);
@@ -332,7 +444,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
     }
   }
 
-  /// Returns the list of widgets to include if the user is not authenticated.
   List<Widget> _buildUnauthenticatedWidgets() {
     return <Widget>[
       const Text('You are not currently signed in.'),
@@ -358,7 +469,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
     ];
   }
 
-  // Sign in to Firebase with Google credentials
   Future<AuthResult> _signInToFirebaseWithGoogle(
     GoogleSignInAccount googleUser,
   ) async {
@@ -369,19 +479,16 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
         'openid',
       ];
 
-      // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
       final googleAuthorization = await googleUser.authorizationClient
           .authorizationForScopes(scopes);
 
-      // Create a new credential
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuthorization!.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Sign in to Firebase with the Google credential
       final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user;
 
@@ -392,7 +499,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
         );
       }
 
-      // Check if user document exists, if not create it
       final userDoc = await _firestore
           .collection('users')
           .doc(user.email)
@@ -414,7 +520,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
           'updatedAt': FieldValue.serverTimestamp(),
         });
       } else {
-        // Update last login
         await _firestore.collection('users').doc(user.email).update({
           'updatedAt': FieldValue.serverTimestamp(),
         });
