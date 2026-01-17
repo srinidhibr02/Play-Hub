@@ -48,7 +48,78 @@ class BookingService {
         });
   }
 
-  // Get available time slots for a court on a specific date
+  ({int? startHour, int? endHour}) parseOpeningHours(
+    dynamic openingHoursData,
+    DateTime date,
+  ) {
+    try {
+      if (openingHoursData is Map) {
+        final dayName = _getDayName(date.weekday);
+        final dayHours = openingHoursData[dayName];
+
+        if (dayHours is String) {
+          // Parse "6:00 AM - 11:00 PM" with full AM/PM support
+          final timeMatch = RegExp(
+            r'(\d{1,2}):(\d{2})\s*([AP]M)\s*-\s*(\d{1,2}):(\d{2})\s*([AP]M)',
+          );
+          final match = timeMatch.firstMatch(dayHours.trim());
+
+          if (match != null) {
+            // Parse START time with AM/PM
+            int startHour = int.parse(match.group(1)!);
+            final startPeriod = match.group(3)!.toUpperCase();
+
+            // Convert 12h AM/PM → 24h
+            if (startPeriod == 'PM' && startHour != 12) startHour += 12;
+            if (startPeriod == 'AM' && startHour == 12) startHour = 0;
+
+            // Parse END time with AM/PM
+            int endHour = int.parse(match.group(4)!);
+            final endPeriod = match.group(6)!.toUpperCase();
+
+            // Convert 12h AM/PM → 24h
+            if (endPeriod == 'PM' && endHour != 12) endHour += 12;
+            if (endPeriod == 'AM' && endHour == 12) endHour = 0;
+
+            print(
+              '📅 $dayName: ${match.group(0)} → $startHour:00 - $endHour:00',
+            );
+            return (startHour: startHour, endHour: endHour);
+          }
+        }
+      }
+
+      // Fallback for simple string format
+      if (openingHoursData is String) {
+        final startMatch = RegExp(r'^(\d{1,2}):').firstMatch(openingHoursData);
+        final endMatch = RegExp(r'- (\d{1,2}):').firstMatch(openingHoursData);
+        return (
+          startHour: int.tryParse(startMatch?.group(1) ?? ''),
+          endHour: int.tryParse(endMatch?.group(1) ?? ''),
+        );
+      }
+
+      return (startHour: 6, endHour: 23);
+    } catch (e) {
+      print('❌ Parse error: $e');
+      return (startHour: 6, endHour: 23);
+    }
+  }
+
+  String _getDayName(int weekday) {
+    const days = [
+      '',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    return days[weekday];
+  }
+
   Future<List<TimeSlot>> getAvailableSlots({
     required String clubId,
     required String courtId,
@@ -56,12 +127,9 @@ class BookingService {
     required double pricePerHour,
   }) async {
     try {
-      // Generate time slots from 6 AM to 11 PM
       final slots = <TimeSlot>[];
-      final startHour = 6;
-      final endHour = 23;
+      final now = DateTime.now();
 
-      // Get existing bookings for this court on this date
       final dateStart = DateTime(date.year, date.month, date.day);
       final dateEnd = dateStart.add(const Duration(days: 1));
 
@@ -73,22 +141,40 @@ class BookingService {
           .where('status', whereIn: ['confirmed', 'pending'])
           .get();
 
-      // Create a map of booked slots with who booked them
+      final clubSnapshot = await _firestore
+          .collection('clubs')
+          .doc(clubId)
+          .get();
+      final clubData = clubSnapshot.data() ?? {};
+      final openingHours = clubData['openingHours'];
+
+      final hours = parseOpeningHours(openingHours, date);
+      final startHour = hours.startHour ?? 6;
+      final endHour = hours.endHour ?? 23;
+
       final bookedSlots = <String, String>{};
       for (var doc in bookingsSnapshot.docs) {
         final data = doc.data();
         final slotKey = '${data['startTime']}-${data['endTime']}';
-        final bookedBy =
-            data['bookedBy'] ??
-            data['userId']; // Fallback to userId if bookedBy not present
+        final bookedBy = data['bookedBy'] ?? data['userId'];
         bookedSlots[slotKey] = bookedBy;
       }
 
-      // Generate slots
+      // Generate slots within opening hours
       for (int hour = startHour; hour < endHour; hour++) {
         final startTime = _formatTime(hour);
         final endTime = _formatTime(hour + 1);
         final slotKey = '$startTime-$endTime';
+
+        // ✅ NEW: Check if slot is elapsed
+        final slotDateTime = _getSlotDateTime(startTime, date);
+        final isElapsed = slotDateTime.isBefore(now);
+
+        // Skip if slot time has already passed
+        if (isElapsed) {
+          print('⏭️ Skipping elapsed slot: $slotKey');
+          continue;
+        }
 
         slots.add(
           TimeSlot(
@@ -96,16 +182,44 @@ class BookingService {
             endTime: endTime,
             isAvailable: !bookedSlots.containsKey(slotKey),
             price: pricePerHour,
-            bookedBy: bookedSlots[slotKey], // Add who booked this slot
+            bookedBy: bookedSlots[slotKey],
           ),
         );
       }
 
+      print(
+        '✅ Generated ${slots.length} available slots: $startHour:00 - $endHour:00',
+      );
       return slots;
     } catch (e) {
       print('Error getting available slots: $e');
       return [];
     }
+  }
+
+  // ✅ NEW: Helper to convert time string to DateTime for comparison
+  DateTime _getSlotDateTime(String timeString, DateTime date) {
+    // Parse time string like "10:00" or "12:00 PM"
+    String cleanTime = timeString.trim();
+    bool isPM = cleanTime.toUpperCase().contains('PM');
+    bool isAM = cleanTime.toUpperCase().contains('AM');
+
+    cleanTime = cleanTime
+        .replaceAll(RegExp(r'[AP]M', caseSensitive: false), '')
+        .trim();
+
+    final parts = cleanTime.split(':');
+    int hour = int.tryParse(parts[0]) ?? 0;
+    final minute = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+
+    // Convert to 24-hour format
+    if (isPM && hour != 12) {
+      hour += 12;
+    } else if (isAM && hour == 12) {
+      hour = 0;
+    }
+
+    return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
   // Create a booking

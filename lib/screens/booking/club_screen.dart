@@ -29,10 +29,18 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: Text('${widget.sport} Clubs'),
+        title: Text(
+          '${widget.sport} Clubs',
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
         backgroundColor: Colors.teal.shade700,
         foregroundColor: Colors.white,
-        elevation: 2,
+        elevation: 0,
+        centerTitle: false,
       ),
       body: Column(
         children: [
@@ -43,49 +51,68 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
             child: Column(
               children: [
                 // Search Bar
-                TextField(
-                  controller: _searchController,
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value.toLowerCase());
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Search clubs...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.teal.withOpacity(0.1),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value.toLowerCase());
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search clubs by name or location...',
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 15,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: Colors.teal.shade700,
+                        size: 24,
+                      ),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
 
-                const SizedBox(height: 12),
-
-                // City Filter (Optional)
+                // City Filter
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
                       _buildFilterChip('All', null),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       _buildFilterChip('Chennai', 'Chennai'),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       _buildFilterChip('Davanagere', 'Davanagere'),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       _buildFilterChip('Bangalore', 'Bangalore'),
                     ],
                   ),
@@ -103,8 +130,25 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
               ),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.teal),
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          color: Colors.teal.shade700,
+                          strokeWidth: 3,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Loading clubs...',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
 
@@ -115,21 +159,42 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                       children: [
                         Icon(
                           Icons.error_outline,
-                          size: 80,
+                          size: 64,
                           color: Colors.red.shade300,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'Error loading clubs',
                           style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey.shade600,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey.shade700,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        ElevatedButton(
+                        Text(
+                          'Please try again',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
                           onPressed: () => setState(() {}),
-                          child: const Text('Retry'),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal.shade700,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 28,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -141,27 +206,60 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.sports,
-                          size: 80,
-                          color: Colors.grey.shade400,
+                        Container(
+                          padding: const EdgeInsets.all(40),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.15),
+                                blurRadius: 20,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.sports_outlined,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         Text(
-                          'No clubs available for ${widget.sport}',
+                          'No clubs available',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No clubs found for ${widget.sport}${_selectedCity != null ? ' in $_selectedCity' : ''}',
+                          style: TextStyle(
+                            fontSize: 14,
                             color: Colors.grey.shade600,
                           ),
                         ),
                         if (_selectedCity != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Try selecting a different city',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade500,
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: () {
+                              setState(() => _selectedCity = null);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal.shade700,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
+                            child: const Text('View All Cities'),
                           ),
                         ],
                       ],
@@ -186,16 +284,17 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.search_off,
-                          size: 80,
+                          Icons.search_off_rounded,
+                          size: 64,
                           color: Colors.grey.shade400,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         Text(
                           'No clubs found',
                           style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey.shade600,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.grey.shade800,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -203,7 +302,27 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                           'Try a different search term',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey.shade500,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                          icon: const Icon(Icons.clear),
+                          label: const Text('Clear Search'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal.shade700,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ],
@@ -230,7 +349,13 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
     final isSelected = _selectedCity == city;
 
     return FilterChip(
-      label: Text(label),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+        ),
+      ),
       selected: isSelected,
       onSelected: (selected) {
         setState(() {
@@ -241,14 +366,13 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
       checkmarkColor: Colors.teal.shade700,
       labelStyle: TextStyle(
         color: isSelected ? Colors.teal.shade700 : Colors.grey.shade700,
-        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
       ),
       backgroundColor: Colors.grey.shade100,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
           color: isSelected ? Colors.teal.shade700 : Colors.grey.shade300,
-          width: isSelected ? 2 : 1,
+          width: isSelected ? 2 : 1.5,
         ),
       ),
     );
@@ -256,16 +380,21 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
 
   Widget _buildClubCard(BuildContext context, Club club) {
     final price = club.pricePerHour[widget.sport] ?? 0.0;
+    final allowBookings = club.allowBookings ?? true;
+    final isDisabled = !allowBookings;
 
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SelectCourtScreen(club: club, sport: widget.sport),
-          ),
-        );
-      },
+      onTap: isDisabled
+          ? null
+          : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      SelectCourtScreen(club: club, sport: widget.sport),
+                ),
+              );
+            },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -273,246 +402,327 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 10,
+              color: Colors.black.withOpacity(isDisabled ? 0.03 : 0.08),
+              blurRadius: 16,
               offset: const Offset(0, 4),
+              spreadRadius: 2,
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Club Image with Rating Badge
-            Stack(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade100,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
-                    ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
-                    ),
-                    child: club.imageUrl.isNotEmpty
-                        ? Image.network(
-                            club.imageUrl,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Center(
+                // Club Image with Rating Badge
+                Stack(
+                  children: [
+                    Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade100,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
+                        child: club.imageUrl.isNotEmpty
+                            ? Image.network(
+                                club.imageUrl,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Center(
+                                    child: Icon(
+                                      Icons.sports,
+                                      size: 64,
+                                      color: Colors.teal.shade300,
+                                    ),
+                                  );
+                                },
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value:
+                                              loadingProgress
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                              : null,
+                                          color: Colors.teal.shade700,
+                                        ),
+                                      );
+                                    },
+                              )
+                            : Center(
                                 child: Icon(
                                   Icons.sports,
-                                  size: 60,
+                                  size: 64,
                                   color: Colors.teal.shade300,
                                 ),
-                              );
-                            },
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  value:
-                                      loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                      : null,
+                              ),
+                      ),
+                    ),
+                    // Booking Status Overlay
+                    if (isDisabled)
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
+                        child: Container(
+                          height: 180,
+                          color: Colors.black.withOpacity(0.4),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.lock_outline,
+                                  size: 48,
+                                  color: Colors.white.withOpacity(0.9),
                                 ),
-                              );
-                            },
-                          )
-                        : Center(
-                            child: Icon(
-                              Icons.sports,
-                              size: 60,
-                              color: Colors.teal.shade300,
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Bookings Closed',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                  ),
-                ),
-                // Rating Badge
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.star,
-                          size: 16,
-                          color: Colors.amber.shade700,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          club.rating.toStringAsFixed(1),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // Club Details
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Club Name
-                  Text(
-                    club.name,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Location
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 16,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          '${club.address}, ${club.city}',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Phone
-                  Row(
-                    children: [
-                      Icon(Icons.phone, size: 16, color: Colors.grey.shade600),
-                      const SizedBox(width: 4),
-                      Text(
-                        club.phoneNumber,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Amenities
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _getDisplayAmenities(club.amenities).map((
-                      amenity,
-                    ) {
-                      return Container(
+                    // Rating Badge
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: 12,
+                          vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.teal.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: Colors.teal.shade200,
-                            width: 1,
-                          ),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 12,
+                            ),
+                          ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              _getAmenityIcon(amenity),
-                              size: 14,
-                              color: Colors.teal.shade700,
+                              Icons.star_rounded,
+                              size: 18,
+                              color: Colors.amber.shade400,
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 6),
                             Text(
-                              amenity,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.teal.shade700,
-                                fontWeight: FontWeight.w600,
+                              club.rating.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                color: Colors.black87,
                               ),
                             ),
                           ],
                         ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
+                      ),
+                    ),
+                  ],
+                ),
 
-                  // Price and Arrow
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // Club Details
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Club Name
+                      Text(
+                        club.name,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: isDisabled
+                              ? Colors.grey.shade500
+                              : Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Location
                       Row(
                         children: [
                           Icon(
-                            Icons.currency_rupee,
-                            size: 18,
-                            color: Colors.teal.shade700,
+                            Icons.location_on_outlined,
+                            size: 16,
+                            color: Colors.grey.shade600,
                           ),
-                          Text(
-                            '${price.toStringAsFixed(0)}/hour',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.teal.shade700,
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '${club.address}, ${club.city}',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.teal.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.arrow_forward,
-                          size: 20,
-                          color: Colors.teal.shade700,
-                        ),
+                      const SizedBox(height: 10),
+
+                      // Phone
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.phone_outlined,
+                            size: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            club.phoneNumber,
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Amenities
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _getDisplayAmenities(club.amenities).map((
+                          amenity,
+                        ) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDisabled
+                                  ? Colors.grey.shade200
+                                  : Colors.teal.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isDisabled
+                                    ? Colors.grey.shade300
+                                    : Colors.teal.shade300,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _getAmenityIcon(amenity),
+                                  size: 14,
+                                  color: isDisabled
+                                      ? Colors.grey.shade500
+                                      : Colors.teal.shade700,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  amenity,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDisabled
+                                        ? Colors.grey.shade500
+                                        : Colors.teal.shade700,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Price and Arrow
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.currency_rupee_rounded,
+                                size: 20,
+                                color: isDisabled
+                                    ? Colors.grey.shade400
+                                    : Colors.teal.shade700,
+                              ),
+                              Text(
+                                '${price.toStringAsFixed(0)}/hour',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDisabled
+                                      ? Colors.grey.shade400
+                                      : Colors.teal.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: isDisabled
+                                  ? Colors.grey.shade200
+                                  : Colors.teal.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 20,
+                              color: isDisabled
+                                  ? Colors.grey.shade400
+                                  : Colors.teal.shade700,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+            // Disabled Overlay
+            if (isDisabled)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -524,7 +734,6 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
 
     amenities.forEach((key, value) {
       if (value == true) {
-        // Convert camelCase to Title Case
         String displayName = key
             .replaceAllMapped(
               RegExp(r'([A-Z])'),
@@ -536,7 +745,6 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
       }
     });
 
-    // Return max 3 amenities
     return displayAmenities.take(3).toList();
   }
 

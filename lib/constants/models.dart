@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Club Model
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Club {
   final String id;
   final String name;
@@ -16,6 +18,7 @@ class Club {
   final GeoPoint location;
   final List<String> images;
   final Map<String, String> openingHours; // Day -> Hours
+  final bool allowBookings; // NEW: Booking status
 
   Club({
     required this.id,
@@ -32,6 +35,7 @@ class Club {
     required this.location,
     required this.images,
     required this.openingHours,
+    this.allowBookings = true, // Default to true
   });
 
   factory Club.fromFirestore(DocumentSnapshot doc) {
@@ -55,6 +59,7 @@ class Club {
       location: data['location'] ?? const GeoPoint(0, 0),
       images: List<String>.from(data['images'] ?? []),
       openingHours: Map<String, String>.from(data['openingHours'] ?? {}),
+      allowBookings: data['allowBookings'] ?? true, // NEW: Default to true
     );
   }
 
@@ -73,6 +78,7 @@ class Club {
       'location': location,
       'images': images,
       'openingHours': openingHours,
+      'allowBookings': allowBookings, // NEW: Include in map
     };
   }
 }

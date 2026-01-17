@@ -718,9 +718,9 @@ class _BookingsScreenState extends State<BookingsScreen>
 
     final result = await _bookingService.cancelBooking(booking.id);
 
-    if (mounted) {
-      Navigator.pop(context); // Close loading
+    Navigator.pop(context); // Close loading
 
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result.message),
