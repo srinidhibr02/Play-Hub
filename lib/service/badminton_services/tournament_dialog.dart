@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:play_hub/service/auth_service.dart';
 import 'package:play_hub/service/badminton_services/badminton_service.dart';
 
 class TournamentDialogs {
@@ -8,10 +9,11 @@ class TournamentDialogs {
     TournamentFirestoreService service,
     String? userEmail,
     String? tournamentId,
-    Function(String) showSuccess,
-    Function(String) showError,
+    Function(String)? showSuccess,
+    Function(String)? showError,
   ) async {
     if (userEmail == null || tournamentId == null) return;
+    if (!context.mounted) return;
 
     try {
       final shareCode = await service.createShareableLink(
@@ -23,6 +25,7 @@ class TournamentDialogs {
 
       showDialog(
         context: context,
+        barrierDismissible: true,
         builder: (_) => AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -70,35 +73,38 @@ class TournamentDialogs {
                     IconButton(
                       icon: const Icon(Icons.copy, color: Colors.orange),
                       onPressed: () async {
-                        await Clipboard.setData(ClipboardData(text: shareCode));
-
-                        // Show success feedback
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text('Code copied!'),
-                                ],
-                              ),
-                              backgroundColor: Colors.green.shade600,
-                              duration: const Duration(seconds: 1),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
+                        try {
+                          await Clipboard.setData(
+                            ClipboardData(text: shareCode),
                           );
 
-                          // Optional: Close dialog after copy
-                          Navigator.pop(context);
+                          if (context.mounted) {
+                            // Show success feedback
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text('Code copied!'),
+                                  ],
+                                ),
+                                backgroundColor: Colors.green.shade600,
+                                duration: const Duration(seconds: 1),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          showError?.call('Failed to copy code: $e');
                         }
                       },
                     ),
@@ -112,56 +118,177 @@ class TournamentDialogs {
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
         ),
       );
     } catch (e) {
-      showError('Failed to create share link: $e');
+      showError?.call('Failed to create share link: $e');
     }
   }
 
-  static void showInfoDialog(
+  static Future<void> showInfoDialog(
     BuildContext context,
+    TournamentFirestoreService service,
+    String? userEmail,
     String? format,
     String? teamType,
-    int? teamCount,
-    int? matchDuration,
-    int? breakDuration,
-  ) {
+    String? tournamentId,
+  ) async {
+    if (tournamentId == null || userEmail == null) return;
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.info, color: Colors.orange.shade600),
-            const SizedBox(width: 12),
-            const Text('Tournament Info'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _infoRow('Format', format?.toUpperCase() ?? 'ROUND ROBIN'),
-            _infoRow('Team Type', teamType ?? 'Singles'),
-            _infoRow('Teams', '$teamCount'),
-            _infoRow('Match Duration', '$matchDuration min'),
-            _infoRow('Break Duration', '$breakDuration min'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
+      builder: (_) => FutureBuilder<Map<String, dynamic>?>(
+        future: service.getTournament(userEmail, tournamentId),
+        builder: (context, snapshot) {
+          // Loading state
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Colors.orange.shade600),
+                  const SizedBox(height: 16),
+                  const Text('Loading tournament info...'),
+                ],
+              ),
+            );
+          }
+
+          // Error state
+          if (snapshot.hasError) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.error, color: Colors.red.shade600),
+                  const SizedBox(width: 12),
+                  const Text('Error'),
+                ],
+              ),
+              content: Text(
+                'Failed to load tournament info: ${snapshot.error}',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          }
+
+          // No data
+          if (!snapshot.hasData || snapshot.data == null) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.info, color: Colors.orange.shade600),
+                  const SizedBox(width: 12),
+                  const Text('Tournament Info'),
+                ],
+              ),
+              content: const Text('Tournament not found'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          }
+
+          // Data loaded - extract stats
+          final tournamentData = snapshot.data!;
+          final stats = tournamentData['stats'] as Map<String, dynamic>? ?? {};
+          final totalMatches = stats['totalMatches'] ?? 0;
+          final totalTeams = stats['totalTeams'] ?? 0;
+          final completedMatches = stats['completedMatches'] ?? 0;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.info, color: Colors.orange.shade600),
+                const SizedBox(width: 12),
+                const Text('Tournament Info'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _infoRow('Format', format?.toUpperCase() ?? 'ROUND ROBIN'),
+                const SizedBox(height: 12),
+                _infoRow('Team Type', teamType ?? 'Singles'),
+                const SizedBox(height: 12),
+                Divider(color: Colors.grey.shade300),
+                const SizedBox(height: 12),
+                const Text(
+                  'Tournament Stats',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _infoRow('Total Teams', totalTeams.toString()),
+                const SizedBox(height: 8),
+                _infoRow('Total Matches', totalMatches.toString()),
+                const SizedBox(height: 8),
+                _infoRow('Completed Matches', completedMatches.toString()),
+                const SizedBox(height: 8),
+                _infoRow(
+                  'Remaining Matches',
+                  (totalMatches - completedMatches).toString(),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
       ),
+    );
+  }
+
+  // Helper widget for info rows
+  static Widget _infoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Colors.orange.shade600,
+          ),
+        ),
+      ],
     );
   }
 
@@ -259,25 +386,6 @@ class TournamentDialogs {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  static Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }
