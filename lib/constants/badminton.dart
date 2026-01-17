@@ -218,6 +218,7 @@ class TeamStats {
   int won;
   int lost;
   int points;
+  int netResult;
 
   TeamStats({
     required this.teamId,
@@ -227,6 +228,7 @@ class TeamStats {
     required this.won,
     required this.lost,
     required this.points,
+    required this.netResult,
   });
 }
 
@@ -270,6 +272,7 @@ class PlayerStats {
   int losses;
   int totalPoints; // Points scored in matches they played
   int totalPointsAgainst; // Points conceded in matches they played
+  int netResult;
 
   PlayerStats({
     required this.playerName,
@@ -280,6 +283,7 @@ class PlayerStats {
     this.losses = 0,
     this.totalPoints = 0,
     this.totalPointsAgainst = 0,
+    this.netResult = 0,
   });
 
   double get winRate => matchesPlayed > 0 ? (wins / matchesPlayed) * 100 : 0.0;
