@@ -858,11 +858,11 @@ class _BadmintonMatchScheduleScreenState
   void _showTournamentInfo() {
     TournamentDialogs.showInfoDialog(
       context,
+      _badmintonService,
+      _authService.currentUserEmailId,
       widget.tournamentFormat,
       widget.teamType,
-      widget.teams?.length,
-      widget.matchDuration,
-      widget.breakDuration,
+      widget.tournamentId,
     );
   }
 
