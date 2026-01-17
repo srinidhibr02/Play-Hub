@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:play_hub/constants/models.dart';
 import 'package:play_hub/screens/booking/club_screen.dart';
 import 'package:play_hub/screens/booking_ui_screens.dart';
+import 'package:play_hub/screens/tabs/clubs_page.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
 import 'package:play_hub/screens/tournament/tournament_setup_screen.dart';
+import 'package:play_hub/screens/tournament_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
 import 'package:play_hub/widgets/my_bookings_widget.dart';
 
@@ -233,7 +236,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.people_alt,
                 title: 'Join Club',
                 color: Colors.purple,
-                onTap: () {},
+                onTap: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ClubsScreen()),
+                  );
+                },
               ),
             ),
             const SizedBox(width: 14),
@@ -423,7 +431,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TournamentScreen()),
+                );
+              },
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
                 minimumSize: Size(50, 30),
