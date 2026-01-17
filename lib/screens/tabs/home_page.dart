@@ -21,51 +21,59 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.center,
-            colors: [Colors.teal.shade50, Colors.white],
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          // ✅ SAFE BACK - Uses current context navigator
+          Navigator.maybePop(context);
+        }
+      },
+      child: Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.center,
+              colors: [Colors.teal.shade50, Colors.white],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 16,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 24),
-
-                  _buildWelcomeCard(),
-                  const SizedBox(height: 24),
-
-                  _buildQuickActions(context),
-                  const SizedBox(height: 24),
-
-                  _buildSportsCategories(context),
-                  const SizedBox(height: 24),
-
-                  _buildUpcomingEvents(context),
-                  const SizedBox(height: 24),
-
-                  // _buildMyBookings(context),
-                  MyBookingsWidget(
-                    userId: _authService.currentUserEmailId as String,
-                  ),
-                ],
+          child: SafeArea(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(context),
+                    const SizedBox(height: 24),
+                    _buildWelcomeCard(),
+                    const SizedBox(height: 24),
+                    _buildQuickActions(context),
+                    const SizedBox(height: 24),
+                    _buildSportsCategories(context),
+                    const SizedBox(height: 24),
+                    _buildUpcomingEvents(context),
+                    const SizedBox(height: 24),
+                    MyBookingsWidget(
+                      userId: _authService.currentUserEmailId as String,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  // ✅ SIMPLIFIED SAFE NAVIGATION - Works with nested navigator
+  void _navigateTo(Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -97,15 +105,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => ProfileScreen()),
-            );
-          },
-          borderRadius: BorderRadius.circular(
-            50,
-          ), // circular radius matching avatar
+          onTap: () => _navigateTo(ProfileScreen()), // ✅ FIXED
+          borderRadius: BorderRadius.circular(50),
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -175,7 +176,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         content: Text('Currently Everything is Free'),
                       ),
                     );
-                    // initializeSampleData();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
@@ -222,26 +222,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.event_available,
                 title: 'Book Slot',
                 color: Colors.blue,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => SelectSportScreen()),
-                  );
-                },
+                onTap: () => _navigateTo(SelectSportScreen()), // ✅ FIXED
               ),
             ),
-
             const SizedBox(width: 14),
             Expanded(
               child: _buildActionCard(
                 icon: Icons.people_alt,
                 title: 'Join Club',
                 color: Colors.purple,
-                onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ClubsScreen()),
-                  );
-                },
+                onTap: () => _navigateTo(const ClubsScreen()), // ✅ FIXED
               ),
             ),
             const SizedBox(width: 14),
@@ -250,13 +240,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.add_circle_outline,
                 title: 'Create Event',
                 color: Colors.orange,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const TournamentSetupScreen(),
-                    ),
-                  );
-                },
+                onTap: () =>
+                    _navigateTo(const TournamentSetupScreen()), // ✅ FIXED
               ),
             ),
           ],
@@ -374,16 +359,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(18),
-                    onTap: () {
-                      // Handle tap
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              SelectClubScreen(sport: sport['name'] as String),
-                        ),
-                      );
-                    },
+                    onTap: () => _navigateTo(
+                      // ✅ FIXED
+                      SelectClubScreen(sport: sport['name'] as String),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(18),
                       child: Align(
@@ -431,12 +410,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const TournamentScreen()),
-                );
-              },
+              onPressed: () => _navigateTo(const TournamentScreen()), // ✅ FIXED
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
                 minimumSize: Size(50, 30),
