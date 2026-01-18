@@ -110,383 +110,394 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // FORMAT SELECTION
-            if (widget.teamType != 'Custom') ...[
-              _buildSectionTitle('Tournament Format'),
-              const SizedBox(height: 10),
-              Container(
-                height: 48,
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.orange.shade50, Colors.orange.shade100],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+      body: Scrollbar(
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // FORMAT SELECTION
+              if (widget.teamType != 'Custom') ...[
+                _buildSectionTitle('Tournament Format'),
+                const SizedBox(height: 10),
+                Container(
+                  height: 48,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
                   ),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: Colors.orange.shade200, width: 2.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.orange.shade100,
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.orange.shade50, Colors.orange.shade100],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 24,
-                      offset: const Offset(0, 2),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: Colors.orange.shade200,
+                      width: 2.5,
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            tournamentFormat = 'round_robin';
-                            allowRematches = true;
-                            HapticFeedback.lightImpact();
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          height: 56,
-                          decoration: BoxDecoration(
-                            gradient: tournamentFormat == 'round_robin'
-                                ? LinearGradient(
-                                    colors: [
-                                      Colors.orange.shade600,
-                                      Colors.orange.shade700,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : null,
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(28),
-                              bottomLeft: Radius.circular(28),
-                            ),
-                            boxShadow: tournamentFormat == 'round_robin'
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.orange.shade400.withOpacity(
-                                        0.4,
-                                      ),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Center(
-                            child: Text(
-                              'ROUND ROBIN',
-                              style: TextStyle(
-                                color: tournamentFormat == 'round_robin'
-                                    ? Colors.white
-                                    : Colors.orange.shade900,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            tournamentFormat = 'knockout';
-                            allowRematches = false;
-                            totalMatches = _getBaseMaxMatches();
-                            HapticFeedback.lightImpact();
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          height: 56,
-                          decoration: BoxDecoration(
-                            gradient: tournamentFormat == 'knockout'
-                                ? LinearGradient(
-                                    colors: [
-                                      Colors.orange.shade600,
-                                      Colors.orange.shade700,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : null,
-                            borderRadius: const BorderRadius.only(
-                              topRight: Radius.circular(28),
-                              bottomRight: Radius.circular(28),
-                            ),
-                            boxShadow: tournamentFormat == 'knockout'
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.orange.shade400.withOpacity(
-                                        0.4,
-                                      ),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Center(
-                            child: Text(
-                              'KNOCKOUT',
-                              style: TextStyle(
-                                color: tournamentFormat == 'knockout'
-                                    ? Colors.white
-                                    : Colors.orange.shade900,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 15),
-
-            _buildSummaryCard(
-              icon: Icons.people,
-              title: widget.teamType == 'Singles' ? 'Players' : 'Teams',
-              value: teamsCount.toString(),
-              subtitle: widget.teamType,
-              color: Colors.blue,
-              showTeamSizeControls: widget.teamType == 'Custom',
-            ),
-            const SizedBox(height: 16),
-
-            if (teamsCount < 2)
-              Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning, color: Colors.red.shade600),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'You need at least ${_getMinimumRequirement()}',
-                        style: TextStyle(
-                          color: Colors.red.shade800,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            _buildSectionTitle('Tournament Date'),
-            const SizedBox(height: 12),
-            _buildDateSelector(),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Start Time'),
-            const SizedBox(height: 12),
-            _buildTimeSelector(),
-            const SizedBox(height: 24),
-
-            _buildSectionTitle('Rematches - Against same opponent'),
-            const SizedBox(height: 12),
-            _buildMatchRulesCard(),
-            const SizedBox(height: 10),
-
-            if (tournamentFormat == "round_robin" && allowRematches) ...[
-              _buildSliderCard(
-                value: rematches.toDouble(),
-                min: 1,
-                max: 5,
-                divisions: 4,
-                label: rematches.toString(),
-                onChanged: (value) {
-                  setState(() {
-                    rematches = value.toInt();
-                  });
-                },
-                suffix: rematches == 1 ? 'match' : 'matches',
-                helperText: 'Number of rematches against every other team.',
-              ),
-            ],
-
-            const SizedBox(height: 12),
-
-            if (widget.teamType == "Custom") ...[
-              _buildSectionTitle('Total Number of Matches'),
-              SizedBox(height: 12),
-              _buildSliderCard(
-                value: totalMatches.toDouble().clamp(
-                  1.0,
-                  maxMatches.toDouble(),
-                ), // ✅ FIX 1: Clamp value
-                min: 1.0, // ✅ FIX 2: Explicit double literals
-                max: (maxMatches >= 1
-                    ? maxMatches.toDouble()
-                    : 1.0), // ✅ FIX 3: Safe max
-                divisions: maxMatches > 1
-                    ? maxMatches - 1
-                    : 1, // ✅ FIX 4: Safe divisions
-                label: totalMatches.toString(),
-                onChanged: maxMatches >= 1
-                    ? (value) {
-                        // ✅ FIX 5: Disable if invalid range
-                        setState(() {
-                          totalMatches = value.toInt().clamp(
-                            1,
-                            maxMatches,
-                          ); // ✅ FIX 6: Clamp in onChanged
-                        });
-                      }
-                    : null,
-                suffix: 'matches',
-                helperText: allowRematches
-                    ? 'Up to $maxMatches matches with rematches'
-                    : 'Up to ${_getBaseMaxMatches()} matches (no rematches)',
-              ),
-              const SizedBox(height: 20),
-            ] else if (tournamentFormat == 'round_robin') ...[
-              Container(
-                padding: EdgeInsets.all(16),
-                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
                         color: Colors.orange.shade100,
-                        shape: BoxShape.circle,
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
                       ),
-                      child: Icon(
-                        Icons.info,
-                        color: Colors.orange.shade700,
-                        size: 24,
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 24,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              SizedBox(width: 6),
-                              Text(
-                                '$teamsCount teams : '
-                                '${_calculateTotalMatchesMaximum()} matches \n'
-                                '$rematches matchup against every other teams',
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              tournamentFormat = 'round_robin';
+                              allowRematches = true;
+                              HapticFeedback.lightImpact();
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            height: 56,
+                            decoration: BoxDecoration(
+                              gradient: tournamentFormat == 'round_robin'
+                                  ? LinearGradient(
+                                      colors: [
+                                        Colors.orange.shade600,
+                                        Colors.orange.shade700,
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
+                                  : null,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(28),
+                                bottomLeft: Radius.circular(28),
+                              ),
+                              boxShadow: tournamentFormat == 'round_robin'
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.orange.shade400
+                                            .withOpacity(0.4),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Center(
+                              child: Text(
+                                'ROUND ROBIN',
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.orange.shade800,
-                                  fontWeight: FontWeight.w500,
+                                  color: tournamentFormat == 'round_robin'
+                                      ? Colors.white
+                                      : Colors.orange.shade900,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            _buildSectionTitle('Match Duration'),
-            const SizedBox(height: 12),
-            _buildSliderCard(
-              value: matchDuration.toDouble(),
-              min: 15,
-              max: 45,
-              divisions: 6,
-              label: matchDuration.toString(),
-              onChanged: (value) {
-                setState(() {
-                  matchDuration = value.toInt();
-                });
-              },
-              suffix: 'minutes',
-            ),
-            const SizedBox(height: 20),
-            _buildSectionTitle('Break Between Matches'),
-            const SizedBox(height: 12),
-            _buildSliderCard(
-              value: breakBetweenMatches.toDouble(),
-              min: 5,
-              max: 30,
-              divisions: 5,
-              label: breakBetweenMatches.toString(),
-              onChanged: (value) {
-                setState(() {
-                  breakBetweenMatches = value.toInt();
-                });
-              },
-              suffix: 'minutes',
-            ),
-
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: teamsCount >= 2 ? _generateSchedule : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade600,
-                  disabledBackgroundColor: Colors.grey.shade400,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              tournamentFormat = 'knockout';
+                              allowRematches = false;
+                              totalMatches = _getBaseMaxMatches();
+                              HapticFeedback.lightImpact();
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            height: 56,
+                            decoration: BoxDecoration(
+                              gradient: tournamentFormat == 'knockout'
+                                  ? LinearGradient(
+                                      colors: [
+                                        Colors.orange.shade600,
+                                        Colors.orange.shade700,
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
+                                  : null,
+                              borderRadius: const BorderRadius.only(
+                                topRight: Radius.circular(28),
+                                bottomRight: Radius.circular(28),
+                              ),
+                              boxShadow: tournamentFormat == 'knockout'
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.orange.shade400
+                                            .withOpacity(0.4),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Center(
+                              child: Text(
+                                'KNOCKOUT',
+                                style: TextStyle(
+                                  color: tournamentFormat == 'knockout'
+                                      ? Colors.white
+                                      : Colors.orange.shade900,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  elevation: 4,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.auto_awesome,
+              ],
+
+              const SizedBox(height: 15),
+
+              _buildSummaryCard(
+                icon: Icons.people,
+                title: widget.teamType == 'Singles' ? 'Players' : 'Teams',
+                value: teamsCount.toString(),
+                subtitle: widget.teamType,
+                color: Colors.blue,
+                showTeamSizeControls: widget.teamType == 'Custom',
+              ),
+              const SizedBox(height: 16),
+
+              if (teamsCount < 2)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning, color: Colors.red.shade600),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'You need at least ${_getMinimumRequirement()}',
+                          style: TextStyle(
+                            color: Colors.red.shade800,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              _buildSectionTitle('Tournament Date'),
+              const SizedBox(height: 12),
+              _buildDateSelector(),
+              const SizedBox(height: 24),
+              _buildSectionTitle('Start Time'),
+              const SizedBox(height: 12),
+              _buildTimeSelector(),
+              const SizedBox(height: 24),
+
+              _buildSectionTitle('Rematches - Against same opponent'),
+              const SizedBox(height: 12),
+              _buildMatchRulesCard(),
+              const SizedBox(height: 10),
+
+              if (tournamentFormat == "round_robin" && allowRematches) ...[
+                _buildSliderCard(
+                  value: rematches.toDouble(),
+                  min: 1,
+                  max: 5,
+                  divisions: 4,
+                  label: rematches.toString(),
+                  onChanged: (value) {
+                    setState(() {
+                      rematches = value.toInt();
+                    });
+                  },
+                  suffix: rematches == 1 ? 'match' : 'matches',
+                  helperText: 'Number of rematches against every other team.',
+                ),
+              ],
+
+              const SizedBox(height: 12),
+
+              if (widget.teamType == "Custom") ...[
+                _buildSectionTitle('Total Number of Matches'),
+                SizedBox(height: 12),
+                _buildSliderCard(
+                  value: totalMatches.toDouble().clamp(
+                    1.0,
+                    maxMatches.toDouble(),
+                  ), // ✅ FIX 1: Clamp value
+                  min: 1.0, // ✅ FIX 2: Explicit double literals
+                  max: (maxMatches >= 1
+                      ? maxMatches.toDouble()
+                      : 1.0), // ✅ FIX 3: Safe max
+                  divisions: maxMatches > 1
+                      ? maxMatches - 1
+                      : 1, // ✅ FIX 4: Safe divisions
+                  label: totalMatches.toString(),
+                  onChanged: maxMatches >= 1
+                      ? (value) {
+                          // ✅ FIX 5: Disable if invalid range
+                          setState(() {
+                            totalMatches = value.toInt().clamp(
+                              1,
+                              maxMatches,
+                            ); // ✅ FIX 6: Clamp in onChanged
+                          });
+                        }
+                      : null,
+                  suffix: 'matches',
+                  helperText: allowRematches
+                      ? 'Up to $maxMatches matches with rematches'
+                      : 'Up to ${_getBaseMaxMatches()} matches (no rematches)',
+                ),
+                const SizedBox(height: 20),
+              ] else if (tournamentFormat == 'round_robin') ...[
+                Container(
+                  padding: EdgeInsets.all(16),
+                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade100,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.info,
+                          color: Colors.orange.shade700,
+                          size: 24,
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                SizedBox(width: 6),
+                                Text(
+                                  '$teamsCount teams : '
+                                  '${_calculateTotalMatchesMaximum()} matches \n'
+                                  '$rematches matchup against every other teams',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              _buildSectionTitle('Match Duration'),
+              const SizedBox(height: 12),
+              _buildSliderCard(
+                value: matchDuration.toDouble(),
+                min: 15,
+                max: 45,
+                divisions: 6,
+                label: matchDuration.toString(),
+                onChanged: (value) {
+                  setState(() {
+                    matchDuration = value.toInt();
+                  });
+                },
+                suffix: 'minutes',
+              ),
+              const SizedBox(height: 20),
+              _buildSectionTitle('Break Between Matches'),
+              const SizedBox(height: 12),
+              _buildSliderCard(
+                value: breakBetweenMatches.toDouble(),
+                min: 5,
+                max: 30,
+                divisions: 5,
+                label: breakBetweenMatches.toString(),
+                onChanged: (value) {
+                  setState(() {
+                    breakBetweenMatches = value.toInt();
+                  });
+                },
+                suffix: 'minutes',
+              ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+          child: SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: teamsCount >= 2 ? _generateSchedule : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade600,
+                disabledBackgroundColor: Colors.grey.shade400,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 4,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.auto_awesome,
+                    color: teamsCount >= 2
+                        ? Colors.white
+                        : Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Next Step',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                       color: teamsCount >= 2
                           ? Colors.white
                           : Colors.grey.shade600,
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Next Step',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: teamsCount >= 2
-                            ? Colors.white
-                            : Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

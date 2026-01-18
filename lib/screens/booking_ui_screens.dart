@@ -41,7 +41,14 @@ class SelectSportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Select Sport'),
+        title: const Text(
+          'Choose Your Sport',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
         backgroundColor: Colors.teal.shade700,
         foregroundColor: Colors.white,
         elevation: 4,

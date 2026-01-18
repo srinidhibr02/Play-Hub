@@ -36,10 +36,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
   }
 
   DateTime _slotStartDateTime(String startTime, DateTime selectedDate) {
-    // Handle both 12-hour and 24-hour formats
     String cleanTime = startTime.trim();
-
-    // Remove AM/PM if present and convert to 24-hour format
     bool isPM = cleanTime.toUpperCase().contains('PM');
     bool isAM = cleanTime.toUpperCase().contains('AM');
     cleanTime = cleanTime
@@ -50,7 +47,6 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
     int hour = int.tryParse(parts[0]) ?? 0;
     final minute = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
 
-    // Convert to 24-hour format
     if (isPM && hour != 12) {
       hour += 12;
     } else if (isAM && hour == 12) {
@@ -96,9 +92,18 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
     if (selectedTimeSlot == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Please select a time slot'),
+          content: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Please select a time slot'),
+            ],
+          ),
           backgroundColor: Colors.orange.shade700,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
@@ -137,436 +142,536 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
     final now = DateTime.now();
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Select Date & Time'),
-        backgroundColor: Colors.teal.shade700,
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Select Date & Time',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black87,
+        elevation: 0,
+        centerTitle: false,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: Colors.grey.shade200, height: 1),
+        ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Club Info Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
+          // SCROLLABLE CONTENT
+          SingleChildScrollView(
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                // Club Info Header - Improved
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade50,
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
                         children: [
-                          Text(
-                            widget.club.name,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.club.name,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${widget.court.name} • ${widget.sport}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${widget.court.name} • ${widget.sport}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.shade700,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.teal.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.currency_rupee_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                Text(
+                                  '${widget.club.pricePerHour[widget.sport]?.toStringAsFixed(0)}/hr',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.teal.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.teal.shade200,
-                          width: 2,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.currency_rupee,
-                            size: 18,
-                            color: Colors.teal.shade700,
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.teal.shade200,
+                            width: 1.5,
                           ),
-                          Text(
-                            '${widget.club.pricePerHour[widget.sport]?.toStringAsFixed(0)}/hr',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today_rounded,
+                              size: 18,
                               color: Colors.teal.shade700,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
-                        size: 16,
-                        color: Colors.blue.shade700,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatDate(selectedDate),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade900,
+                            const SizedBox(width: 12),
+                            Text(
+                              _formatDate(selectedDate),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.teal.shade700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
 
-          // Date Selector
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            color: Colors.white,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Select Date',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 100,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: 14, // Show 14 days ahead
-                    itemBuilder: (context, index) {
-                      final date = DateTime.now().add(Duration(days: index));
-                      final isSelected =
-                          date.day == selectedDate.day &&
-                          date.month == selectedDate.month &&
-                          date.year == selectedDate.year;
-
-                      return GestureDetector(
-                        onTap: () => _selectDate(date),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 75,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            gradient: isSelected
-                                ? LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.teal.shade600,
-                                      Colors.teal.shade800,
-                                    ],
-                                  )
-                                : null,
-                            color: isSelected ? null : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Colors.teal.shade700
-                                  : Colors.grey.shade300,
-                              width: isSelected ? 2 : 1,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.teal.shade200,
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                DateFormat('EEE').format(date),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : Colors.grey.shade600,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                date.day.toString(),
-                                style: TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                DateFormat('MMM').format(date),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isSelected
-                                      ? Colors.white70
-                                      : Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Legend Section
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: Colors.white,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildLegendItem(
-                  Colors.teal.shade700,
-                  'Selected',
-                  Icons.check_circle,
-                ),
-                _buildLegendItem(
-                  Colors.green.shade400,
-                  'Available',
-                  Icons.circle,
-                ),
-                _buildLegendItem(
-                  Colors.blue.shade400,
-                  'My Booking',
-                  Icons.person,
-                ),
-                _buildLegendItem(Colors.red.shade400, 'Booked', Icons.cancel),
-              ],
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // Time Slots Grid
-          Expanded(
-            child: isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Colors.teal),
-                  )
-                : Column(
+                // Date Selector - Improved
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  color: Colors.white,
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Text(
+                          'Select Date',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.grey.shade900,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 110,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: 14,
+                          itemBuilder: (context, index) {
+                            final date = DateTime.now().add(
+                              Duration(days: index),
+                            );
+                            final isSelected =
+                                date.day == selectedDate.day &&
+                                date.month == selectedDate.month &&
+                                date.year == selectedDate.year;
+                            return GestureDetector(
+                              onTap: () => _selectDate(date),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                width: 80,
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: isSelected
+                                      ? LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.teal.shade600,
+                                            Colors.teal.shade800,
+                                          ],
+                                        )
+                                      : null,
+                                  color: isSelected
+                                      ? null
+                                      : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? Colors.teal.shade700
+                                        : Colors.grey.shade300,
+                                    width: isSelected ? 2 : 1.5,
+                                  ),
+                                  boxShadow: isSelected
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.teal.shade300,
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      DateFormat('EEE').format(date),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.grey.shade600,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      date.day.toString(),
+                                      style: TextStyle(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w800,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      DateFormat('MMM').format(date),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isSelected
+                                            ? Colors.white70
+                                            : Colors.grey.shade600,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Legend Section - Improved
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  color: Colors.white,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Availability Legend',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade700,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildLegendItem(Colors.green.shade400, 'Available'),
+                          _buildLegendItem(Colors.teal.shade700, 'Selected'),
+                          _buildLegendItem(
+                            Colors.blue.shade400,
+                            'Your Booking',
+                          ),
+                          _buildLegendItem(Colors.red.shade400, 'Booked'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                Container(height: 1, color: Colors.grey.shade200),
+
+                // Time Slots Section - Improved
+                Container(
+                  color: Colors.white,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               'Available Time Slots',
                               style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade800,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.grey.shade900,
+                                letterSpacing: -0.3,
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${timeSlots.where((s) => !s.isBooked).length} available',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.green.shade700,
+                            if (!isLoading && timeSlots.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
                                 ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.green.shade300,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Text(
+                                  '${timeSlots.where((s) => !s.isBooked).length}/${timeSlots.length}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (isLoading)
+                        Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                CircularProgressIndicator(
+                                  color: Colors.teal.shade700,
+                                  strokeWidth: 3,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Loading time slots...',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (timeSlots.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.event_busy_rounded,
+                                  size: 64,
+                                  color: Colors.grey.shade300,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No slots available',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Try selecting a different date',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          child: GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: 1.6,
+                                ),
+                            itemCount: timeSlots.length,
+                            itemBuilder: (context, index) =>
+                                _buildTimeSlotCard(timeSlots[index], now),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Spacing for fixed button
+                SizedBox(height: MediaQuery.of(context).padding.bottom + 120),
+              ],
+            ),
+          ),
+
+          // FIXED BOTTOM BUTTON
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, -4),
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (selectedTimeSlot != null)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.teal.shade50, Colors.teal.shade100],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.teal.shade300,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.access_time_rounded,
+                              color: Colors.teal.shade700,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Selected Time',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.teal.shade600,
+                                  ),
+                                ),
+                                Text(
+                                  selectedTimeSlot!,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.teal.shade900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: selectedTimeSlot != null
+                            ? _proceedToBooking
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal.shade700,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          disabledForegroundColor: Colors.grey.shade600,
+                          elevation: selectedTimeSlot != null ? 4 : 0,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (selectedTimeSlot != null)
+                              const Icon(Icons.arrow_forward_rounded, size: 20),
+                            SizedBox(width: selectedTimeSlot != null ? 8 : 0),
+                            Text(
+                              selectedTimeSlot != null
+                                  ? 'Proceed to Confirmation'
+                                  : 'Select a time slot',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.2,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Expanded(
-                        child: timeSlots.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.event_busy,
-                                      size: 64,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'No slots available for this date',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : GridView.builder(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 3,
-                                      crossAxisSpacing: 12,
-                                      mainAxisSpacing: 12,
-                                      childAspectRatio: 1.6,
-                                    ),
-                                itemCount: timeSlots.length,
-                                itemBuilder: (context, index) {
-                                  final slot = timeSlots[index];
-                                  return _buildTimeSlotCard(slot, now);
-                                },
-                              ),
-                      ),
-                    ],
-                  ),
-          ),
-
-          // Proceed Button
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade300,
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (selectedTimeSlot != null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.teal.shade50, Colors.teal.shade100],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.teal.shade300,
-                          width: 2,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            color: Colors.teal.shade700,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Selected Time Slot',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.teal.shade600,
-                                ),
-                              ),
-                              Text(
-                                selectedTimeSlot!,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.teal.shade900,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: selectedTimeSlot != null
-                          ? _proceedToBooking
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal.shade700,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        disabledBackgroundColor: Colors.grey.shade300,
-                        disabledForegroundColor: Colors.grey.shade600,
-                        elevation: selectedTimeSlot != null ? 2 : 0,
-                      ),
-                      child: Text(
-                        selectedTimeSlot != null
-                            ? 'Proceed to Confirmation'
-                            : 'Select a time slot to continue',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
@@ -575,21 +680,26 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
     );
   }
 
-  Widget _buildLegendItem(Color color, String label, IconData icon) {
+  Widget _buildLegendItem(Color color, String label) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: color.withOpacity(0.5), width: 1),
+          ),
         ),
         const SizedBox(width: 6),
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             color: Colors.grey.shade700,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -600,7 +710,6 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
     final slotKey = '${slot.startTime}-${slot.endTime}';
     final isSelected = selectedTimeSlot == slotKey;
 
-    // Check if slot is in the past
     final slotDateTime = _slotStartDateTime(slot.startTime, selectedDate);
     final isToday =
         selectedDate.year == now.year &&
@@ -608,15 +717,13 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
         selectedDate.day == now.day;
     final isPast = isToday && slotDateTime.isBefore(now);
 
-    // Check if booked by current user
     final currentUserId = _authService.currentUserEmailId;
     final currentUserEmail = _authService.currentUser?.email;
 
     final bookedByMe =
         slot.bookedBy != null &&
         (slot.bookedBy == currentUserId || slot.bookedBy == currentUserEmail);
-    print(bookedByMe);
-    // Determine slot state and styling
+
     Color bgColor;
     Color textColor;
     Color borderColor;
@@ -625,18 +732,18 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
     bool isClickable;
 
     if (isPast) {
-      bgColor = Colors.grey.shade300;
+      bgColor = Colors.grey.shade200;
       textColor = Colors.grey.shade600;
       borderColor = Colors.grey.shade400;
       statusText = 'Past';
-      statusIcon = Icons.block;
+      statusIcon = Icons.block_rounded;
       isClickable = false;
     } else if (isSelected) {
       bgColor = Colors.teal.shade700;
       textColor = Colors.white;
       borderColor = Colors.teal.shade900;
       statusText = 'Selected';
-      statusIcon = Icons.check_circle;
+      statusIcon = Icons.check_circle_rounded;
       isClickable = true;
     } else if (slot.isBooked) {
       if (bookedByMe) {
@@ -644,14 +751,14 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
         textColor = Colors.white;
         borderColor = Colors.blue.shade700;
         statusText = 'Yours';
-        statusIcon = Icons.person;
+        statusIcon = Icons.person_rounded;
         isClickable = false;
       } else {
         bgColor = Colors.red.shade400;
         textColor = Colors.white;
         borderColor = Colors.red.shade700;
         statusText = 'Booked';
-        statusIcon = Icons.cancel;
+        statusIcon = Icons.cancel_rounded;
         isClickable = false;
       }
     } else {
@@ -659,7 +766,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
       textColor = Colors.grey.shade800;
       borderColor = Colors.green.shade400;
       statusText = 'Available';
-      statusIcon = Icons.check_circle_outline;
+      statusIcon = Icons.check_circle_outlined;
       isClickable = true;
     }
 
@@ -672,23 +779,23 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
             }
           : null,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 250),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: borderColor, width: isSelected ? 3 : 2),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.teal.shade200,
-                    blurRadius: 10,
+                    color: Colors.teal.shade300,
+                    blurRadius: 12,
                     spreadRadius: 2,
                   ),
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -702,24 +809,25 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                   Text(
                     slot.startTime,
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
                       color: textColor,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (statusIcon != null)
-                        Icon(statusIcon, size: 11, color: textColor),
-                      const SizedBox(width: 3),
+                        Icon(statusIcon, size: 13, color: textColor),
+                      const SizedBox(width: 4),
                       Text(
                         statusText,
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                           color: textColor,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ],
@@ -732,7 +840,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),

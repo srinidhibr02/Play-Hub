@@ -228,9 +228,13 @@ class TournamentDialogs {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _infoRow('Format', format?.toUpperCase() ?? 'ROUND ROBIN'),
+                _infoRow(
+                  'Format',
+                  tournamentData['tournamentFormat']?.toUpperCase() ??
+                      'ROUND ROBIN',
+                ),
                 const SizedBox(height: 12),
-                _infoRow('Team Type', teamType ?? 'Singles'),
+                _infoRow('Team Type', tournamentData['teamType'] ?? 'Singles'),
                 const SizedBox(height: 12),
                 Divider(color: Colors.grey.shade300),
                 const SizedBox(height: 12),

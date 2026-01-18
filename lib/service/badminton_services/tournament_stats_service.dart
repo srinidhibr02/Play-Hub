@@ -191,13 +191,12 @@ class TournamentStatsService {
     // Process completed matches
     for (final match in completedMatches) {
       try {
-        // Check status field (case-insensitive)
         final status = match.status?.toLowerCase() ?? '';
         if (status != 'completed' ||
             match.winner == null ||
             match.winner!.isEmpty) {
           debugPrint(
-            '⏭️  Skipping match ${match.id}: status=$status, winner=${match.winner}',
+            '⏭️ Skipping match ${match.id}: status=$status, winner=${match.winner}',
           );
           continue;
         }
@@ -205,25 +204,35 @@ class TournamentStatsService {
         final team1Players = match.team1.players;
         final team2Players = match.team2.players;
 
-        // Safely check winner
         if (team1Players.isEmpty || team2Players.isEmpty) {
           debugPrint('⚠️ Skipping match ${match.id}: Empty player lists');
           continue;
         }
 
         final team1Won = match.winner == match.team1.id;
+        final score1 = match.score1 ?? 0;
+        final score2 = match.score2 ?? 0;
+
+        // 🔥 Calculate point difference for this match
+        final pointDifference = team1Won
+            ? (score1 - score2)
+            : (score2 - score1);
 
         // Update stats for team 1 players
         for (final player in team1Players) {
           if (playerStatsMap.containsKey(player)) {
             playerStatsMap[player]!.matchesPlayed++;
-            playerStatsMap[player]!.totalPoints += match.score1 ?? 0;
-            playerStatsMap[player]!.totalPointsAgainst += match.score2 ?? 0;
+            playerStatsMap[player]!.totalPoints += score1;
+            playerStatsMap[player]!.totalPointsAgainst += score2;
 
             if (team1Won) {
               playerStatsMap[player]!.wins++;
+              playerStatsMap[player]!.netResult +=
+                  pointDifference; // 🔥 +4 for A vs B
             } else {
               playerStatsMap[player]!.losses++;
+              playerStatsMap[player]!.netResult -=
+                  pointDifference; // 🔥 -9 for A vs C
             }
           }
         }
@@ -232,19 +241,26 @@ class TournamentStatsService {
         for (final player in team2Players) {
           if (playerStatsMap.containsKey(player)) {
             playerStatsMap[player]!.matchesPlayed++;
-            playerStatsMap[player]!.totalPoints += match.score2 ?? 0;
-            playerStatsMap[player]!.totalPointsAgainst += match.score1 ?? 0;
+            playerStatsMap[player]!.totalPoints += score2;
+            playerStatsMap[player]!.totalPointsAgainst += score1;
 
             if (!team1Won) {
               playerStatsMap[player]!.wins++;
+              playerStatsMap[player]!.netResult +=
+                  pointDifference; // 🔥 Winner gets +diff
             } else {
               playerStatsMap[player]!.losses++;
+              playerStatsMap[player]!.netResult -=
+                  pointDifference; // 🔥 Loser gets -diff
             }
           }
         }
+
+        debugPrint(
+          '✅ Match ${match.id}: Team1=${score1}-${score2}=Team2, diff=$pointDifference',
+        );
       } catch (e, stackTrace) {
         debugPrint('⚠️ Error processing match ${match.id}: $e');
-        debugPrint('   Stack: $stackTrace');
         continue;
       }
     }

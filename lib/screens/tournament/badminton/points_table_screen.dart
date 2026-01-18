@@ -63,97 +63,105 @@ class _StandingsTabState extends State<StandingsTab>
 
     return Container(
       color: theme.colorScheme.surface,
-      child: Column(
-        children: [
-          _buildHeaderCard(theme),
-          const SizedBox(height: 12),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Team Standings Section
-                  StreamBuilder<List<TeamStats>>(
-                    stream: _badmintonFirestoreService.getTeamStats(
-                      _authService.currentUserEmailId ?? '',
-                      _tournamentId,
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildHeaderCard(theme),
+            const SizedBox(height: 12),
+            // Team Standings Section
+            StreamBuilder<List<TeamStats>>(
+              stream: _badmintonFirestoreService.getTeamStats(
+                _authService.currentUserEmailId ?? '',
+                _tournamentId,
+              ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: CircularProgressIndicator(
+                        color: Colors.orange.shade700,
+                        strokeWidth: 3,
+                      ),
                     ),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(32.0),
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
+                  );
+                }
 
-                      if (snapshot.hasError) {
-                        debugPrint('❌ Stream Error: ${snapshot.error}');
-                        return _buildErrorState(
-                          context,
-                          snapshot.error.toString(),
-                        );
-                      }
+                if (snapshot.hasError) {
+                  debugPrint('❌ Stream Error: ${snapshot.error}');
+                  return _buildErrorState(context, snapshot.error.toString());
+                }
 
-                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return _buildEmptyState(context);
-                      }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return _buildEmptyState(context);
+                }
 
-                      final teamStats = snapshot.data!
-                        ..sort((a, b) {
-                          int res = b.points.compareTo(a.points);
-                          if (res != 0) return res;
-                          res = b.won.compareTo(a.won);
-                          if (res != 0) return res;
-                          return a.matchesPlayed.compareTo(b.matchesPlayed);
-                        });
+                final teamStats = snapshot.data!
+                  ..sort((a, b) {
+                    // 🔥 1. Primary: Points
+                    int res = b.points.compareTo(a.points);
+                    if (res != 0) return res;
 
-                      return FadeTransition(
-                        opacity: _fadeAnimation,
+                    // 🔥 2. Secondary: Wins
+                    res = b.won.compareTo(a.won);
+                    if (res != 0) return res;
+
+                    // 🔥 3. Tie-breaker: netResult (NEW!)
+                    res = b.netResult.compareTo(a.netResult);
+                    if (res != 0) return res;
+
+                    // 4. Fallback: Matches played (fewer better)
+                    return a.matchesPlayed.compareTo(b.matchesPlayed);
+                  });
+
+                return FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         child: Column(
                           children: [
+                            _buildStandingsHeaderRow(theme),
                             ListView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              itemCount: teamStats.length + 1,
+                              padding: EdgeInsets.zero,
+                              itemCount: teamStats.length,
                               itemBuilder: (context, index) {
-                                if (index == 0) {
-                                  return _buildStandingsHeaderRow(theme);
-                                }
-                                final team = teamStats[index - 1];
-                                return _buildTeamRow(theme, team, index - 1);
+                                final team = teamStats[index];
+                                return _buildTeamRow(theme, team, index);
                               },
                             ),
                           ],
                         ),
-                      );
-                    },
+                      ),
+                    ],
                   ),
+                );
+              },
+            ),
 
-                  const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-                  // Player Statistics Section
-                  FinalPlayerStatsWidget(
-                    completedMatches: _statsService.getCompletedMatches(
-                      _authService.currentUserEmailId ?? '',
-                      _tournamentId,
-                    ),
-                    teams: _statsService.getTeams(
-                      _authService.currentUserEmailId ?? '',
-                      _tournamentId,
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-                ],
+            // Player Statistics Section
+            FinalPlayerStatsWidget(
+              completedMatches: _statsService.getCompletedMatches(
+                _authService.currentUserEmailId ?? '',
+                _tournamentId,
+              ),
+              teams: _statsService.getTeams(
+                _authService.currentUserEmailId ?? '',
+                _tournamentId,
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
@@ -223,10 +231,11 @@ class _StandingsTabState extends State<StandingsTab>
     );
   }
 
+  /// 🔥 UPDATED Header with NetR column + subtitles
   Widget _buildStandingsHeaderRow(ThemeData theme) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
         borderRadius: BorderRadius.circular(12),
@@ -246,25 +255,43 @@ class _StandingsTabState extends State<StandingsTab>
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ),
-          _headerCell('P'),
-          _headerCell('W'),
-          _headerCell('Pts'),
+          _headerCell('P', 'Played'),
+          _headerCell('W', 'Won'),
+          _headerCell('Pts', 'Points'),
+          _headerCell('NR', 'Net'), // 🔥 NEW: NetResult
         ],
       ),
     );
   }
 
-  Widget _headerCell(String label) {
-    return SizedBox(
-      width: 40,
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-      ),
+  Widget _headerCell(String label, String subtitle) {
+    return Column(
+      children: [
+        SizedBox(
+          width: 32,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ),
+        SizedBox(
+          width: 32,
+          child: Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
+  /// 🔥 UPDATED Team Row with netResult display
   Widget _buildTeamRow(ThemeData theme, TeamStats team, int index) {
     final rank = index + 1;
     final isTop3 = rank <= 3;
@@ -278,7 +305,7 @@ class _StandingsTabState extends State<StandingsTab>
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
@@ -292,25 +319,37 @@ class _StandingsTabState extends State<StandingsTab>
       ),
       child: Row(
         children: [
+          // Rank Badge
           Container(
-            width: 32,
-            height: 32,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isTop3 ? badgeColor : Colors.grey.shade200,
+              boxShadow: isTop3
+                  ? [
+                      BoxShadow(
+                        color: badgeColor.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
             ),
             child: Center(
               child: Text(
                 '$rank',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: isTop3 ? Colors.white : Colors.grey.shade800,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
+
+          // Team Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,6 +358,7 @@ class _StandingsTabState extends State<StandingsTab>
                   team.teamName,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -339,12 +379,51 @@ class _StandingsTabState extends State<StandingsTab>
               ],
             ),
           ),
-          _statCell('${team.matchesPlayed}', Colors.blueGrey),
+
+          // 🔥 Stats Columns
+          _statCell('${team.matchesPlayed}', Colors.blueGrey.shade700),
           _statCell('${team.won}', Colors.green.shade600),
           _statCell(
             '${team.points}',
             Colors.orange.shade700,
             isEmphasized: true,
+          ),
+          _netResultCell(team.netResult), // 🔥 NEW NetResult Cell
+        ],
+      ),
+    );
+  }
+
+  /// 🔥 NEW NetResult Cell with color coding
+  Widget _netResultCell(int netResult) {
+    final isPositive = netResult > 0;
+    final displayText = isPositive
+        ? '+${netResult.abs()}'
+        : '${netResult.abs()}';
+
+    return Container(
+      width: 36,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            displayText,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: isPositive ? Colors.green.shade600 : Colors.red.shade600,
+            ),
+          ),
+          Text(
+            'NR',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -352,16 +431,36 @@ class _StandingsTabState extends State<StandingsTab>
   }
 
   Widget _statCell(String value, Color color, {bool isEmphasized = false}) {
-    return SizedBox(
-      width: 30,
-      child: Text(
-        value,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: isEmphasized ? 14 : 13,
-          fontWeight: isEmphasized ? FontWeight.w800 : FontWeight.w600,
-          color: color,
-        ),
+    return Container(
+      width: 36,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: isEmphasized ? 14 : 13,
+              fontWeight: isEmphasized ? FontWeight.w800 : FontWeight.w700,
+              color: color,
+            ),
+          ),
+          Text(
+            switch (color) {
+              const Color.fromARGB(255, 69, 90, 100) => 'P',
+              const Color.fromARGB(255, 67, 160, 71) => 'W',
+              const Color.fromARGB(255, 245, 124, 0) => 'Pts',
+              _ => '',
+            },
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -376,17 +475,17 @@ class _StandingsTabState extends State<StandingsTab>
           children: [
             Icon(
               Icons.groups_outlined,
-              size: 40,
+              size: 64,
               color: theme.colorScheme.onSurface.withOpacity(0.4),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               'No teams found',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               'Standings will appear once matches are created and completed.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -408,15 +507,15 @@ class _StandingsTabState extends State<StandingsTab>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 40, color: theme.colorScheme.error),
-            const SizedBox(height: 12),
+            Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+            const SizedBox(height: 16),
             Text(
               'Something went wrong',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               error,
               style: theme.textTheme.bodySmall?.copyWith(

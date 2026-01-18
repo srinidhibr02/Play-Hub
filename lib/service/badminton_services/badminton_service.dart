@@ -131,7 +131,13 @@ class TournamentFirestoreService {
         'id': team.id,
         'name': team.name,
         'players': team.players,
-        'stats': {'matchesPlayed': 0, 'won': 0, 'lost': 0, 'points': 0},
+        'stats': {
+          'matchesPlayed': 0,
+          'won': 0,
+          'lost': 0,
+          'points': 0,
+          'netResult': 0,
+        },
         'createdAt': FieldValue.serverTimestamp(),
       });
     }
@@ -181,6 +187,7 @@ class TournamentFirestoreService {
           'score2': match.score2,
           'winner': match.winner,
           'round': match.round,
+          'stage': match.stage,
           'roundName': match.roundName,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -569,6 +576,7 @@ class TournamentFirestoreService {
               won: stats['won'] ?? 0,
               lost: stats['lost'] ?? 0,
               points: stats['points'] ?? 0,
+              netResult: stats['netResult'] ?? 0,
             );
           }).toList();
         });
@@ -679,10 +687,25 @@ class TournamentFirestoreService {
       return;
     }
 
+    // 🔥 NEW: Calculate netResult (point difference)
+    final score1 = match.score1 ?? 0;
+    final score2 = match.score2 ?? 0;
+    final pointDifference = match.winner == match.team1.id
+        ? (score1 - score2) // Team1 won: +diff for winner, -diff for loser
+        : (score2 - score1); // Team2 won: +diff for winner, -diff for loser
+
+    debugPrint(
+      '🔥 NetResult calc: score1=$score1, score2=$score2, diff=$pointDifference',
+    );
+
     debugPrint('');
     debugPrint('📊 Updating Firestore Stats:');
-    debugPrint('   Winner: $winnerParentTeamId (+2 points, +1 win)');
-    debugPrint('   Loser: $loserParentTeamId (+0 points, +1 loss)');
+    debugPrint(
+      '   Winner: $winnerParentTeamId (+2 points, +1 win, +$pointDifference NR)',
+    );
+    debugPrint(
+      '   Loser: $loserParentTeamId (+0 points, +1 loss, -$pointDifference NR)',
+    );
 
     try {
       WriteBatch batch = _firestore.batch();
@@ -696,6 +719,9 @@ class TournamentFirestoreService {
         'stats.matchesPlayed': FieldValue.increment(1),
         'stats.won': FieldValue.increment(1),
         'stats.points': FieldValue.increment(2),
+        'stats.netResult': FieldValue.increment(
+          pointDifference,
+        ), // 🔥 WINNER: +diff
       });
 
       debugPrint('   ✓ Winner batch queued: teams/$winnerParentTeamId');
@@ -708,6 +734,9 @@ class TournamentFirestoreService {
       batch.update(loserRef, {
         'stats.matchesPlayed': FieldValue.increment(1),
         'stats.lost': FieldValue.increment(1),
+        'stats.netResult': FieldValue.increment(
+          -pointDifference,
+        ), // 🔥 LOSER: -diff
       });
 
       debugPrint('   ✓ Loser batch queued: teams/$loserParentTeamId');
@@ -716,6 +745,8 @@ class TournamentFirestoreService {
 
       debugPrint('');
       debugPrint('✅ Stats updated successfully in Firestore!');
+      debugPrint('   Winner netResult: +$pointDifference');
+      debugPrint('   Loser netResult: -$pointDifference');
       debugPrint('═══════════════════════════════════════════════');
     } catch (e) {
       debugPrint('');

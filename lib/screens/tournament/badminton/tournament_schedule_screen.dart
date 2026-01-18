@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
 import 'package:play_hub/screens/tournament/badminton/points_table_screen.dart';
 import 'package:play_hub/screens/tournament/badminton/scorecard.dart';
@@ -7,7 +8,6 @@ import 'package:play_hub/service/badminton_services/badminton_service.dart';
 import 'package:play_hub/service/badminton_services/match_util_service.dart';
 import 'package:play_hub/service/badminton_services/tournament_dialog.dart';
 
-// Helper class for team rankings
 class TeamRanking {
   final Team team;
   int points;
@@ -74,20 +74,21 @@ class _BadmintonMatchScheduleScreenState
 
   String? _tournamentId;
   bool _isLoading = false;
-  bool _leagueCompletionDialogShown = false;
   late int _tabCount;
+  String? _tournamentFormat;
+  String? _teamType;
 
   @override
   void initState() {
     super.initState();
-    _tabCount = widget.tournamentFormat == 'knockout' ? 1 : 2;
-    _tabController = TabController(length: _tabCount, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _initializeTournament();
   }
 
   Future<void> _initializeTournament() async {
     if (widget.tournamentId != null) {
       setState(() => _tournamentId = widget.tournamentId);
+      await _fetchTournamentData();
     } else if (_validateTournamentData()) {
       await _createTournament();
     } else {
@@ -97,6 +98,35 @@ class _BadmintonMatchScheduleScreenState
           if (mounted) Navigator.pop(context);
         });
       }
+    }
+  }
+
+  Future<void> _fetchTournamentData() async {
+    try {
+      final tournamentData = await _badmintonService.getTournament(
+        _authService.currentUserEmailId ?? '',
+        _tournamentId ?? '',
+      );
+
+      if (tournamentData != null && mounted) {
+        final format = tournamentData['tournamentFormat'] as String?;
+        final teamType = tournamentData['teamType'] as String?;
+
+        setState(() {
+          _tournamentFormat = format;
+          _teamType = teamType;
+          // Set tab count based on format
+          _tabCount = 2;
+        });
+
+        // Recreate tab controller with correct length
+        _tabController = TabController(length: _tabCount, vsync: this);
+
+        debugPrint('✅ Fetched tournamentFormat: $format');
+        debugPrint('✅ Fetched teamType: $teamType');
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching tournament data: $e');
     }
   }
 
@@ -119,9 +149,9 @@ class _BadmintonMatchScheduleScreenState
       if (!_validateTournamentData()) {
         throw Exception('Missing required tournament parameters');
       }
+
       List<Match> matches = [];
       if (widget.teamType == 'Custom') {
-        print('Custom Tournament Match Generator');
         matches = CustomMatchGenerator(
           teams: widget.teams!,
           totalMatches: widget.totalMatches!,
@@ -133,7 +163,10 @@ class _BadmintonMatchScheduleScreenState
           breakDuration: widget.breakDuration!,
           tournamentFormat: widget.tournamentFormat ?? 'Custom',
         ).generate();
+      } else if (widget.tournamentFormat == 'knockout') {
+        matches = _generateInitialKnockout();
       } else {
+        print('I am telling you ${widget.tournamentFormat}');
         matches = MatchGenerator(
           teams: widget.teams!,
           totalMatches: widget.totalMatches!,
@@ -176,9 +209,13 @@ class _BadmintonMatchScheduleScreenState
 
       setState(() {
         _tournamentId = tournamentId;
+        _tournamentFormat = widget.tournamentFormat;
+        _teamType = widget.teamType;
+        _tabCount = 2;
         _isLoading = false;
       });
 
+      _tabController = TabController(length: _tabCount, vsync: this);
       _showSuccessSnackBar('Tournament created successfully!');
     } catch (e) {
       debugPrint('❌ Error creating tournament: $e');
@@ -189,158 +226,69 @@ class _BadmintonMatchScheduleScreenState
     }
   }
 
-  Future<bool> _checkAllLeagueMatchesCompleted() async {
-    try {
-      final allMatches = await _badmintonService
-          .getMatches(
-            _authService.currentUserEmailId ?? '',
-            _tournamentId ?? '',
-          )
-          .first;
+  List<Match> _generateInitialKnockout() {
+    final matches = <Match>[];
+    var shuffledTeams = List<Team>.from(widget.teams ?? [])..shuffle();
+    var currentTime = widget.startDate ?? DateTime.now();
 
-      final leagueMatches = allMatches
-          .where((m) => m.stage == 'League' || m.stage == null)
-          .toList();
+    final hasOddTeams = shuffledTeams.length.isOdd;
 
-      if (leagueMatches.isEmpty) return false;
+    if (hasOddTeams) {
+      final byeTeam = shuffledTeams.removeAt(0);
 
-      return leagueMatches.every((m) => m.status == 'Completed');
-    } catch (e) {
-      debugPrint('Error checking league completion: $e');
-      return false;
-    }
-  }
-
-  Future<void> _checkAndShowLeagueCompletionDialog() async {
-    if (_leagueCompletionDialogShown) return;
-
-    final allCompleted = await _checkAllLeagueMatchesCompleted();
-    final playoffMatches = await _badmintonService.getPlayoffMatches(
-      _authService.currentUserEmailId ?? '',
-      _tournamentId ?? '',
-    );
-
-    if (allCompleted && mounted && playoffMatches.isEmpty) {
-      setState(() => _leagueCompletionDialogShown = true);
-      _showLeagueCompletionDialog();
-    }
-  }
-
-  void _showLeagueCompletionDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Celebration Icon
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.green.shade100,
-                borderRadius: BorderRadius.circular(40),
-              ),
-              child: Icon(
-                Icons.check_circle,
-                size: 50,
-                color: Colors.green.shade600,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Title
-            Text(
-              'Excellent! 🎉',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.green.shade700,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Message
-            Text(
-              'All League Matches Completed!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Description
-            Text(
-              'Your tournament league phase is complete. You can now schedule the next phase (Playoffs/Semifinals) to determine the winner.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade700,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade300,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: Text(
-                      'Later',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _showGenerateRoundDialog();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Schedule Now',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+      matches.add(
+        Match(
+          id: 'M_BYE_${DateTime.now().millisecondsSinceEpoch}',
+          team1: byeTeam,
+          team2: byeTeam,
+          date: currentTime,
+          time: DateFormat('h:mm a').format(currentTime),
+          status: 'Completed',
+          score1: 1,
+          score2: 0,
+          winner: byeTeam.id,
+          round: 1,
+          roundName: _getRoundNameFromTeamCount(shuffledTeams.length + 1),
+          stage: 'Knockout',
+          isBye: true,
         ),
-      ),
-    );
+      );
+    }
+
+    for (int i = 0; i < shuffledTeams.length; i += 2) {
+      if (i + 1 < shuffledTeams.length) {
+        final team1 = shuffledTeams[i];
+        final team2 = shuffledTeams[i + 1];
+
+        matches.add(
+          Match(
+            id: 'M${matches.length + 1}',
+            team1: team1,
+            team2: team2,
+            date: currentTime,
+            time: DateFormat('h:mm a').format(currentTime),
+            status: 'Scheduled',
+            score1: 0,
+            score2: 0,
+            winner: null,
+            round: 1,
+            roundName: _getRoundNameFromTeamCount(
+              shuffledTeams.length + (hasOddTeams ? 1 : 0),
+            ),
+            stage: 'Knockout',
+          ),
+        );
+
+        currentTime = currentTime.add(
+          Duration(
+            minutes: (widget.matchDuration ?? 30) + (widget.breakDuration ?? 5),
+          ),
+        );
+      }
+    }
+
+    debugPrint('✅ Generated ${matches.length} initial knockout matches');
+    return matches;
   }
 
   Widget _buildSavingOverlay(BuildContext context) {
@@ -349,290 +297,47 @@ class _BadmintonMatchScheduleScreenState
     return Container(
       color: Colors.black.withOpacity(0.45),
       child: Center(
-        child: AnimatedScale(
-          scale: 1,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          child: AnimatedOpacity(
-            opacity: 1,
-            duration: const Duration(milliseconds: 200),
-            child: Material(
-              color: theme.colorScheme.surface,
-              elevation: 8,
-              borderRadius: BorderRadius.circular(20),
-              shadowColor: Colors.black26,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 20,
+        child: Material(
+          color: theme.colorScheme.surface,
+          elevation: 8,
+          borderRadius: BorderRadius.circular(20),
+          shadowColor: Colors.black26,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
-                child: Row(
+                const SizedBox(width: 18),
+                Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        color: theme.colorScheme.primary,
+                    Text(
+                      'Generating next round',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 18),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Saving order',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Hang tight, this won’t take long',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.6),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 6),
+                    Text(
+                      'Please wait...',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  void _showGenerateRoundDialog() async {
-    try {
-      final allMatches = await _badmintonService
-          .getMatches(
-            _authService.currentUserEmailId ?? '',
-            _tournamentId ?? '',
-          )
-          .first;
-
-      if (allMatches.isEmpty) {
-        _showErrorSnackBar('No league matches found');
-        return;
-      }
-
-      final leagueMatches = allMatches
-          .where((m) => m.stage == 'League' || m.stage == null)
-          .toList();
-
-      final playoffMatches = allMatches
-          .where((m) => m.stage == 'Playoff')
-          .toList();
-      final hasPlayoffs = playoffMatches.isNotEmpty;
-
-      if (!mounted) return;
-
-      if (widget.tournamentFormat == 'knockout') {
-        _showKnockoutRoundDialog(allMatches);
-      } else {
-        _showRoundRobinRoundDialog(leagueMatches, hasPlayoffs);
-      }
-    } catch (e) {
-      _showErrorSnackBar('Error: $e');
-    }
-  }
-
-  void _showRoundRobinRoundDialog(List<Match> leagueMatches, bool hasPlayoffs) {
-    final allCompleted =
-        leagueMatches.isNotEmpty &&
-        leagueMatches.every((m) => m.status == 'Completed');
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.sports_score, color: Colors.orange.shade600),
-            const SizedBox(width: 12),
-            const Text('Next Round'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              allCompleted
-                  ? 'League stage completed! 🎉'
-                  : '⚠️ Complete all league matches first',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: allCompleted
-                    ? Colors.green.shade700
-                    : Colors.orange.shade700,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildRoundOption(
-              enabled: allCompleted,
-              icon: Icons.emoji_events,
-              title: hasPlayoffs
-                  ? 'View Playoff Matches'
-                  : 'Generate Playoff Matches',
-              subtitle: hasPlayoffs
-                  ? 'Playoffs already generated'
-                  : 'Create semis & finals for top teams',
-              onTap: allCompleted
-                  ? () {
-                      Navigator.pop(context);
-                      _initiatePlayout();
-                    }
-                  : null,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showKnockoutRoundDialog(List<Match> allMatches) {
-    final playoffMatches = allMatches
-        .where((m) => m.stage == 'Knockout')
-        .toList();
-    final completedCount = playoffMatches
-        .where((m) => m.status == 'Completed')
-        .length;
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.military_tech, color: Colors.red.shade600),
-            const SizedBox(width: 12),
-            const Text('Knockout Progress'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Matches: $completedCount / ${playoffMatches.length} completed',
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: playoffMatches.isEmpty
-                    ? 0
-                    : completedCount / playoffMatches.length,
-                minHeight: 8,
-                backgroundColor: Colors.grey.shade300,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Colors.orange.shade600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            _buildRoundOption(
-              enabled: true,
-              icon: Icons.sports_tennis,
-              title: 'Continue Knockout',
-              subtitle: completedCount == playoffMatches.length
-                  ? 'All matches completed! 🏆'
-                  : 'Play next knockout match',
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRoundOption({
-    required bool enabled,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: enabled ? Colors.amber.shade300 : Colors.grey.shade300,
-            width: 2,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          color: enabled ? Colors.white : Colors.grey.shade100,
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: enabled ? Colors.amber.shade100 : Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color: enabled ? Colors.amber.shade700 : Colors.grey.shade500,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: enabled ? Colors.black : Colors.grey.shade600,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: enabled
-                          ? Colors.grey.shade600
-                          : Colors.grey.shade500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (enabled)
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.amber.shade600,
-              ),
-          ],
         ),
       ),
     );
@@ -640,16 +345,24 @@ class _BadmintonMatchScheduleScreenState
 
   Future<void> _initiatePlayout() async {
     try {
-      final tournament = await _badmintonService.getTournament(
-        _authService.currentUserEmailId ?? '',
-        _tournamentId ?? '',
-      );
       final allMatches = await _badmintonService
           .getMatches(
             _authService.currentUserEmailId ?? '',
             _tournamentId ?? '',
           )
           .first;
+
+      // For knockout format, generate next knockout round
+      if (_tournamentFormat == 'knockout') {
+        await _generateNextKnockoutRound(allMatches);
+        return;
+      }
+
+      // For league/round_robin format, generate playoffs
+      final tournament = await _badmintonService.getTournament(
+        _authService.currentUserEmailId ?? '',
+        _tournamentId ?? '',
+      );
 
       final leagueMatches = allMatches
           .where((m) => m.stage == 'League' || m.stage == null)
@@ -662,19 +375,15 @@ class _BadmintonMatchScheduleScreenState
         _showErrorSnackBar('All league matches must be completed first');
         return;
       }
-      debugPrint(
-        'Printing to see teams count : ${tournament?["stats"]?["totalTeams"]}',
-      );
+
       final teamsCount = tournament?["stats"]?["totalTeams"];
 
       List<Team> topTeams;
 
       switch (teamsCount) {
         case 2:
-          // Direct Final: Team 1 vs Team 2
           topTeams = await _getTopTeams(2);
           break;
-
         case 3:
         case 4:
           topTeams = await _getTopTeams(2);
@@ -682,10 +391,8 @@ class _BadmintonMatchScheduleScreenState
         case 5:
         case 6:
         case 7:
-          // Semifinals: Top 4 play semis → Final
           topTeams = await _getTopTeams(4);
           break;
-
         case 8:
         case 9:
         case 10:
@@ -694,24 +401,16 @@ class _BadmintonMatchScheduleScreenState
         case 13:
         case 14:
         case 15:
-          // Full Playoffs: Top 8 play full knockout
           topTeams = await _getTopTeams(8);
           break;
-
         default:
           if (teamsCount > 15) {
-            // Large tournament: Top 8 playoffs
             topTeams = await _getTopTeams(8);
-            print('🌟 $teamsCount teams → Top 8 Playoffs');
           } else {
-            // Less than 2 teams - no playoffs
             topTeams = [];
           }
           break;
       }
-
-      debugPrint('Total teams $teamsCount');
-      debugPrint('Top Teams $topTeams');
 
       if (topTeams.length < 2) {
         _showErrorSnackBar('Not enough teams to conduct playoffs');
@@ -724,10 +423,7 @@ class _BadmintonMatchScheduleScreenState
       if (topTeams.length == 2) {
         choice = PlayoffChoice.directFinal;
       } else {
-        choice = await TournamentDialogs.showPlayoffOptionsDialog(
-          context,
-          topTeams.length,
-        );
+        choice = await _showPlayoffOptionsBottomSheet(context, topTeams.length);
       }
 
       if (choice == null) return;
@@ -751,11 +447,467 @@ class _BadmintonMatchScheduleScreenState
         playoffMatches,
       );
 
+      if (!mounted) return;
+
+      setState(() {});
+
       _showSuccessSnackBar('Playoff matches generated successfully!');
     } catch (e) {
       debugPrint('❌ Error generating playoffs: $e');
       _showErrorSnackBar('Failed to generate playoffs: $e');
     }
+  }
+
+  Future<PlayoffChoice?> _showPlayoffOptionsBottomSheet(
+    BuildContext context,
+    int teamCount,
+  ) async {
+    return showModalBottomSheet<PlayoffChoice>(
+      context: context,
+      isDismissible: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.emoji_events,
+                    color: Colors.amber.shade600,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Playoff Options',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '$teamCount teams competing',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'How would you like to proceed with the playoffs?',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade700,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildPlayoffOption(
+              icon: Icons.flash_on,
+              title: 'Direct Final',
+              subtitle: 'Top 2 teams play the final',
+              onTap: () => Navigator.pop(context, PlayoffChoice.directFinal),
+            ),
+            const SizedBox(height: 12),
+            _buildPlayoffOption(
+              icon: Icons.stairs,
+              title: 'Semis & Final',
+              subtitle: 'Top 4 teams battle for semis & final',
+              onTap: () => Navigator.pop(context, PlayoffChoice.semisAndFinal),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayoffOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.amber.shade300, width: 2),
+          borderRadius: BorderRadius.circular(14),
+          color: Colors.amber.shade50,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.amber.shade700, size: 28),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 18,
+              color: Colors.amber.shade600,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showKnockoutRoundConfirmationModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward,
+                    color: Colors.blue.shade600,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Generate Next Round',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Knockout Tournament',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ready to proceed?',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Winners from the current round will automatically advance to the next round. New matches will be generated based on the tournament rules.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.blue.shade600,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _initiatePlayout();
+                    },
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text('Confirm'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _generateNextKnockoutRound(List<Match> allMatches) async {
+    try {
+      setState(() => _isLoading = true);
+
+      final allKnockoutMatches = allMatches
+          .where((m) => m.stage == 'Knockout')
+          .toList();
+
+      if (allKnockoutMatches.isEmpty) {
+        _showErrorSnackBar('No knockout matches found');
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final currentRoundNumber = _getLatestRoundNumber(allKnockoutMatches);
+      final currentRoundMatches = allKnockoutMatches
+          .where((m) => m.round == currentRoundNumber)
+          .toList();
+
+      final allCurrentRoundCompleted = currentRoundMatches.every(
+        (m) => m.status == 'Completed',
+      );
+
+      if (!allCurrentRoundCompleted) {
+        _showErrorSnackBar(
+          'Please complete all matches in current round first',
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final nextRoundTeams = <Team>[];
+
+      for (final match in currentRoundMatches) {
+        if (match.isBye ?? false) {
+          nextRoundTeams.add(match.team1);
+        } else {
+          final winner = match.score1 > match.score2
+              ? match.team1
+              : match.team2;
+          nextRoundTeams.add(winner);
+        }
+      }
+
+      if (nextRoundTeams.length < 2) {
+        _showSuccessSnackBar('Tournament Complete! 🏆');
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final teamsThatReceivedByeBefore = <String>{};
+      for (final match in allKnockoutMatches) {
+        if (match.isBye ?? false) {
+          teamsThatReceivedByeBefore.add(match.team1.id);
+        }
+      }
+
+      final nextRoundMatches = _generateKnockoutRound(
+        nextRoundTeams,
+        teamsThatReceivedByeBefore,
+        currentRoundNumber + 1,
+      );
+
+      await _badmintonService.addPlayoffMatches(
+        _authService.currentUserEmailId ?? '',
+        _tournamentId ?? '',
+        nextRoundMatches,
+      );
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      _showSuccessSnackBar('Next knockout round generated successfully!');
+    } catch (e) {
+      debugPrint('❌ Error generating knockout round: $e');
+      setState(() => _isLoading = false);
+      _showErrorSnackBar('Failed to generate next round: $e');
+    }
+  }
+
+  List<Match> _generateKnockoutRound(
+    List<Team> teams,
+    Set<String> teamsThatReceivedByeBefore,
+    int roundNumber,
+  ) {
+    final matches = <Match>[];
+    var shuffledTeams = List<Team>.from(teams)..shuffle();
+    var currentTime = widget.startDate ?? DateTime.now();
+    currentTime = currentTime.add(Duration(days: roundNumber));
+
+    final hasOddTeams = shuffledTeams.length.isOdd;
+
+    if (hasOddTeams) {
+      final candidatesForBye = shuffledTeams
+          .where((team) => !teamsThatReceivedByeBefore.contains(team.id))
+          .toList();
+
+      final byeTeam = candidatesForBye.isNotEmpty
+          ? candidatesForBye[0]
+          : shuffledTeams[0];
+
+      shuffledTeams.remove(byeTeam);
+
+      matches.add(
+        Match(
+          id: 'M_BYE_${DateTime.now().millisecondsSinceEpoch}_R$roundNumber',
+          team1: byeTeam,
+          team2: byeTeam,
+          date: currentTime,
+          time: DateFormat('h:mm a').format(currentTime),
+          status: 'Completed',
+          score1: 1,
+          score2: 0,
+          winner: byeTeam.id,
+          round: roundNumber,
+          roundName: _getRoundNameFromTeamCount(shuffledTeams.length + 1),
+          stage: 'Knockout',
+          isBye: true,
+        ),
+      );
+
+      teamsThatReceivedByeBefore.add(byeTeam.id);
+    }
+
+    for (int i = 0; i < shuffledTeams.length; i += 2) {
+      if (i + 1 < shuffledTeams.length) {
+        final team1 = shuffledTeams[i];
+        final team2 = shuffledTeams[i + 1];
+
+        matches.add(
+          Match(
+            id: 'M_R${roundNumber}_M${matches.length + 1}',
+            team1: team1,
+            team2: team2,
+            date: currentTime,
+            time: DateFormat('h:mm a').format(currentTime),
+            status: 'Scheduled',
+            score1: 0,
+            score2: 0,
+            winner: null,
+            round: roundNumber,
+            roundName: _getRoundNameFromTeamCount(
+              shuffledTeams.length + (hasOddTeams ? 1 : 0),
+            ),
+            stage: 'Knockout',
+          ),
+        );
+
+        currentTime = currentTime.add(
+          Duration(
+            minutes: (widget.matchDuration ?? 30) + (widget.breakDuration ?? 5),
+          ),
+        );
+      }
+    }
+
+    debugPrint(
+      '✅ Generated ${matches.length} knockout matches for round $roundNumber',
+    );
+    return matches;
+  }
+
+  String _getRoundNameFromTeamCount(int teamCount) {
+    if (teamCount == 2) return 'Final';
+    if (teamCount == 4) return 'Semi-Final';
+    if (teamCount <= 8) return 'Quarter-Final';
+    if (teamCount <= 16) return 'Round of 16';
+    if (teamCount <= 32) return 'Round of 32';
+    return 'Round of $teamCount';
+  }
+
+  int _getLatestRoundNumber(List<Match> knockoutMatches) {
+    if (knockoutMatches.isEmpty) return 0;
+    return knockoutMatches.fold<int>(
+      0,
+      (max, match) => (match.round ?? 0) > max ? (match.round ?? 0) : max,
+    );
+  }
+
+  int _getAdvancingTeamCount(List<Match> currentRoundMatches) {
+    final advancingTeams = <String>{};
+    for (final match in currentRoundMatches) {
+      if (match.isBye ?? false) {
+        advancingTeams.add(match.team1.id);
+      } else {
+        final winner = match.score1 > match.score2
+            ? match.team1.id
+            : match.team2.id;
+        advancingTeams.add(winner);
+      }
+    }
+    return advancingTeams.length;
   }
 
   Future<List<Team>> _getTopTeams(int count) async {
@@ -781,11 +933,11 @@ class _BadmintonMatchScheduleScreenState
 
       final teamPoints = <String, TeamRanking>{};
 
-      // ✅ FIX - Get teams from matches
       final allTeams = allMatches
           .expand((m) => [m.team1, m.team2])
           .toSet()
           .toList();
+
       for (final team in allTeams) {
         teamPoints[team.id] = TeamRanking(
           team: team,
@@ -860,8 +1012,8 @@ class _BadmintonMatchScheduleScreenState
       context,
       _badmintonService,
       _authService.currentUserEmailId,
-      widget.tournamentFormat,
-      widget.teamType,
+      _tournamentFormat,
+      _teamType,
       widget.tournamentId,
     );
   }
@@ -904,16 +1056,14 @@ class _BadmintonMatchScheduleScreenState
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Your existing content
         _buildMainContent(),
-
         if (_isLoading) _buildSavingOverlay(context),
       ],
     );
   }
 
   Widget _buildMainContent() {
-    if (_isLoading) {
+    if (_isLoading && _tournamentId == null) {
       return Scaffold(
         backgroundColor: Colors.grey.shade50,
         body: Center(
@@ -943,11 +1093,6 @@ class _BadmintonMatchScheduleScreenState
         ),
       );
     }
-
-    // Check league completion when matches are loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAndShowLeagueCompletionDialog();
-    });
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -1026,23 +1171,21 @@ class _BadmintonMatchScheduleScreenState
       ),
     );
 
-    return _tabCount == 1 ? [matchTab] : [matchTab, standingsTab];
+    return [matchTab, standingsTab];
   }
 
   Widget _buildTabContent() {
-    return _tabCount == 1
-        ? _buildMatchesTab()
-        : TabBarView(
-            controller: _tabController,
-            children: [
-              _buildMatchesTab(),
-              StandingsTab(
-                tournamentId: _tournamentId,
-                matchDuration: widget.matchDuration,
-                breakDuration: widget.breakDuration,
-              ),
-            ],
-          );
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        _buildMatchesTab(),
+        StandingsTab(
+          tournamentId: _tournamentId,
+          matchDuration: widget.matchDuration,
+          breakDuration: widget.breakDuration,
+        ),
+      ],
+    );
   }
 
   Widget _buildMatchesTab() {
@@ -1069,22 +1212,288 @@ class _BadmintonMatchScheduleScreenState
           return const EmptyMatchesWidget();
         }
 
-        print(snapshot.data!.length);
+        final matches = snapshot.data!;
+        final leagueMatches = matches
+            .where((m) => m.stage == 'League' || m.stage == null)
+            .toList();
+        final knockoutMatches = matches
+            .where((m) => m.stage == 'Knockout')
+            .toList();
+        final playoffMatches = matches
+            .where((m) => m.stage == 'Playoff')
+            .toList();
 
-        return MatchesListView(
-          tournamentId: _tournamentId as String,
-          matches: snapshot.data!,
-          onScoreUpdate: (updatedMatch) {
-            // ✅ Proper Function(Match)
-            _badmintonService.updateMatch(
-              _authService.currentUserEmailId ?? '',
-              _tournamentId ?? '',
-              updatedMatch,
-            );
-          },
-          onMatchTap: _openScorecard, // ✅ Only for tap handler
+        // For knockout format
+        if (_tournamentFormat == 'knockout') {
+          final allKnockoutCompleted =
+              knockoutMatches.isNotEmpty &&
+              knockoutMatches.every((m) => m.status == 'Completed');
+          final currentRoundNumber = _getLatestRoundNumber(knockoutMatches);
+          final currentRoundMatches = knockoutMatches
+              .where((m) => m.round == currentRoundNumber)
+              .toList();
+          final advancingTeamsCount = _getAdvancingTeamCount(
+            currentRoundMatches,
+          );
+          final canGenerateNextRound =
+              allKnockoutCompleted &&
+              knockoutMatches.isNotEmpty &&
+              advancingTeamsCount >= 2 &&
+              advancingTeamsCount > 2;
+
+          return Column(
+            children: [
+              if (canGenerateNextRound) _buildNextKnockoutRoundCard(),
+              Expanded(
+                child: MatchesListView(
+                  tournamentId: _tournamentId as String,
+                  matches: matches,
+                  onScoreUpdate: (updatedMatch) {
+                    _badmintonService.updateMatch(
+                      _authService.currentUserEmailId ?? '',
+                      _tournamentId ?? '',
+                      updatedMatch,
+                    );
+                  },
+                  onMatchTap: _openScorecard,
+                ),
+              ),
+            ],
+          );
+        }
+
+        // For league/round_robin format
+        final allLeagueCompleted =
+            leagueMatches.isNotEmpty &&
+            leagueMatches.every((m) => m.status == 'Completed');
+        final hasPlayoffMatches = playoffMatches.isNotEmpty;
+
+        return Column(
+          children: [
+            if (allLeagueCompleted &&
+                !hasPlayoffMatches &&
+                _teamType != 'Custom')
+              _buildNextRoundCard(),
+            Expanded(
+              child: MatchesListView(
+                tournamentId: _tournamentId as String,
+                matches: matches,
+                onScoreUpdate: (updatedMatch) {
+                  _badmintonService.updateMatch(
+                    _authService.currentUserEmailId ?? '',
+                    _tournamentId ?? '',
+                    updatedMatch,
+                  );
+                },
+                onMatchTap: _openScorecard,
+              ),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  Widget _buildNextRoundCard() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.green.shade300, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.check_circle,
+                  color: Colors.green.shade600,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'League Completed! 🎉',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                  Text(
+                    'All matches finished successfully',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'What happens next?',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Click below to generate playoff matches. The top-ranked teams from the league will compete in the next round to determine the tournament champion.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _initiatePlayout,
+              icon: const Icon(Icons.emoji_events),
+              label: const Text('Generate Playoffs'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNextKnockoutRoundCard() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue.shade300, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.sports_score,
+                  color: Colors.blue.shade600,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Round Complete! ✨',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                  Text(
+                    'All matches in this round finished',
+                    style: TextStyle(fontSize: 12, color: Colors.blue.shade600),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Continue Knockout',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Winners will advance to the next round. The tournament will continue until a champion is crowned!',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showKnockoutRoundConfirmationModal(context),
+              icon: const Icon(Icons.arrow_forward),
+              label: const Text('Generate Next Round'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1104,6 +1513,7 @@ class _BadmintonMatchScheduleScreenState
         ),
       ),
     );
+    Navigator.pop(context);
   }
 
   @override
