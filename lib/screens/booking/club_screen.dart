@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:play_hub/constants/models.dart';
 import 'package:play_hub/screens/booking/court_screen.dart';
 import 'package:play_hub/service/booking_service.dart';
@@ -17,6 +19,83 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedCity;
+  Position? _userLocation;
+  bool _isLoadingLocation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _requestLocationPermission();
+  }
+
+  Widget _buildLoadingScreen() {
+    return Container(
+      color: Colors.teal.shade50,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Animated Loading Container
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.teal.withOpacity(0.2),
+                    blurRadius: 20,
+                    spreadRadius: 5,
+                  ),
+                ],
+              ),
+              child: CircularProgressIndicator(
+                color: Colors.teal.shade700,
+                strokeWidth: 4,
+              ),
+            ),
+            const SizedBox(height: 32),
+            // Main Loading Text
+            Text(
+              'Fetching Your Location',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Colors.teal.shade700,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Subtitle Text
+            Text(
+              'Finding clubs near you...',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.teal.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 40),
+            // Progress Bar
+            SizedBox(
+              width: 240,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  minHeight: 4,
+                  backgroundColor: Colors.teal.shade200,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Colors.teal.shade700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -24,8 +103,93 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
     super.dispose();
   }
 
+  Future<void> _requestLocationPermission() async {
+    try {
+      final status = await Permission.location.request();
+      if (status.isGranted) {
+        await _getUserLocation();
+      } else {
+        debugPrint('⚠️ Location permission not granted');
+        if (mounted) {
+          setState(() => _isLoadingLocation = false);
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Permission error: $e');
+      if (mounted) {
+        setState(() => _isLoadingLocation = false);
+      }
+    }
+  }
+
+  Future<void> _getUserLocation() async {
+    try {
+      setState(() => _isLoadingLocation = true);
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+
+      setState(() {
+        _userLocation = position;
+        _isLoadingLocation = false;
+      });
+
+      debugPrint('✅ Location: ${position.latitude}, ${position.longitude}');
+    } catch (e) {
+      debugPrint('❌ Location error: $e');
+      setState(() => _isLoadingLocation = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Location error: $e'),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  double _calculateDistance(double lat, double lng) {
+    if (_userLocation == null) return double.infinity;
+
+    return Geolocator.distanceBetween(
+      _userLocation!.latitude,
+      _userLocation!.longitude,
+      lat,
+      lng,
+    );
+  }
+
+  List<Club> _sortClubsByDistance(List<Club> clubs) {
+    if (_userLocation == null) return clubs;
+
+    final clubsWithDistance = clubs.map((club) {
+      final distance = _calculateDistance(
+        club.location.latitude,
+        club.location.longitude,
+      );
+      return {'club': club, 'distance': distance};
+    }).toList();
+
+    clubsWithDistance.sort(
+      (a, b) => (a['distance'] as double).compareTo(b['distance'] as double),
+    );
+
+    return clubsWithDistance.map((e) => e['club'] as Club).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingLocation) {
+      return Scaffold(body: _buildLoadingScreen());
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -269,6 +433,11 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
 
                 var clubs = snapshot.data!;
 
+                // Sort by distance if location is available
+                if (_userLocation != null) {
+                  clubs = _sortClubsByDistance(clubs);
+                }
+
                 // Filter by search query
                 if (_searchQuery.isNotEmpty) {
                   clubs = clubs.where((club) {
@@ -382,6 +551,23 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
     final price = club.pricePerHour[widget.sport] ?? 0.0;
     final allowBookings = club.allowBookings ?? true;
     final isDisabled = !allowBookings;
+
+    // Calculate distance
+    final distance = _calculateDistance(
+      club.location.latitude,
+      club.location.longitude,
+    );
+    final distanceInKm = (distance / 1000).toStringAsFixed(1);
+
+    // Distance color based on proximity
+    Color distanceColor;
+    if (distance < 5000) {
+      distanceColor = Colors.green.shade400;
+    } else if (distance < 15000) {
+      distanceColor = Colors.orange.shade400;
+    } else {
+      distanceColor = Colors.red.shade400;
+    }
 
     return GestureDetector(
       onTap: isDisabled
@@ -543,6 +729,46 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                         ),
                       ),
                     ),
+                    // Distance Badge
+                    if (_userLocation != null)
+                      Positioned(
+                        bottom: 12,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: distanceColor,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: distanceColor.withOpacity(0.4),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_rounded,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$distanceInKm km',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
 
