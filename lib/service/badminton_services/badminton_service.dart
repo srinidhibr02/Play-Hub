@@ -187,6 +187,7 @@ class TournamentFirestoreService {
           'score2': match.score2,
           'winner': match.winner,
           'round': match.round,
+          'stage': match.stage,
           'roundName': match.roundName,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),

@@ -36,10 +36,11 @@ class Match {
   String? winner;
   final String? parentTeam1Id;
   final String? parentTeam2Id;
-  final int? round; // ✅ ADD THIS
-  final String? roundName; // ✅ ADD THIS
+  final int? round;
+  final String? roundName;
   final String? stage;
   final int? rematchNumber;
+  final bool? isBye; // ✅ NEW FIELD FOR KNOCKOUT
 
   Match({
     required this.id,
@@ -53,13 +54,13 @@ class Match {
     this.winner,
     this.parentTeam1Id,
     this.parentTeam2Id,
-    this.round, // ✅ ADD THIS
-    this.roundName, // ✅ ADD THIS
+    this.round,
+    this.roundName,
     this.stage,
     this.rematchNumber,
+    this.isBye = false, // ✅ DEFAULT FALSE
   });
 
-  // Update your toMap() method to include new fields:
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -73,8 +74,11 @@ class Match {
       'winner': winner,
       'parentTeam1Id': parentTeam1Id,
       'parentTeam2Id': parentTeam2Id,
-      'round': round, // ✅ ADD THIS
-      'roundName': roundName, // ✅ ADD THIS
+      'round': round,
+      'roundName': roundName,
+      'stage': stage,
+      'rematchNumber': rematchNumber,
+      'isBye': isBye ?? false, // ✅ ADD THIS
     };
   }
 
@@ -129,16 +133,16 @@ class Match {
         roundName: json['roundName'] as String?,
         stage: json['stage'] as String?,
         rematchNumber: (json['rematchNumber'] as num?)?.toInt(),
+        isBye: json['isBye'] as bool? ?? false, // ✅ ADD THIS
       );
     } catch (e) {
       rethrow;
     }
   }
 
-  // Update your fromMap() method:
   factory Match.fromMap(Map<String, dynamic> map) {
     try {
-      // ✅ Safe team1 extraction (same as fromJson)
+      // ✅ Safe team1 extraction
       final team1Data = map['team1'] as Map<String, dynamic>?;
       final team1 = Team(
         id: team1Data?['id'] as String? ?? '',
@@ -174,6 +178,7 @@ class Match {
         roundName: map['roundName'] as String?,
         stage: map['stage'] as String?,
         rematchNumber: (map['rematchNumber'] as num?)?.toInt(),
+        isBye: map['isBye'] as bool? ?? false, // ✅ ADD THIS
       );
     } catch (e) {
       // Return default match to prevent crash
@@ -186,12 +191,18 @@ class Match {
         status: 'Error',
         score1: 0,
         score2: 0,
+        isBye: false, // ✅ ADD THIS
       );
     }
   }
 
-  // Update copyWith method:
-  Match copyWith({String? status, int? score1, int? score2, String? winner}) {
+  Match copyWith({
+    String? status,
+    int? score1,
+    int? score2,
+    String? winner,
+    bool? isBye, // ✅ ADD THIS
+  }) {
     return Match(
       id: id,
       team1: team1,
@@ -204,8 +215,11 @@ class Match {
       winner: winner ?? this.winner,
       parentTeam1Id: parentTeam1Id,
       parentTeam2Id: parentTeam2Id,
-      round: round, // ✅ ADD THIS
-      roundName: roundName, // ✅ ADD THIS
+      round: round,
+      roundName: roundName,
+      stage: stage,
+      rematchNumber: rematchNumber,
+      isBye: isBye ?? this.isBye, // ✅ ADD THIS
     );
   }
 }

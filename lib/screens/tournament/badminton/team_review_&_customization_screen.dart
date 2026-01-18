@@ -153,10 +153,29 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Schedule ${widget.totalMatches} matches for ${teams.length} teams?',
-                style: TextStyle(fontSize: 16),
-              ),
+              if (widget.tournamentFormat == 'knockout') ...[
+                Text(
+                  'Schedule ${widget.totalMatches} matches for ${teams.length} teams?',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'This included match count from all the rounds.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ] else ...[
+                Text(
+                  'Schedule ${widget.totalMatches} matches for ${teams.length} teams?',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ],
+
               SizedBox(height: 12),
               Container(
                 padding: EdgeInsets.all(12),

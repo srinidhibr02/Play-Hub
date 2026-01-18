@@ -350,6 +350,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                           Navigator.of(dialogContext).pop(); // Close dialog
                           if (mounted) {
                             Navigator.of(context).pop(); // Close scorecard
+                            Navigator.of(context).pop();
                             setState(() => _isShowingWinDialog = false);
                           }
                         },
