@@ -19,6 +19,7 @@ class ScorecardScreen extends StatefulWidget {
 class _ScorecardScreenState extends State<ScorecardScreen> {
   late int score1;
   late int score2;
+  bool _isShowingWinDialog = false;
 
   @override
   void initState() {
@@ -34,8 +35,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
 
   Future<bool> _onWillPop() async {
     if (_isMatchCompleted) {
-      Navigator.pop(context);
-      return false;
+      return true;
     }
 
     if (_hasScoreChanged) {
@@ -142,12 +142,13 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       score1: score1,
       score2: score2,
       winner: null,
+      round: widget.match.round,
+      roundName: widget.match.roundName,
+      stage: widget.match.stage,
       parentTeam1Id: widget.match.parentTeam1Id,
       parentTeam2Id: widget.match.parentTeam2Id,
     );
-    if (widget.onScoreUpdate != null) {
-      widget.onScoreUpdate!(updatedMatch);
-    }
+    widget.onScoreUpdate(updatedMatch);
   }
 
   void _updateScore(bool isTeam1, bool increment) {
@@ -195,16 +196,13 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
         hasWinner = true;
       }
 
-      if (hasWinner) {
+      if (hasWinner && !_isShowingWinDialog) {
         _showMatchCompleteDialog();
       }
     }
   }
 
-  bool _isShowingWinDialog = false; // ✅ Add this class field
-
   void _showMatchCompleteDialog() {
-    // ✅ Prevent multiple dialogs & state conflicts
     if (_isShowingWinDialog || !mounted) return;
 
     _isShowingWinDialog = true;
@@ -221,7 +219,6 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => WillPopScope(
-        // ✅ Prevent back button during dialog
         onWillPop: () async => false,
         child: Dialog(
           shape: RoundedRectangleBorder(
@@ -249,19 +246,16 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
                 const Text(
                   'Match Complete!',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-
                 Text(
                   'Winner',
                   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 8),
-
                 Text(
                   winnerName,
                   style: TextStyle(
@@ -272,8 +266,6 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
-
-                // Final Score
                 Container(
                   padding: const EdgeInsets.symmetric(
                     vertical: 16,
@@ -292,17 +284,13 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                   ),
                 ),
                 const SizedBox(height: 28),
-
-                // Actions
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
-                          if (mounted) {
-                            setState(() => _isShowingWinDialog = false);
-                            Navigator.of(dialogContext).pop();
-                          }
+                          Navigator.of(dialogContext).pop();
+                          _isShowingWinDialog = false;
                         },
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -338,20 +326,19 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                             score1: score1,
                             score2: score2,
                             winner: winnerId,
+                            round: widget.match.round,
+                            roundName: widget.match.roundName,
+                            stage: widget.match.stage,
                             parentTeam1Id: widget.match.parentTeam1Id,
                             parentTeam2Id: widget.match.parentTeam2Id,
                           );
 
-                          if (widget.onScoreUpdate != null && mounted) {
-                            widget.onScoreUpdate!(updatedMatch);
-                          }
+                          widget.onScoreUpdate(updatedMatch);
 
-                          // ✅ Sequential navigation - no conflicts
-                          Navigator.of(dialogContext).pop(); // Close dialog
+                          // Close dialog, then scorecard
+                          Navigator.of(dialogContext).pop();
                           if (mounted) {
-                            Navigator.of(context).pop(); // Close scorecard
                             Navigator.of(context).pop();
-                            setState(() => _isShowingWinDialog = false);
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -380,215 +367,206 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
         ),
       ),
     ).then((_) {
-      // ✅ Cleanup when dialog closes
       if (mounted) {
-        setState(() => _isShowingWinDialog = false);
+        _isShowingWinDialog = false;
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black45),
-          onPressed: () async {
-            final shouldPop = await _onWillPop();
-            if (shouldPop && mounted) {
-              Navigator.pop(context);
-            }
-          },
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Match ${widget.match.id}',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade800,
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade100,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black45),
+            onPressed: () async {
+              final shouldPop = await _onWillPop();
+              if (shouldPop && mounted) {
+                Navigator.pop(context);
+              }
+            },
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Match ${widget.match.id}',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade800,
+                ),
               ),
-            ),
-            Text(
-              DateFormat('MMM d, yyyy • h:mm a').format(widget.match.date),
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
+              Text(
+                DateFormat('MMM d, yyyy • h:mm a').format(widget.match.date),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          actions: [
+            if (_isMatchCompleted)
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(right: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade300),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.green.shade700,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Completed',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
-        actions: [
-          if (_isMatchCompleted)
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade300),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.green.shade700,
-                      size: 16,
+        body: Column(
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  const Spacer(),
+                  _buildTeamSection(
+                    name: widget.match.team1.name,
+                    players: widget.match.team1.players,
+                    score: score1,
+                    color: Colors.orange.shade600,
+                    isLeading: score1 > score2,
+                    isDisabled: _isMatchCompleted,
+                    onIncrement: () => _updateScore(true, true),
+                    onDecrement: () => _updateScore(true, false),
+                  ),
+                  const SizedBox(height: 40),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Completed',
-                      style: TextStyle(
-                        fontSize: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade800,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Text(
+                      '$score1 : $score2',
+                      style: const TextStyle(
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green.shade700,
+                        color: Colors.white,
+                        letterSpacing: 2,
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  _buildTeamSection(
+                    name: widget.match.team2.name,
+                    players: widget.match.team2.players,
+                    score: score2,
+                    color: Colors.blue.shade600,
+                    isLeading: score2 > score1,
+                    isDisabled: _isMatchCompleted,
+                    onIncrement: () => _updateScore(false, true),
+                    onDecrement: () => _updateScore(false, false),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    if (_isMatchCompleted)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.lock,
+                              size: 16,
+                              color: Colors.orange.shade700,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'This match is locked. Score cannot be changed.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.orange.shade800,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'First to 21 • Win by 2 • Max 30',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Column(
-              children: [
-                const Spacer(),
-
-                // Team 1
-                _buildTeamSection(
-                  name: widget.match.team1.name,
-                  players: widget.match.team1.players,
-                  score: score1,
-                  color: Colors.orange.shade600,
-                  isLeading: score1 > score2,
-                  isDisabled: _isMatchCompleted,
-                  onIncrement: () => _updateScore(true, true),
-                  onDecrement: () => _updateScore(true, false),
-                ),
-
-                const SizedBox(height: 40),
-
-                // Score Divider
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade800,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Text(
-                    '$score1 : $score2',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-
-                // Team 2
-                _buildTeamSection(
-                  name: widget.match.team2.name,
-                  players: widget.match.team2.players,
-                  score: score2,
-                  color: Colors.blue.shade600,
-                  isLeading: score2 > score1,
-                  isDisabled: _isMatchCompleted,
-                  onIncrement: () => _updateScore(false, true),
-                  onDecrement: () => _updateScore(false, false),
-                ),
-
-                const Spacer(),
-              ],
-            ),
-          ),
-
-          // Bottom Bar
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                children: [
-                  if (_isMatchCompleted)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.lock,
-                            size: 16,
-                            color: Colors.orange.shade700,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'This match is locked. Score cannot be changed.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.orange.shade800,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'First to 21 • Win by 2 • Max 30',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -625,7 +603,6 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
       ),
       child: Column(
         children: [
-          // Team Name & Players
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -704,14 +681,10 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                 ),
             ],
           ),
-
           const SizedBox(height: 24),
-
-          // ✅ FIXED Score Controls - GestureDetector + HitTestBehavior.opaque
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Decrement Button
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: isDisabled ? null : onDecrement,
@@ -744,10 +717,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(width: 32),
-
-              // Score Display
               Container(
                 width: 110,
                 height: 110,
@@ -784,10 +754,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(width: 32),
-
-              // Increment Button
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: isDisabled ? null : onIncrement,

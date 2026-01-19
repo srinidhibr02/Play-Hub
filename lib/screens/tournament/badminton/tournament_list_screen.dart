@@ -611,6 +611,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
     String tournamentId = tournament['id'];
     String teamType = tournament['teamType'] ?? 'Unknown';
     String status = tournament['status'] ?? 'active';
+    String tournamentFormat = tournament['tournamentFormat'];
     Map<String, dynamic> stats = tournament['stats'] ?? {};
     Map<String, dynamic> schedule = tournament['schedule'] ?? {};
 
@@ -686,7 +687,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
                         Row(
                           children: [
                             Text(
-                              teamType,
+                              '${tournamentFormat.split('_').join(' ').toUpperCase()} - $teamType',
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,

@@ -310,7 +310,6 @@ class TournamentFirestoreService {
     }
   }
 
-  /// Stream of all matches (real-time updates)
   Stream<List<Match>> getAllMatchesStream(
     String userEmail,
     String tournamentId,
@@ -319,7 +318,7 @@ class TournamentFirestoreService {
         .collection('sharedTournaments')
         .doc(tournamentId)
         .collection('matches')
-        .orderBy('scheduledDate')
+        .orderBy('scheduledDate') // ✅ Server-side ordering
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) => Match.fromMap(doc.data())).toList();
@@ -594,15 +593,26 @@ class TournamentFirestoreService {
       debugPrint(
         'Checking to see ${match.parentTeam1Id} & ${match.parentTeam2Id}',
       );
-      await _getUserTournamentsCollection(
-        userEmail,
-      ).doc(tournamentId).collection('matches').doc(match.id).update({
-        'score1': match.score1,
-        'score2': match.score2,
-        'status': match.status,
-        'winner': match.winner,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      print(match.id);
+      final querySnapshot = await _getUserTournamentsCollection(userEmail)
+          .doc(tournamentId)
+          .collection('matches')
+          .where('id', isEqualTo: match.id) // ✅ Query by field 'id'
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final docRef = querySnapshot.docs.first.reference;
+        await docRef.set({
+          'score1': match.score1,
+          'score2': match.score2,
+          'status': match.status,
+          'winner': match.winner,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } else {
+        debugPrint('❌ Match not found: ${match.id}');
+      }
 
       // Update team statistics if match is completed
       if (match.status == 'Completed' && match.winner != null) {
