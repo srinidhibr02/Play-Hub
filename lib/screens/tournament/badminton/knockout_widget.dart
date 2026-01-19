@@ -39,7 +39,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
     String userEmail,
     String tournamentId,
   ) {
-    return _firestore
+    final matchesStream = _firestore
         .collection('sharedTournaments')
         .doc(tournamentId)
         .collection('matches')
@@ -47,6 +47,33 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
         .map((snapshot) {
           return snapshot.docs.map((doc) => Match.fromMap(doc.data())).toList();
         });
+
+    // Listen to matches count and update tournament stats
+    matchesStream.listen((matches) async {
+      await _updateTournamentStats(tournamentId, matches.length);
+    });
+
+    return matchesStream;
+  }
+
+  Future<void> _updateTournamentStats(
+    String tournamentId,
+    int totalMatches,
+  ) async {
+    try {
+      final tournamentRef = _firestore
+          .collection('sharedTournaments')
+          .doc(tournamentId);
+
+      // ✅ Update nested stats.totalMatches field atomically
+      await tournamentRef.update({'stats.totalMatches': totalMatches});
+
+      debugPrint(
+        '✅ Updated totalMatches: $totalMatches for tournament: $tournamentId',
+      );
+    } catch (e) {
+      debugPrint('❌ Error updating stats: $e');
+    }
   }
 
   @override
@@ -198,6 +225,10 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                 allCurrentRoundCompleted && advancingTeamsCount == 1;
 
             final sortedRounds = matchesByRound.keys.toList()..sort();
+
+            if (isTournamentComplete) {
+              _badmintonService.completeTournament(widget.tournamentId);
+            }
 
             return ListView(
               padding: const EdgeInsets.all(16),
@@ -510,24 +541,24 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              '🏆 Tournament Champion! 🏆',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.amber.shade900,
-              ),
-              textAlign: TextAlign.center,
-            ),
             const SizedBox(height: 8),
             Text(
               'Congratulations!',
               style: TextStyle(
-                fontSize: 14,
-                color: Colors.amber.shade700,
-                fontWeight: FontWeight.w500,
+                fontSize: 25,
+                color: Colors.amber.shade900,
+                fontWeight: FontWeight.bold,
               ),
+            ),
+            const SizedBox(height: 15),
+            Text(
+              '🏆 Tournament Champion! 🏆',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w400,
+                color: Colors.amber.shade700,
+              ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
             Container(
@@ -540,16 +571,6 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
               child: Column(
                 children: [
                   Text(
-                    'Champion Team',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.amber.shade600,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
                     winner?.name ?? 'Unknown',
                     style: TextStyle(
                       fontSize: 24,
@@ -557,6 +578,16 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                       color: Colors.amber.shade900,
                     ),
                   ),
+                  if (winner!.players.length >= 2) ...[
+                    Text(
+                      '${winner.players[0]} & ${winner.players[1]}',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber.shade900,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1041,6 +1072,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
     Set<String> teamsWithByeBefore,
     int roundNumber,
   ) {
+    print('Previous round bye team $teamsWithByeBefore');
     final matches = <Match>[];
     var availableTeams = List<Team>.from(advancingTeams)..shuffle();
     var currentTime = widget.startDate ?? DateTime.now();
@@ -1117,7 +1149,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
 
   String _getRoundNameFromTeamCount(int teamCount) {
     if (teamCount == 2) return 'Final';
-    if (teamCount == 4) return 'Semi-Final';
+    if (teamCount <= 4) return 'Semi-Final';
     if (teamCount <= 8) return 'Quarter-Final';
     if (teamCount <= 16) return 'Round of 16';
     if (teamCount <= 32) return 'Round of 32';

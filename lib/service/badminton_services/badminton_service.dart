@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:play_hub/constants/badminton.dart';
+import 'package:play_hub/service/auth_service.dart';
 import 'package:play_hub/service/badminton_services/tournament_stats_service.dart';
 
 class TournamentFirestoreService {
@@ -839,6 +840,25 @@ class TournamentFirestoreService {
 
     for (var doc in snapshot.docs) {
       await doc.reference.delete();
+    }
+  }
+
+  Future<void> completeTournament(String tournamentId) async {
+    try {
+      final tournamentRef = FirebaseFirestore.instance
+          .collection('sharedTournaments')
+          .doc(tournamentId);
+
+      await tournamentRef.update({
+        'status': 'completed',
+        'completedAt': FieldValue.serverTimestamp(),
+        'completedBy': AuthService().currentUserEmailId,
+      });
+
+      debugPrint('✅ Tournament $tournamentId marked as completed');
+    } catch (e) {
+      debugPrint('❌ Error completing tournament: $e');
+      rethrow;
     }
   }
 

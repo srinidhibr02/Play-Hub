@@ -314,7 +314,49 @@ class _TournamentListScreenState extends State<TournamentListScreen>
             color: Colors.white,
           ),
         ),
+        actions: [
+          // Icon 1: Search
+          Container(
+            margin: const EdgeInsets.only(right: 2),
+            child: IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const BadmintonTournamentSetupScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              tooltip: 'Create new tournament',
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          // Icon 2: Filter/Sort
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            child: IconButton(
+              onPressed: () {
+                _showJoinTournamentDialog();
+              },
+              icon: Icon(Icons.key_rounded, color: Colors.white),
+              tooltip: 'Join with Code',
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
+
       body: _userEmail == null
           ? Center(
               child: CircularProgressIndicator(color: Colors.orange.shade600),
@@ -369,7 +411,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
             onPressed: () {
               setState(() => _isFabExpanded = !_isFabExpanded);
             },
-            backgroundColor: Colors.orange.shade600,
+            backgroundColor: Colors.orange.shade400,
             heroTag: 'main',
             child: AnimatedRotation(
               turns: _isFabExpanded ? 0.125 : 0,
@@ -615,9 +657,13 @@ class _TournamentListScreenState extends State<TournamentListScreen>
     Map<String, dynamic> stats = tournament['stats'] ?? {};
     Map<String, dynamic> schedule = tournament['schedule'] ?? {};
 
-    int totalMatches = stats['totalMatches'] ?? 0;
     int completedMatches = stats['completedMatches'] ?? 0;
     int totalTeams = stats['totalTeams'] ?? 0;
+    int totalMatches = stats['totalMatches'] ?? 0;
+
+    int rematches = tournament['schedule']['rematches'];
+
+    print(rematches);
 
     Timestamp? createdAtTimestamp = tournament['createdAt'];
     DateTime? createdAt = createdAtTimestamp?.toDate();
@@ -812,48 +858,6 @@ class _TournamentListScreenState extends State<TournamentListScreen>
                             fontSize: 13,
                             color: Colors.grey.shade700,
                             fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-
-                  if (totalMatches > 0) ...[
-                    const SizedBox(height: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Progress',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              '${((completedMatches / totalMatches) * 100).toStringAsFixed(0)}%',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: completedMatches / totalMatches,
-                            backgroundColor: Colors.grey.shade200,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.green.shade600,
-                            ),
-                            minHeight: 8,
                           ),
                         ),
                       ],

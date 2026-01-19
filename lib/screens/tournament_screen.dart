@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:play_hub/service/initialise_sample_data.dart';
 
 class TournamentScreen extends StatefulWidget {
   const TournamentScreen({super.key});
@@ -713,7 +712,7 @@ class _TournamentScreenState extends State<TournamentScreen>
                   ),
                 ),
                 centerTitle: false,
-                expandedTitleScale: 1.2,
+                expandedTitleScale: 1.1,
               ),
             ),
             SliverToBoxAdapter(
