@@ -64,6 +64,15 @@ class _BadmintonTournamentSetupScreenState
     super.dispose();
   }
 
+  bool _isValidPlayerCount(int count, String teamType) {
+    if (teamType == 'Singles') {
+      return true; // No constraint on odd/even for singles
+    } else if (teamType == 'Doubles' || teamType == 'Custom') {
+      return count % 2 == 0; // Must be even for Doubles and Custom
+    }
+    return false;
+  }
+
   void _addMember() {
     final name = memberController.text.trim();
     if (name.isEmpty) {
@@ -115,6 +124,18 @@ class _BadmintonTournamentSetupScreenState
         'Add at least $minPlayers players for $selectedTeamType format',
         Colors.red,
       );
+      return;
+    }
+
+    if (!_isValidPlayerCount(members.length, selectedTeamType)) {
+      if (selectedTeamType == 'Doubles') {
+        _showSnackBar('Doubles requires an even number of players', Colors.red);
+      } else if (selectedTeamType == 'Custom') {
+        _showSnackBar(
+          'Custom format requires an even number of players',
+          Colors.red,
+        );
+      }
       return;
     }
 
@@ -177,14 +198,33 @@ class _BadmintonTournamentSetupScreenState
     );
     final minPlayers = selectedTeam['minPlayers'] as int;
     final isOnPlayersTab = _tabController.index == 0;
+    final isValidCount = _isValidPlayerCount(members.length, selectedTeamType);
 
-    if (isOnPlayersTab && members.length >= minPlayers) {
+    if (isOnPlayersTab && members.length >= minPlayers && isValidCount) {
       // Move to Format tab
       _tabController.animateTo(1);
-    } else if (!isOnPlayersTab && members.length >= minPlayers) {
+    } else if (!isOnPlayersTab &&
+        members.length >= minPlayers &&
+        isValidCount) {
       // Proceed to scheduling
       _proceedToScheduling();
     }
+  }
+
+  String _getPlayerCountMessage(int minPlayers) {
+    final selectedTeam = teamTypes.firstWhere(
+      (t) => t['name'] == selectedTeamType,
+    );
+    final isValidCount = _isValidPlayerCount(members.length, selectedTeamType);
+
+    if (members.length < minPlayers) {
+      return 'Add ${minPlayers - members.length} more player${minPlayers - members.length == 1 ? '' : 's'} to continue';
+    } else if (!isValidCount) {
+      if (selectedTeamType == 'Doubles' || selectedTeamType == 'Custom') {
+        return 'Please add 1 more player to make an even number';
+      }
+    }
+    return 'Ready to continue!';
   }
 
   @override
@@ -193,7 +233,8 @@ class _BadmintonTournamentSetupScreenState
       (t) => t['name'] == selectedTeamType,
     );
     final minPlayers = selectedTeam['minPlayers'] as int;
-    final hasEnoughPlayers = members.length >= minPlayers;
+    final isValidCount = _isValidPlayerCount(members.length, selectedTeamType);
+    final hasEnoughPlayers = members.length >= minPlayers && isValidCount;
     final isOnPlayersTab = _tabController.index == 0;
 
     // Determine button state
@@ -385,7 +426,7 @@ class _BadmintonTournamentSetupScreenState
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'Add ${minPlayers - members.length} more player${minPlayers - members.length == 1 ? '' : 's'} to continue',
+                                _getPlayerCountMessage(minPlayers),
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,

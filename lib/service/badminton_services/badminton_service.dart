@@ -1056,7 +1056,7 @@ extension PlayoffMethods on TournamentFirestoreService {
       final WriteBatch batch = FirebaseFirestore.instance.batch();
 
       for (int i = 0; i < playoffMatches.length; i++) {
-        final matchDocRef = matchesRef.doc('P${i + 1}');
+        final matchDocRef = matchesRef.doc(playoffMatches[i].id);
         batch.set(matchDocRef, {
           ...newMatches[i],
           'createdAt': FieldValue.serverTimestamp(),
