@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
@@ -51,6 +52,8 @@ class _BadmintonMatchScheduleScreenState
     with TickerProviderStateMixin {
   late TabController _tabController;
   final _badmintonService = TournamentFirestoreService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   final _authService = AuthService();
 
   String? _tournamentId;
@@ -882,6 +885,20 @@ class _BadmintonMatchScheduleScreenState
     );
   }
 
+  Stream<List<Match>> _getAllMatchesStream(
+    String userEmail,
+    String tournamentId,
+  ) {
+    return _firestore
+        .collection('sharedTournaments')
+        .doc(tournamentId)
+        .collection('matches')
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => Match.fromMap(doc.data())).toList();
+        });
+  }
+
   Widget _buildMatchesTab() {
     if (_tournamentFormat == 'knockout') {
       return KnockoutMatchesWidget(
@@ -903,7 +920,7 @@ class _BadmintonMatchScheduleScreenState
     }
 
     return StreamBuilder<List<Match>>(
-      stream: _badmintonService.getAllMatchesStream(
+      stream: _getAllMatchesStream(
         _authService.currentUserEmailId ?? '',
         _tournamentId ?? '',
       ),
@@ -933,11 +950,13 @@ class _BadmintonMatchScheduleScreenState
             .where((m) => m.stage == 'Playoff')
             .toList();
 
+        print(matches.length);
+        print(playoffMatches.length);
+
         final allLeagueCompleted =
             leagueMatches.isNotEmpty &&
             leagueMatches.every((m) => m.status == 'Completed');
         final hasPlayoffMatches = playoffMatches.isNotEmpty;
-
         return Column(
           children: [
             if (allLeagueCompleted &&
