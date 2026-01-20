@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:play_hub/screens/club_details_screen.dart';
 
 class ClubsScreen extends StatefulWidget {
   const ClubsScreen({super.key});
@@ -640,9 +641,9 @@ class _ClubsScreenState extends State<ClubsScreen>
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('View $name details')));
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => ClubDetailsScreen(club: club)),
+            );
           },
           borderRadius: BorderRadius.circular(20),
           child: Column(
@@ -869,9 +870,11 @@ class _ClubsScreenState extends State<ClubsScreen>
                           ),
                         ),
                         onPressed: () {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text('View $name')));
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ClubDetailsScreen(club: club),
+                            ),
+                          );
                         },
                       ),
                     ),

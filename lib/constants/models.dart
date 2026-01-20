@@ -1,8 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// Club Model
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Club {
   final String id;
   final String name;
@@ -263,4 +260,36 @@ class Booking {
   }
 
   bool get isUpcoming => date.isAfter(DateTime.now());
+}
+
+class Tournament {
+  final String id;
+  final String name;
+  final DateTime? date;
+  final double? prizePool;
+  final int? currentParticipants;
+  final int? maxParticipants;
+  final String? sport;
+
+  Tournament({
+    required this.id,
+    required this.name,
+    this.date,
+    this.prizePool,
+    this.currentParticipants,
+    this.maxParticipants,
+    this.sport,
+  });
+
+  factory Tournament.fromMap(Map<String, dynamic> map) {
+    return Tournament(
+      id: map['id'] ?? '',
+      name: map['name'] ?? 'Unnamed',
+      date: map['date']?.toDate(),
+      prizePool: map['prizePool'],
+      currentParticipants: map['currentParticipants'],
+      maxParticipants: map['maxParticipants'],
+      sport: map['sport'],
+    );
+  }
 }

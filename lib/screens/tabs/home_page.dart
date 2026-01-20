@@ -1,4 +1,8 @@
+import 'dart:ffi';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:play_hub/constants/models.dart';
 import 'package:play_hub/screens/booking/club_screen.dart';
 import 'package:play_hub/screens/booking_ui_screens.dart';
@@ -395,61 +399,86 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildUpcomingEvents(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('tournaments')
+          .where('status', isEqualTo: 'open')
+          .limit(2)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(child: CircularProgressIndicator(color: Colors.teal)),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final tournaments = snapshot.data!.docs
+            .map(
+              (doc) => Tournament.fromMap(doc.data() as Map<String, dynamic>),
+            )
+            .toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Upcoming Tournaments',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.teal.shade900,
-                fontSize: 22,
-              ),
-            ),
-            TextButton(
-              onPressed: () => _navigateTo(const TournamentScreen()), // ✅ FIXED
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                minimumSize: Size(50, 30),
-              ),
-              child: Text(
-                'View All',
-                style: TextStyle(
-                  color: Colors.teal.shade700,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Upcoming Tournaments',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.teal.shade900,
+                    fontSize: 22,
+                  ),
                 ),
+                TextButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TournamentScreen()),
+                  ),
+                  icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                  label: Text(
+                    'View All',
+                    style: TextStyle(
+                      color: Colors.teal.shade700,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Real tournament cards from Firestore
+            ...tournaments.map(
+              (tournament) => _buildEventCard(
+                title: tournament.name,
+                date: tournament.date != null
+                    ? DateFormat('MMM d, yyyy').format(tournament.date!)
+                    : 'TBD',
+                prizePool: tournament.prizePool as double,
+                participants:
+                    '${tournament.currentParticipants ?? 0}/${tournament.maxParticipants ?? 0}',
+                sport: tournament.sport ?? 'Badminton',
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 16),
-        _buildEventCard(
-          title: 'City Badminton Championship',
-          date: 'Dec 25, 2024',
-          location: 'Sports Complex, Chennai',
-          participants: '24/32',
-          sport: 'Badminton',
-        ),
-        const SizedBox(height: 16),
-        _buildEventCard(
-          title: 'Inter-Club Cricket Tournament',
-          date: 'Dec 28, 2024',
-          location: 'MA Stadium, Chennai',
-          participants: '8/12',
-          sport: 'Cricket',
-        ),
-      ],
+        );
+      },
     );
   }
 
   Widget _buildEventCard({
     required String title,
     required String date,
-    required String location,
+    required double prizePool,
     required String participants,
     required String sport,
   }) {
@@ -490,8 +519,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              const Spacer(),
-              Icon(Icons.bookmark_border, color: Colors.grey.shade400),
             ],
           ),
           const SizedBox(height: 14),
@@ -509,11 +536,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               ),
               const SizedBox(width: 18),
-              Icon(Icons.location_on, size: 15, color: Colors.grey.shade600),
-              const SizedBox(width: 6),
+              Icon(Icons.currency_rupee, size: 15, color: Colors.grey.shade600),
               Expanded(
                 child: Text(
-                  location,
+                  '$prizePool',
                   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   overflow: TextOverflow.ellipsis,
                 ),

@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:play_hub/constants/badminton.dart';
+import 'package:play_hub/service/auth_service.dart';
 import 'package:play_hub/service/badminton_services/tournament_stats_service.dart';
 
 class TournamentFirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AuthService _authService = AuthService();
 
   // Get user's local tournaments collection reference
   CollectionReference _getUserTournamentsCollection(String userEmail) {
@@ -310,7 +312,6 @@ class TournamentFirestoreService {
     }
   }
 
-  /// Stream of all matches (real-time updates)
   Stream<List<Match>> getAllMatchesStream(
     String userEmail,
     String tournamentId,
@@ -319,7 +320,7 @@ class TournamentFirestoreService {
         .collection('sharedTournaments')
         .doc(tournamentId)
         .collection('matches')
-        .orderBy('scheduledDate')
+        .orderBy('scheduledDate') // ✅ Server-side ordering
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) => Match.fromMap(doc.data())).toList();
@@ -594,15 +595,26 @@ class TournamentFirestoreService {
       debugPrint(
         'Checking to see ${match.parentTeam1Id} & ${match.parentTeam2Id}',
       );
-      await _getUserTournamentsCollection(
-        userEmail,
-      ).doc(tournamentId).collection('matches').doc(match.id).update({
-        'score1': match.score1,
-        'score2': match.score2,
-        'status': match.status,
-        'winner': match.winner,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      print(match.id);
+      final querySnapshot = await _getUserTournamentsCollection(userEmail)
+          .doc(tournamentId)
+          .collection('matches')
+          .where('id', isEqualTo: match.id) // ✅ Query by field 'id'
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final docRef = querySnapshot.docs.first.reference;
+        await docRef.set({
+          'score1': match.score1,
+          'score2': match.score2,
+          'status': match.status,
+          'winner': match.winner,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } else {
+        debugPrint('❌ Match not found: ${match.id}');
+      }
 
       // Update team statistics if match is completed
       if (match.status == 'Completed' && match.winner != null) {
@@ -832,6 +844,25 @@ class TournamentFirestoreService {
     }
   }
 
+  Future<void> completeTournament(String tournamentId) async {
+    try {
+      final tournamentRef = FirebaseFirestore.instance
+          .collection('sharedTournaments')
+          .doc(tournamentId);
+
+      await tournamentRef.update({
+        'status': 'completed',
+        'completedAt': FieldValue.serverTimestamp(),
+        'completedBy': AuthService().currentUserEmailId,
+      });
+
+      debugPrint('✅ Tournament $tournamentId marked as completed');
+    } catch (e) {
+      debugPrint('❌ Error completing tournament: $e');
+      rethrow;
+    }
+  }
+
   // ==================== SHARED ACCESS ====================
 
   /// Create a shareable link data structure
@@ -881,12 +912,12 @@ class TournamentFirestoreService {
   /// Access tournament via share code
   Future<Map<String, dynamic>?> getTournamentByShareCode(
     String shareCode,
+    BuildContext context, // ✅ Add BuildContext parameter
   ) async {
     try {
-      // ✅ Get tournament directly by tournamentId
       DocumentSnapshot doc = await _firestore
           .collection('sharedTournaments')
-          .doc(shareCode) // Use tournamentId, not shareCode
+          .doc(shareCode)
           .get();
 
       if (!doc.exists) {
@@ -896,8 +927,37 @@ class TournamentFirestoreService {
 
       Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
       data['id'] = doc.id;
-      data['shareCode'] =
-          shareCode; // Optional: include shareCode for convenience
+      data['shareCode'] = shareCode;
+
+      // ✅ Check if user is the creator
+      final creatorEmail = data['creatorEmail'] as String?;
+      final currentUserEmail =
+          _authService.currentUserEmailId; // Your auth service
+
+      if (creatorEmail != null && creatorEmail == currentUserEmail) {
+        if (context.mounted) {
+          // ✅ Safety check
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.campaign, color: Colors.white, size: 20),
+                  SizedBox(width: 12),
+                  Text('You are the creator of this tournament! 👑'),
+                ],
+              ),
+              backgroundColor: Colors.teal.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          await addPlayerToTournament(shareCode, currentUserEmail!);
+        }
+      }
 
       debugPrint('✅ Found tournament: ${data['name'] ?? 'Unnamed'}');
       return data;
@@ -1046,7 +1106,7 @@ extension PlayoffMethods on TournamentFirestoreService {
       final WriteBatch batch = FirebaseFirestore.instance.batch();
 
       for (int i = 0; i < playoffMatches.length; i++) {
-        final matchDocRef = matchesRef.doc('P${i + 1}');
+        final matchDocRef = matchesRef.doc(playoffMatches[i].id);
         batch.set(matchDocRef, {
           ...newMatches[i],
           'createdAt': FieldValue.serverTimestamp(),

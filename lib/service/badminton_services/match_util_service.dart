@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
 import 'package:play_hub/screens/tournament/badminton/scorecard.dart';
-import 'package:play_hub/service/auth_service.dart';
-import 'package:play_hub/service/badminton_services/badminton_service.dart';
 
 // ============= MATCH GENERATION LOGIC =============
 // CORRECTED MATCH GENERATION LOGIC FOR ROUND ROBIN
@@ -384,27 +382,58 @@ class _MatchesListViewState extends State<MatchesListView> {
     return _firestore
         .collection('sharedTournaments')
         .doc(widget.tournamentId)
-        .collection('matches')
-        .where('stage', isEqualTo: 'Playoff')
         .snapshots()
-        .map((snapshot) {
+        .asyncMap((tournamentSnapshot) async {
+          // ✅ asyncMap instead of switchMap
+          if (!tournamentSnapshot.exists) {
+            debugPrint('❌ Tournament not found: ${widget.tournamentId}');
+            return []; // Return empty list
+          }
+
+          final tournamentData = tournamentSnapshot.data() ?? {};
+          final tournamentFormat =
+              tournamentData['tournamentFormat'] as String?;
+
+          debugPrint('📊 Tournament format: $tournamentFormat');
+
+          // Fetch matches snapshot
+          final matchSnapshot = await _firestore
+              .collection('sharedTournaments')
+              .doc(widget.tournamentId)
+              .collection('matches')
+              .get(); // ✅ Use .get() for single snapshot
+
           debugPrint(
-            '📥 Playoff matches stream: ${snapshot.docs.length} documents',
+            '📥 Matches snapshot: ${matchSnapshot.docs.length} documents',
           );
 
           final matches = <Match>[];
-          for (final doc in snapshot.docs) {
+          for (final doc in matchSnapshot.docs) {
             try {
               final match = Match.fromMap(doc.data());
-              matches.add(match);
-              debugPrint(
-                '✅ Parsed playoff match: ${match.id} - ${match.roundName}',
-              );
+              final data = doc.data();
+
+              bool isPlayoffMatch = false;
+              final stage = data['stage'] as String?;
+
+              if (tournamentFormat == 'Knockout') {
+                isPlayoffMatch = stage == 'Knockout';
+              } else {
+                isPlayoffMatch = stage == 'Playoff';
+              }
+
+              if (isPlayoffMatch) {
+                matches.add(match);
+                debugPrint(
+                  '✅ Parsed playoff match: ${match.id} - ${match.roundName}',
+                );
+              }
             } catch (e) {
               debugPrint('⚠️ Error parsing match ${doc.id}: $e');
             }
           }
-          return matches;
+
+          return matches; // Return processed list
         });
   }
 
@@ -422,11 +451,6 @@ class _MatchesListViewState extends State<MatchesListView> {
         .where((m) => m.status == 'Completed')
         .length;
     final leagueTotalCount = leagueMatches.length;
-
-    final knockoutCompletedCount = knockoutMatches
-        .where((m) => m.status == 'Completed')
-        .length;
-    final knockoutTotalCount = knockoutMatches.length;
 
     return StreamBuilder<List<Match>>(
       stream: _getPlayoffMatches(),
@@ -480,21 +504,6 @@ class _MatchesListViewState extends State<MatchesListView> {
               const SizedBox(height: 24),
             ],
 
-            // Knockout Section
-            if (knockoutMatches.isNotEmpty) ...[
-              _buildSectionHeader(
-                icon: Icons.military_tech,
-                title: 'Knockout Stage',
-                color: Colors.red,
-                completedMatches: knockoutCompletedCount,
-                totalMatches: knockoutTotalCount,
-              ),
-              ...knockoutMatches
-                  .map((match) => _buildMatchCard(match, isLeague: false))
-                  .toList(),
-            ],
-
-            // Empty state
             if (playoffMatches.isEmpty &&
                 leagueMatches.isEmpty &&
                 knockoutMatches.isEmpty)
@@ -525,6 +534,15 @@ class _MatchesListViewState extends State<MatchesListView> {
         );
       },
     );
+  }
+
+  String _getRoundNameFromTeamCount(int teamCount) {
+    if (teamCount == 2) return 'Final';
+    if (teamCount == 4) return 'Semi-Final';
+    if (teamCount <= 8) return 'Quarter-Final';
+    if (teamCount <= 16) return 'Round of 16';
+    if (teamCount <= 32) return 'Round of 32';
+    return 'Round of $teamCount';
   }
 
   Widget _buildSectionHeader({
@@ -650,6 +668,14 @@ class _MatchesListViewState extends State<MatchesListView> {
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            match.id,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.normal,
                               color: Colors.white,
                             ),
                           ),
@@ -1012,6 +1038,7 @@ class _MatchesListViewState extends State<MatchesListView> {
   }
 
   void _openScorecard(Match match, BuildContext context) {
+    Navigator.pop(context);
     Navigator.push(
       context,
       MaterialPageRoute(

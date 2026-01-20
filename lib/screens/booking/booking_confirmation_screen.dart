@@ -112,8 +112,8 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   @override
   Widget build(BuildContext context) {
     final price = widget.club.pricePerHour[widget.sport] ?? 0.0;
-    final gst = price * 0.18;
-    final total = price + gst;
+    final platformFee = price * 0.05;
+    final total = price + platformFee;
 
     return Scaffold(
       appBar: AppBar(
@@ -208,8 +208,8 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                         '₹${price.toStringAsFixed(2)}',
                       ),
                       _buildDetailRow(
-                        'GST (18%)',
-                        '₹${gst.toStringAsFixed(2)}',
+                        'Playform Fee (5%)',
+                        '₹${platformFee.toStringAsFixed(2)}',
                       ),
                       const Divider(height: 24),
                       _buildDetailRow(

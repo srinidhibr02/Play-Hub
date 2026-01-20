@@ -116,9 +116,9 @@ class _TournamentSetupScreenState extends State<TournamentSetupScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Choose your sport and let\'s get started',
+                      'Choose your sport & play with your friends',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         color: Colors.white.withOpacity(0.9),
                       ),
                     ),
