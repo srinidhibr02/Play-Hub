@@ -105,15 +105,14 @@ class _AuthPageState extends State<AuthPage>
         email: _loginEmailController.text.trim(),
         password: _loginPasswordController.text.trim(),
       );
-
+      print(_loginPasswordController.text.trim());
       if (!mounted) return;
 
       if (result.success) {
         _showMessage(result.message, isError: false);
-        Navigator.pushReplacement(
+        Navigator.of(
           context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
+        ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
       } else {
         _showMessage(result.message, isError: true);
       }
@@ -131,6 +130,10 @@ class _AuthPageState extends State<AuthPage>
   Future<void> _handleRegister() async {
     if (!_registerFormKey.currentState!.validate()) return;
 
+    // ✅ SHOW EMAIL CONFIRMATION DIALOG
+    final bool? confirmEmail = await _showEmailConfirmationDialog();
+    if (confirmEmail != true) return;
+
     setState(() => _isLoading = true);
 
     try {
@@ -147,7 +150,7 @@ class _AuthPageState extends State<AuthPage>
         _showMessage(result.message, isError: false);
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
+          MaterialPageRoute(builder: (_) => const AuthPage()),
         );
       } else {
         _showMessage(result.message, isError: true);
@@ -160,6 +163,169 @@ class _AuthPageState extends State<AuthPage>
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  // ✅ EMAIL CONFIRMATION DIALOG
+  Future<bool?> _showEmailConfirmationDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 16,
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 32,
+                  offset: const Offset(0, 16),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.teal.shade400, Colors.teal.shade600],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.teal.shade300.withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.email_outlined,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Title
+                const Text(
+                  'Confirm Your Email',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+
+                // Email Display
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.teal.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.email_rounded, color: Colors.teal.shade700),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _registerEmailController.text.trim(),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.teal.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Message
+                Text(
+                  'Is this your correct email address?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade700,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        label: const Text(
+                          'Change',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 20,
+                        ),
+                        label: const Text(
+                          'Confirm',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // Forgot Password Handler

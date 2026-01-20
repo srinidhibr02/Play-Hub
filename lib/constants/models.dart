@@ -1,8 +1,3 @@
-import 'dart:ffi';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-// Club Model
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Club {

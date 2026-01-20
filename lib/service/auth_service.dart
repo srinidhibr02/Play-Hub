@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:play_hub/constants/constants.dart';
 import 'package:play_hub/helpers/error_messages.dart';
@@ -345,39 +346,65 @@ class AuthService {
     return streamUserData(uid);
   }
 
-  // ==================== DELETE ACCOUNT ====================
-  Future<AuthResult> deleteAccount({required String password}) async {
+  Future<AuthResult> deleteAccount() async {
     try {
       _setLoading(true, message: 'Deleting account...');
-      debugPrint('🗑️ Deleting user account');
+      debugPrint('🗑️ Deleting user account (no reauth)');
 
-      final user = currentUser;
-      if (user == null || user.email == null) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        _setLoading(false);
         return AuthResult(
           success: false,
           message: 'No user is currently logged in',
         );
       }
 
-      // Reauthenticate first
-      _setLoading(true, message: 'Verifying identity...');
-      final reauth = await reauthenticateWithPassword(password);
-      if (!reauth.success) {
-        _setLoading(false);
-        return reauth;
+      // ✅ Check recent login time (Firebase session validity)
+      final lastSignInTime = user.metadata.lastSignInTime;
+      final now = DateTime.now();
+
+      if (lastSignInTime != null) {
+        final hoursSinceLogin = now.difference(lastSignInTime).inHours;
+
+        // ✅ Allow delete if logged in within last 2 hours
+        if (hoursSinceLogin > 2) {
+          _setLoading(false);
+          return AuthResult(
+            success: false,
+            message:
+                'Please log in again to delete your account (requires recent login)',
+          );
+        }
       }
 
+      // ✅ Delete Firestore document from users/{emailId} AND users/{uid}
       _setLoading(true, message: 'Removing data...');
 
-      // Delete user document
-      await _firestore.collection('users').doc(user.email).delete();
-
-      // Sign out from Google if signed in
-      if (_currentGoogleUser != null) {
-        await GoogleSignIn.instance.disconnect();
+      // Delete from users/{emailId} collection
+      if (user.email != null) {
+        await _firestore
+            .collection('users')
+            .doc(user.email)
+            .delete()
+            .catchError((e) {
+              debugPrint('Email doc delete failed (might not exist): $e');
+            });
       }
 
-      // Delete auth account
+      // Delete from users/{uid} collection (primary)
+      await _firestore.collection('users').doc(user.uid).delete();
+
+      // ✅ Handle Google Sign-In cleanup
+      try {
+        if (_currentGoogleUser != null) {
+          await GoogleSignIn.instance.signOut();
+        }
+      } catch (e) {
+        debugPrint('Google cleanup failed: $e');
+      }
+
+      // ✅ Delete Firebase Auth user
       await user.delete();
 
       _logSuccess('deleteAccount', 'Account deleted successfully');
@@ -385,19 +412,20 @@ class AuthService {
 
       return AuthResult(success: true, message: 'Account deleted successfully');
     } on FirebaseAuthException catch (e) {
-      _logError('deleteAccount', 'Firebase Auth Error: ${e.code}');
       _setLoading(false);
+      _logError('deleteAccount', 'Firebase Auth Error: ${e.code}');
 
       if (e.code == 'requires-recent-login') {
         return AuthResult(
           success: false,
-          message: 'Please log in again before deleting your account',
+          message: 'Session expired. Please log in again to delete account.',
         );
       }
+
       return AuthResult(success: false, message: getAuthErrorMessage(e.code));
-    } catch (e, stack) {
-      _logError('deleteAccount', e.toString(), stack);
+    } catch (e, stackTrace) {
       _setLoading(false);
+      _logError('deleteAccount', e.toString(), stackTrace);
       return AuthResult(
         success: false,
         message: 'Failed to delete account. Please try again.',

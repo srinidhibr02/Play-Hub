@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:play_hub/screens/auth_screen.dart';
+import 'package:play_hub/screens/info/account_settings_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -60,15 +62,18 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _navigateToEditProfile(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Edit Profile - Coming Soon')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Partner Profile - Coming Soon')),
+    );
   }
 
   void _navigateToAccountSettings(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
+      MaterialPageRoute(
+        builder: (_) =>
+            AccountSettingsScreen(user: _authService.currentUser as User),
+      ),
     );
   }
 
@@ -359,26 +364,18 @@ class ProfileScreen extends StatelessWidget {
                         icon: Icons.settings_outlined,
                         children: [
                           _buildMenuTile(
-                            Icons.edit_outlined,
-                            'Edit Profile',
-                            'Update your personal information',
-                            () => _navigateToEditProfile(context),
-                          ),
-                          _buildDivider(),
-                          _buildMenuTile(
                             Icons.lock_outline,
                             'Account Settings',
                             'Password, security & privacy',
                             () => _navigateToAccountSettings(context),
                           ),
                           _buildDivider(),
+
                           _buildMenuTile(
-                            Icons.notifications_outlined,
-                            'Notifications',
-                            'Manage notification preferences',
-                            () => ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Coming Soon')),
-                            ),
+                            Icons.handshake_outlined,
+                            'Play Hub Partnership',
+                            'Own a club? Contact Us to get started',
+                            () => _navigateToEditProfile(context),
                           ),
                         ],
                       ),
@@ -641,67 +638,6 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-// Account Settings Screen
-class AccountSettingsScreen extends StatelessWidget {
-  const AccountSettingsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Account Settings'),
-        backgroundColor: Colors.teal.shade700,
-        foregroundColor: Colors.white,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: const Text('Change Password'),
-            subtitle: const Text('Update your password'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Navigate to change password
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.email_outlined),
-            title: const Text('Change Email'),
-            subtitle: const Text('Update your email address'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Navigate to change email
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.phone_outlined),
-            title: const Text('Change Phone Number'),
-            subtitle: const Text('Update your phone number'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Navigate to change phone
-            },
-          ),
-          const Divider(height: 32),
-          ListTile(
-            leading: Icon(Icons.delete_outline, color: Colors.red.shade600),
-            title: Text(
-              'Delete Account',
-              style: TextStyle(color: Colors.red.shade600),
-            ),
-            subtitle: const Text('Permanently delete your account'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Show delete confirmation
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // FAQ Screen
 class FAQScreen extends StatelessWidget {
   const FAQScreen({super.key});
@@ -712,7 +648,7 @@ class FAQScreen extends StatelessWidget {
       {
         'question': 'How do I create a tournament?',
         'answer':
-            'Go to the Tournaments tab, tap the + button, and fill in the tournament details including name, sport type, date, and location.',
+            'Go to the Home tab, tap the + Create Event button, choose the sport and fill in the tournament details including name, sport type, date, and location.',
       },
       {
         'question': 'How do I join a club?',
