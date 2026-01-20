@@ -216,7 +216,7 @@ class _BadmintonMatchScheduleScreenState
 
       matches.add(
         Match(
-          id: 'M1_BYE',
+          id: 'M_BYE',
           team1: byeTeam,
           team2: byeTeam,
           date: currentTime,
@@ -383,7 +383,7 @@ class _BadmintonMatchScheduleScreenState
       context: context,
       isDismissible: false,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(24),
@@ -394,30 +394,32 @@ class _BadmintonMatchScheduleScreenState
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade100,
-                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(
+                      colors: [Colors.amber.shade600, Colors.amber.shade400],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.emoji_events,
-                    color: Colors.amber.shade600,
+                    color: Colors.white,
                     size: 28,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       'Playoff Options',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      '$teamCount teams competing',
+                      '$teamCount teams qualifying',
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey.shade600,
@@ -427,35 +429,45 @@ class _BadmintonMatchScheduleScreenState
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
-              'How would you like to proceed with the playoffs?',
+              'Choose your playoff format',
               style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade700,
-                height: 1.5,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade800,
+                letterSpacing: 0.3,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             _buildPlayoffOption(
               icon: Icons.flash_on,
               title: 'Direct Final',
-              subtitle: 'Top 2 teams play the final',
+              subtitle: 'Top 2 teams play the final immediately',
               onTap: () => Navigator.pop(context, PlayoffChoice.directFinal),
+              color: Colors.blue,
             ),
             const SizedBox(height: 12),
             _buildPlayoffOption(
               icon: Icons.stairs,
               title: 'Semis & Final',
-              subtitle: 'Top 4 teams battle for semis & final',
+              subtitle: 'Top 4 teams compete in semi-finals first',
               onTap: () => Navigator.pop(context, PlayoffChoice.semisAndFinal),
+              color: Colors.purple,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],
@@ -469,27 +481,32 @@ class _BadmintonMatchScheduleScreenState
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    required Color color,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.amber.shade300, width: 2),
-          borderRadius: BorderRadius.circular(14),
-          color: Colors.amber.shade50,
+          gradient: LinearGradient(
+            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3), width: 1.5),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.shade100,
-                borderRadius: BorderRadius.circular(10),
+                gradient: LinearGradient(
+                  colors: [color, color.withOpacity(0.7)],
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: Colors.amber.shade700, size: 28),
+              child: Icon(icon, color: Colors.white, size: 28),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -501,9 +518,14 @@ class _BadmintonMatchScheduleScreenState
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                      height: 1.3,
+                    ),
                   ),
                 ],
               ),
@@ -511,7 +533,7 @@ class _BadmintonMatchScheduleScreenState
             Icon(
               Icons.arrow_forward_ios,
               size: 18,
-              color: Colors.amber.shade600,
+              color: color.withOpacity(0.6),
             ),
           ],
         ),
@@ -635,11 +657,14 @@ class _BadmintonMatchScheduleScreenState
           children: [
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 12),
-            Text(message),
+            Expanded(child: Text(message)),
           ],
         ),
         backgroundColor: Colors.green.shade600,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -657,6 +682,9 @@ class _BadmintonMatchScheduleScreenState
         ),
         backgroundColor: Colors.red.shade600,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -674,11 +702,23 @@ class _BadmintonMatchScheduleScreenState
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(color: Colors.orange.shade600),
-              const SizedBox(height: 16),
+              CircularProgressIndicator(
+                color: Colors.orange.shade600,
+                strokeWidth: 4,
+              ),
+              const SizedBox(height: 24),
               Text(
-                'Creating tournament...',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                'Creating your tournament',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Setting up matches and teams...',
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               ),
             ],
           ),
@@ -690,9 +730,31 @@ class _BadmintonMatchScheduleScreenState
       return Scaffold(
         backgroundColor: Colors.grey.shade50,
         body: Center(
-          child: Text(
-            'Tournament not found',
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red.shade400,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Tournament not found',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -712,16 +774,30 @@ class _BadmintonMatchScheduleScreenState
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Colors.orange.shade600,
+      backgroundColor: Colors.white,
       elevation: 0,
       centerTitle: false,
-      title: const Text(
-        'Tournament Schedule',
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Tournament',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade900,
+            ),
+          ),
+          Text(
+            'Schedule & Standings',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade600,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
       actions: [
         TournamentMenuButton(
@@ -729,22 +805,36 @@ class _BadmintonMatchScheduleScreenState
           onInfo: _showTournamentInfo,
         ),
       ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(height: 1, color: Colors.grey.shade200),
+      ),
     );
   }
 
   Widget _buildTabBar() {
     return Container(
-      color: Colors.orange.shade600,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: TabBar(
         controller: _tabController,
         indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          gradient: LinearGradient(
+            colors: [Colors.orange.shade600, Colors.orange.shade400],
+          ),
         ),
-        labelColor: Colors.orange.shade600,
-        unselectedLabelColor: Colors.white.withOpacity(0.7),
-        labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.grey.shade600,
+        labelStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.3,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         tabs: _buildTabs(),
@@ -877,102 +967,132 @@ class _BadmintonMatchScheduleScreenState
   Widget _buildNextRoundCard() {
     return Container(
       margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.green.shade300, width: 2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.check_circle,
-                  color: Colors.green.shade600,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'League Completed! 🎉',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade700,
-                    ),
-                  ),
-                  Text(
-                    'All matches finished successfully',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        gradient: LinearGradient(
+          colors: [Colors.green.shade50, Colors.green.shade100],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.shade200.withOpacity(0.5),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.green.shade200),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text(
-                  'What happens next?',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade800,
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade600,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.shade600.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Colors.white,
+                    size: 28,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Click below to generate playoff matches. The top-ranked teams from the league will compete in the next round to determine the tournament champion.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                    height: 1.5,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'League Completed! 🎉',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'All matches finished successfully',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _initiatePlayout,
-              icon: const Icon(Icons.emoji_events),
-              label: const Text('Generate Playoffs'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 2,
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.green.shade200, width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ready for playoffs?',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Generate playoff matches from top-ranked teams. Choose between direct finals or semi-finals format.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: _initiatePlayout,
+                icon: const Icon(Icons.emoji_events, size: 20),
+                label: const Text(
+                  'Generate Playoffs',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade600,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 4,
+                  shadowColor: Colors.green.shade600.withOpacity(0.5),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

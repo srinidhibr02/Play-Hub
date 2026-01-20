@@ -6,6 +6,7 @@ import 'package:play_hub/service/badminton_services/tournament_stats_service.dar
 
 class TournamentFirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AuthService _authService = AuthService();
 
   // Get user's local tournaments collection reference
   CollectionReference _getUserTournamentsCollection(String userEmail) {
@@ -911,12 +912,12 @@ class TournamentFirestoreService {
   /// Access tournament via share code
   Future<Map<String, dynamic>?> getTournamentByShareCode(
     String shareCode,
+    BuildContext context, // ✅ Add BuildContext parameter
   ) async {
     try {
-      // ✅ Get tournament directly by tournamentId
       DocumentSnapshot doc = await _firestore
           .collection('sharedTournaments')
-          .doc(shareCode) // Use tournamentId, not shareCode
+          .doc(shareCode)
           .get();
 
       if (!doc.exists) {
@@ -926,8 +927,37 @@ class TournamentFirestoreService {
 
       Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
       data['id'] = doc.id;
-      data['shareCode'] =
-          shareCode; // Optional: include shareCode for convenience
+      data['shareCode'] = shareCode;
+
+      // ✅ Check if user is the creator
+      final creatorEmail = data['creatorEmail'] as String?;
+      final currentUserEmail =
+          _authService.currentUserEmailId; // Your auth service
+
+      if (creatorEmail != null && creatorEmail == currentUserEmail) {
+        if (context.mounted) {
+          // ✅ Safety check
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.campaign, color: Colors.white, size: 20),
+                  SizedBox(width: 12),
+                  Text('You are the creator of this tournament! 👑'),
+                ],
+              ),
+              backgroundColor: Colors.teal.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          await addPlayerToTournament(shareCode, currentUserEmail!);
+        }
+      }
 
       debugPrint('✅ Found tournament: ${data['name'] ?? 'Unnamed'}');
       return data;
