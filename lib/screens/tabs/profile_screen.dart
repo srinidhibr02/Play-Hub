@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:play_hub/constants/constants.dart';
 import 'package:play_hub/screens/auth_screen.dart';
 import 'package:play_hub/screens/info/account_settings_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
@@ -108,7 +109,7 @@ class ProfileScreen extends StatelessWidget {
     showAboutDialog(
       context: context,
       applicationName: 'Play Hub',
-      applicationVersion: '1.0.0',
+      applicationVersion: '$seVersion',
       applicationIcon: Image.asset(
         'images/whiteBGlogo.png',
         width: 64,
@@ -474,7 +475,7 @@ class ProfileScreen extends StatelessWidget {
                       // Version Info
                       Center(
                         child: Text(
-                          'Version 1.0.0',
+                          'Version $seVersion',
                           style: TextStyle(
                             color: Colors.grey.shade500,
                             fontSize: 12,

@@ -200,55 +200,6 @@ class TournamentFirestoreService {
     }
   }
 
-  Future<List<Match>> getCompletedMatches(
-    String userEmail,
-    String tournamentId,
-  ) async {
-    try {
-      debugPrint('📥 Fetching completed matches for tournament: $tournamentId');
-
-      // ✅ FIXED: Direct path to tournament matches subcollection
-      final matchesSnapshot = await _firestore
-          .collection('sharedTournaments')
-          .doc(tournamentId)
-          .collection('matches')
-          .where('status', isEqualTo: 'Completed')
-          .orderBy('scheduledDate')
-          .get();
-
-      final matches = matchesSnapshot.docs.map((doc) {
-        final data = doc.data();
-        return Match.fromMap(data);
-      }).toList();
-
-      debugPrint('✅ Fetched ${matches.length} completed matches');
-      return matches;
-    } catch (e) {
-      debugPrint('❌ Error fetching completed matches: $e');
-      rethrow;
-    }
-  }
-
-  /// Stream of completed matches (real-time updates)
-  Stream<List<Match>> getCompletedMatchesStream(
-    String userEmail,
-    String tournamentId,
-  ) {
-    return _firestore
-        .collection('sharedTournaments')
-        .doc(tournamentId)
-        .collection('matches')
-        .where('status', isEqualTo: 'Completed')
-        .orderBy('scheduledDate')
-        .snapshots()
-        .map((snapshot) {
-          debugPrint(
-            '🔄 Real-time update: ${snapshot.docs.length} completed matches',
-          );
-          return snapshot.docs.map((doc) => Match.fromMap(doc.data())).toList();
-        });
-  }
-
   Future<TournamentStatsSummary> getTournamentStats(
     String userEmail,
     String tournamentId,
@@ -584,6 +535,34 @@ class TournamentFirestoreService {
   }
 
   // ==================== UPDATE ====================
+  // ✅ In _badmintonService.updateMatch():
+  Future<void> finalMatchUpdate(
+    String userEmail,
+    String tournamentId,
+    Match updatedMatch,
+  ) async {
+    final matchRef = _firestore
+        .collection('sharedTournaments')
+        .doc(tournamentId)
+        .collection('matches')
+        .doc(updatedMatch.id);
+
+    // ✅ Use UPDATE (merges, doesn't overwrite)
+    await matchRef.update({
+      'status': updatedMatch.status,
+      'team1': {
+        'id': updatedMatch.team1.id,
+        'name': updatedMatch.team1.name,
+        'players': updatedMatch.team1.players,
+      },
+      'team2': {
+        'id': updatedMatch.team2.id,
+        'name': updatedMatch.team2.name,
+        'players': updatedMatch.team2.players,
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
 
   /// Update match score and status
   Future<void> updateMatch(

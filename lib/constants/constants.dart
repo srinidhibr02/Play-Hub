@@ -12,3 +12,5 @@ class AuthResult {
     return 'AuthResult(success: $success, message: $message, user: ${user?.email})';
   }
 }
+
+String get seVersion => '1.0.2';

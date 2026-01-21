@@ -222,6 +222,8 @@ class Match {
       isBye: isBye ?? this.isBye, // ✅ ADD THIS
     );
   }
+
+  static empty() {}
 }
 
 class TeamStats {

@@ -320,12 +320,14 @@ class PlayoffGenerator {
         Duration(minutes: matchDuration + breakDuration),
       );
 
+      final dummyTeam = Team(id: 'TBD', name: 'TBD', players: []);
+
       // Final (placeholder - winners determined after semis)
       matches.add(
         Match(
           id: 'P$matchCounter',
-          team1: topTeams[0],
-          team2: topTeams[1],
+          team1: dummyTeam,
+          team2: dummyTeam,
           date: currentTime,
           time: DateFormat('h:mm a').format(currentTime),
           status: 'Pending',
@@ -334,7 +336,7 @@ class PlayoffGenerator {
           winner: null,
           round: 2,
           roundName: 'Final',
-          stage: 'Playoff',
+          stage: 'Final',
         ),
       );
     }
@@ -452,6 +454,11 @@ class _MatchesListViewState extends State<MatchesListView> {
         .length;
     final leagueTotalCount = leagueMatches.length;
 
+    final finalMatch = widget.matches.firstWhere(
+      (m) => m.roundName == 'Final' && m.stage == 'Final',
+      orElse: () => Match.empty(),
+    );
+
     return StreamBuilder<List<Match>>(
       stream: _getPlayoffMatches(),
       builder: (context, playoffSnapshot) {
@@ -474,6 +481,17 @@ class _MatchesListViewState extends State<MatchesListView> {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (finalMatch.id.isNotEmpty)
+              _buildSectionHeader(
+                icon: Icons.emoji_events,
+                title: 'Final Match',
+                color: Colors.purple,
+                completedMatches: finalMatch.status == 'Completed' ? 1 : 0,
+                totalMatches: 1,
+              ),
+            ...finalMatch.id.isNotEmpty
+                ? [_buildMatchCard(finalMatch, color: Colors.purple)]
+                : [],
             // Playoffs Section (Shown first with real-time updates)
             if (playoffMatches.isNotEmpty) ...[
               _buildSectionHeader(
@@ -484,7 +502,7 @@ class _MatchesListViewState extends State<MatchesListView> {
                 totalMatches: playoffTotalCount,
               ),
               ...playoffMatches
-                  .map((match) => _buildMatchCard(match, isLeague: false))
+                  .map((match) => _buildMatchCard(match, color: Colors.amber))
                   .toList(),
               const SizedBox(height: 24),
             ],
@@ -499,7 +517,7 @@ class _MatchesListViewState extends State<MatchesListView> {
                 totalMatches: leagueTotalCount,
               ),
               ...leagueMatches
-                  .map((match) => _buildMatchCard(match, isLeague: true))
+                  .map((match) => _buildMatchCard(match, color: Colors.blue))
                   .toList(),
               const SizedBox(height: 24),
             ],
@@ -534,15 +552,6 @@ class _MatchesListViewState extends State<MatchesListView> {
         );
       },
     );
-  }
-
-  String _getRoundNameFromTeamCount(int teamCount) {
-    if (teamCount == 2) return 'Final';
-    if (teamCount == 4) return 'Semi-Final';
-    if (teamCount <= 8) return 'Quarter-Final';
-    if (teamCount <= 16) return 'Round of 16';
-    if (teamCount <= 32) return 'Round of 32';
-    return 'Round of $teamCount';
   }
 
   Widget _buildSectionHeader({
@@ -607,7 +616,7 @@ class _MatchesListViewState extends State<MatchesListView> {
     );
   }
 
-  Widget _buildMatchCard(Match match, {required bool isLeague}) {
+  Widget _buildMatchCard(Match match, {required Color color}) {
     final isBye = match.isBye ?? false;
 
     // Bye matches should not be tappable for scoring
@@ -615,7 +624,6 @@ class _MatchesListViewState extends State<MatchesListView> {
       return _buildByeMatchCard(match);
     }
 
-    final color = isLeague ? Colors.blue : Colors.amber;
     final isCompleted = match.status == 'Completed';
     final score1 = match.score1;
     final score2 = match.score2;
@@ -634,7 +642,7 @@ class _MatchesListViewState extends State<MatchesListView> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.shade300, width: 2),
+              border: Border.all(color: color, width: 2),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -649,9 +657,7 @@ class _MatchesListViewState extends State<MatchesListView> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color.shade600, color.shade400],
-                    ),
+                    gradient: LinearGradient(colors: [color, color]),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(14),
                       topRight: Radius.circular(14),
