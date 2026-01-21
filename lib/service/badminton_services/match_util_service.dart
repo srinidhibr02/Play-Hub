@@ -441,7 +441,7 @@ class _MatchesListViewState extends State<MatchesListView> {
 
   @override
   Widget build(BuildContext context) {
-    // Sync data - League and Knockout from widget.matches
+    // ✅ 1. Pre-compute ALL data BEFORE StreamBuilder
     final leagueMatches = widget.matches
         .where((m) => m.stage == 'League' || m.stage == null)
         .toList();
@@ -454,15 +454,19 @@ class _MatchesListViewState extends State<MatchesListView> {
         .length;
     final leagueTotalCount = leagueMatches.length;
 
-    final finalMatch = widget.matches.firstWhere(
+    // ✅ 2. SAFE Final match computation (before StreamBuilder)
+    Match finalMatch = Match.empty(); // Default empty
+    final finalMatches = widget.matches.where(
       (m) => m.roundName == 'Final' && m.stage == 'Final',
-      orElse: () => Match.empty(),
     );
+    if (finalMatches.isNotEmpty) {
+      finalMatch = finalMatches.first;
+    }
 
     return StreamBuilder<List<Match>>(
       stream: _getPlayoffMatches(),
       builder: (context, playoffSnapshot) {
-        // Get playoff matches from stream
+        // ✅ 3. Safe playoff data handling
         List<Match> playoffMatches = [];
         if (playoffSnapshot.hasData) {
           playoffMatches = playoffSnapshot.data ?? [];
@@ -481,7 +485,10 @@ class _MatchesListViewState extends State<MatchesListView> {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            if (finalMatch.id.isNotEmpty)
+            // ✅ 4. FIXED Final Match Section (SAFE)
+            if (playoffTotalCount == playoffCompletedCount &&
+                playoffTotalCount > 0 &&
+                finalMatch.id.isNotEmpty) ...[
               _buildSectionHeader(
                 icon: Icons.emoji_events,
                 title: 'Final Match',
@@ -489,10 +496,10 @@ class _MatchesListViewState extends State<MatchesListView> {
                 completedMatches: finalMatch.status == 'Completed' ? 1 : 0,
                 totalMatches: 1,
               ),
-            ...finalMatch.id.isNotEmpty
-                ? [_buildMatchCard(finalMatch, color: Colors.purple)]
-                : [],
-            // Playoffs Section (Shown first with real-time updates)
+              _buildMatchCard(finalMatch, color: Colors.purple),
+            ],
+
+            // ✅ 5. Playoffs Section (Real-time)
             if (playoffMatches.isNotEmpty) ...[
               _buildSectionHeader(
                 icon: Icons.emoji_events,
@@ -507,7 +514,7 @@ class _MatchesListViewState extends State<MatchesListView> {
               const SizedBox(height: 24),
             ],
 
-            // League Section
+            // ✅ 6. League Section
             if (leagueMatches.isNotEmpty) ...[
               _buildSectionHeader(
                 icon: Icons.sports_tennis,
@@ -522,6 +529,7 @@ class _MatchesListViewState extends State<MatchesListView> {
               const SizedBox(height: 24),
             ],
 
+            // ✅ 7. Empty State
             if (playoffMatches.isEmpty &&
                 leagueMatches.isEmpty &&
                 knockoutMatches.isEmpty)

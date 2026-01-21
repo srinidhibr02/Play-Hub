@@ -236,6 +236,8 @@ class BookingService {
     required String endTime,
     required double price,
     required Map<String, dynamic> userDetails,
+    required String paymentMethod,
+    required String paymentId,
   }) async {
     try {
       // Check if slot is still available

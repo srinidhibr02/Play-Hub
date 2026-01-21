@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:play_hub/constants/constants.dart';
 import 'package:play_hub/screens/auth_screen.dart';
 import 'package:play_hub/screens/info/account_settings_screen.dart';
+import 'package:play_hub/screens/info/contact_support_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -100,9 +101,13 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _navigateToSupport(BuildContext context) {
-    ScaffoldMessenger.of(
+    Navigator.push(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Support - Coming Soon')));
+      MaterialPageRoute(
+        builder: (_) =>
+            ContactSupportScreen(user: _authService.currentUser as User),
+      ),
+    );
   }
 
   void _navigateToAbout(BuildContext context) {
@@ -400,15 +405,6 @@ class ProfileScreen extends StatelessWidget {
                             'Contact Support',
                             'Get help from our team',
                             () => _navigateToSupport(context),
-                          ),
-                          _buildDivider(),
-                          _buildMenuTile(
-                            Icons.rate_review_outlined,
-                            'Rate App',
-                            'Share your feedback',
-                            () => ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Coming Soon')),
-                            ),
                           ),
                         ],
                       ),

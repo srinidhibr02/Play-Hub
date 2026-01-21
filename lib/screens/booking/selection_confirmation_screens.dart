@@ -810,7 +810,9 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                             ? _proceedToBooking
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal.shade700,
+                          backgroundColor: isMultiSelectMode
+                              ? Colors.purple.shade700
+                              : Colors.teal.shade700,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
