@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/constants/badminton.dart';
@@ -51,6 +52,8 @@ class _BadmintonMatchScheduleScreenState
     with TickerProviderStateMixin {
   late TabController _tabController;
   final _badmintonService = TournamentFirestoreService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   final _authService = AuthService();
 
   String? _tournamentId;
@@ -364,6 +367,11 @@ class _BadmintonMatchScheduleScreenState
         playoffMatches,
       );
 
+      // If semis & final format, schedule finals after semis are completed
+      if (choice == PlayoffChoice.semisAndFinal) {
+        _watchSemiFinalsCompletion(playoffMatches);
+      }
+
       if (!mounted) return;
 
       setState(() {});
@@ -373,6 +381,68 @@ class _BadmintonMatchScheduleScreenState
       debugPrint('❌ Error generating playoffs: $e');
       _showErrorSnackBar('Failed to generate playoffs: $e');
     }
+  }
+
+  void _watchSemiFinalsCompletion(List<Match> playoffMatches) {
+    final userEmail = _authService.currentUserEmailId ?? '';
+    final tournamentId = _tournamentId ?? '';
+
+    _getAllMatchesStream(userEmail, tournamentId).listen((matches) async {
+      final playoffRound = matches.where((m) => m.stage == 'Playoff').toList();
+      final semiFinals = playoffRound
+          .where((m) => m.roundName!.contains('Semi-Final'))
+          .toList();
+
+      semiFinals.forEach((m) => print('${m.winner}'));
+
+      final finalMatch = matches.where((m) => m.stage == 'Final').firstOrNull;
+      // Check if both semi-finals are completed
+
+      if (semiFinals.length == 2 &&
+          semiFinals.every((m) => m.status == 'Completed') &&
+          finalMatch != null &&
+          (finalMatch.status == 'Pending')) {
+        // Get winners from semi-finals
+        final semifinal1Winner = semiFinals[0].winner;
+        final semifinal2Winner = semiFinals[1].winner;
+
+        print('Winners are $semifinal1Winner and $semifinal2Winner');
+
+        if (semifinal1Winner != null && semifinal2Winner != null) {
+          // Find the team objects
+          final winner1Team = semiFinals[0].team1.id == semifinal1Winner
+              ? semiFinals[0].team1
+              : semiFinals[0].team2;
+          final winner2Team = semiFinals[1].team1.id == semifinal2Winner
+              ? semiFinals[1].team1
+              : semiFinals[1].team2;
+          print('Finalists are ${winner1Team.id} and ${winner2Team.id}');
+          // Update final match with winners
+          final updatedFinal = Match(
+            id: finalMatch.id,
+            team1: winner1Team,
+            team2: winner2Team,
+            date: finalMatch.date,
+            time: finalMatch.time,
+            status: 'Scheduled',
+            score1: 0,
+            score2: 0,
+            winner: null,
+            round: 2,
+            roundName: 'Final',
+            stage: 'Final',
+          );
+
+          await _badmintonService.finalMatchUpdate(
+            userEmail,
+            tournamentId,
+            updatedFinal,
+          );
+
+          debugPrint('✅ Finals scheduled with actual semifinal winners');
+        }
+      }
+    });
   }
 
   Future<PlayoffChoice?> _showPlayoffOptionsBottomSheet(
@@ -882,6 +952,25 @@ class _BadmintonMatchScheduleScreenState
     );
   }
 
+  Stream<List<Match>> _getAllMatchesStream(
+    String userEmail,
+    String tournamentId,
+  ) {
+    return _firestore
+        .collection('sharedTournaments')
+        .doc(tournamentId)
+        .collection('matches')
+        .snapshots()
+        .map((snapshot) {
+          final matches = snapshot.docs
+              .map((doc) => Match.fromMap(doc.data()))
+              .toList();
+
+          // ✅ Client-side sort by scheduledDate
+          return matches..sort((a, b) => a.date.compareTo(b.date));
+        });
+  }
+
   Widget _buildMatchesTab() {
     if (_tournamentFormat == 'knockout') {
       return KnockoutMatchesWidget(
@@ -903,7 +992,7 @@ class _BadmintonMatchScheduleScreenState
     }
 
     return StreamBuilder<List<Match>>(
-      stream: _badmintonService.getAllMatchesStream(
+      stream: _getAllMatchesStream(
         _authService.currentUserEmailId ?? '',
         _tournamentId ?? '',
       ),
@@ -936,6 +1025,16 @@ class _BadmintonMatchScheduleScreenState
         final allLeagueCompleted =
             leagueMatches.isNotEmpty &&
             leagueMatches.every((m) => m.status == 'Completed');
+
+        final allPlayoffCompleted =
+            playoffMatches.isNotEmpty &&
+            playoffMatches.every((m) => m.status == 'Completed');
+
+        if (allPlayoffCompleted) {
+          print('All Playoff Completed $allPlayoffCompleted');
+          _watchSemiFinalsCompletion(playoffMatches);
+        }
+
         final hasPlayoffMatches = playoffMatches.isNotEmpty;
 
         return Column(
@@ -962,6 +1061,10 @@ class _BadmintonMatchScheduleScreenState
         );
       },
     );
+  }
+
+  Team? _getWinner() {
+    return null;
   }
 
   Widget _buildNextRoundCard() {

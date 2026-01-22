@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:play_hub/screens/auth_screen.dart';
@@ -13,6 +14,133 @@ class AccountSettingsScreen extends StatefulWidget {
 }
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
+  late TextEditingController _fullNameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _emailController;
+
+  bool _isSavingProfile = false;
+  bool _hasChanges = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fullNameController = TextEditingController(
+      text: widget.user.displayName ?? '',
+    );
+    _phoneController = TextEditingController();
+    _emailController = TextEditingController(text: widget.user.email ?? '');
+  }
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _checkForChanges() {
+    final hasChanges =
+        _fullNameController.text != (widget.user.displayName ?? '') ||
+        _emailController.text != (widget.user.email ?? '') ||
+        _phoneController.text.isNotEmpty;
+
+    setState(() => _hasChanges = hasChanges);
+  }
+
+  Future<void> _saveProfileChanges() async {
+    setState(() => _isSavingProfile = true);
+
+    try {
+      final user = widget.user;
+      final userEmail = user.email ?? '';
+      final uid = user.uid;
+
+      // ✅ Update Firebase Auth display name
+      if (_fullNameController.text.trim().isNotEmpty &&
+          _fullNameController.text != (user.displayName ?? '')) {
+        await user.updateDisplayName(_fullNameController.text.trim());
+        debugPrint('👤 Auth displayName updated: ${_fullNameController.text}');
+      }
+
+      // ✅ Update Firestore users/{user.email} document
+      final userDocRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userEmail);
+      await userDocRef.set({
+        'displayName': _fullNameController.text.trim(),
+        'email': userEmail,
+        'uid': uid,
+        'phoneNumber': _phoneController.text.trim().isNotEmpty
+            ? _phoneController.text.trim()
+            : null,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'lastSignInTime': user.metadata.lastSignInTime,
+      }, SetOptions(merge: true));
+
+      debugPrint('📁 Firestore users/${userEmail} updated');
+
+      if (mounted) {
+        setState(() => _isSavingProfile = false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 24),
+                SizedBox(width: 12),
+                Text(
+                  'Profile updated everywhere!',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            duration: const Duration(seconds: 3),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+
+        setState(() => _hasChanges = false);
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ Profile update failed: $e');
+      debugPrint('Stack: $stackTrace');
+
+      if (mounted) {
+        setState(() => _isSavingProfile = false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    'Update failed: ${e.toString().split(']')[1] ?? e.toString()}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            duration: const Duration(seconds: 4),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _showLogoutDialog(BuildContext context) async {
     showDialog<bool>(
       context: context,
@@ -47,7 +175,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 🎨 Premium Icon
               Container(
                 width: 88,
                 height: 88,
@@ -75,8 +202,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-
-              // 🎯 Primary Title
               const Text(
                 'What would you like to do?',
                 style: TextStyle(
@@ -89,8 +214,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-
-              // 📝 Contextual Subtitle
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: RichText(
@@ -127,11 +250,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-
-              // 🚪 LOGOUT BUTTON - SEPARATE ROW
               SizedBox(
                 width: double.infinity,
-
                 child: ElevatedButton.icon(
                   onPressed: () async {
                     Navigator.pop(context);
@@ -153,11 +273,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  icon: Container(
-                    padding: const EdgeInsets.all(10),
-
-                    child: Icon(Icons.logout_rounded, size: 24),
-                  ),
+                  icon: const Icon(Icons.logout_rounded, size: 24),
                   label: const Text(
                     'Logout',
                     style: TextStyle(
@@ -168,31 +284,25 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   ),
                 ),
               ),
-
-              SizedBox(height: 10),
-
+              const SizedBox(height: 10),
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: SizedBox(
                   width: double.infinity,
-
                   child: OutlinedButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
                       _showDeleteAccountDialog(context);
                     },
-                    icon: Container(
-                      padding: const EdgeInsets.all(10),
-                      child: Icon(
-                        Icons.delete_forever_outlined,
-                        size: 24,
-                        color: Colors.red.shade700,
-                      ),
+                    icon: Icon(
+                      Icons.delete_forever_outlined,
+                      size: 24,
+                      color: Colors.red.shade700,
                     ),
-                    label: const Text(
+                    label: Text(
                       'Delete Account',
                       style: TextStyle(
-                        color: Colors.red,
+                        color: Colors.red.shade700,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.3,
@@ -201,7 +311,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 12),
               Text(
                 'You can always sign back in',
@@ -219,9 +328,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
   }
 
-  // ✅ Add this for actual delete functionality:
   Future<void> _showDeleteAccountDialog(BuildContext context) async {
-    // Your actual delete account implementation
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -236,7 +343,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               final result = await AuthService().deleteAccount();
-              print(result);
               if (result.success && mounted) {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(builder: (_) => const AuthPage()),
@@ -309,6 +415,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
           ),
 
+          // Profile Card
           SliverToBoxAdapter(
             child: Container(
               margin: const EdgeInsets.fromLTRB(24, 20, 24, 24),
@@ -380,6 +487,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
           ),
 
+          // Edit Profile Section
           SliverToBoxAdapter(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -396,39 +504,298 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 ],
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.lock_outline_rounded,
-                    title: 'Password',
-                    subtitle: 'Change your account password',
-                    color: Colors.orange.shade500,
-                    onTap: () {},
+                  Text(
+                    'Edit Profile',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade900,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Full Name Field
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Full Name',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _fullNameController,
+                        onChanged: (_) => _checkForChanges(),
+                        decoration: InputDecoration(
+                          hintText: 'Enter your full name',
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.teal.shade700,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.email_outlined,
-                    title: 'Email',
-                    subtitle: 'Update your email address',
-                    color: Colors.teal.shade500,
-                    onTap: () {},
+                  // Phone Number Field
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Phone Number',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _phoneController,
+                        onChanged: (_) => _checkForChanges(),
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          hintText: 'Enter your phone number',
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.teal.shade700,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.phone_outlined,
-                    title: 'Phone',
-                    subtitle: 'Update your phone number',
-                    color: Colors.blue.shade500,
-                    onTap: () {},
+                  // Email Field (Disabled if verified)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Email',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          if (widget.user.emailVerified)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade100,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_rounded,
+                                    size: 14,
+                                    color: Colors.green.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Verified',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _emailController,
+                        enabled: !widget.user.emailVerified,
+                        onChanged: (_) => _checkForChanges(),
+                        decoration: InputDecoration(
+                          hintText: 'Enter your email',
+                          filled: true,
+                          fillColor: widget.user.emailVerified
+                              ? Colors.grey.shade200
+                              : Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                          ),
+                          disabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.teal.shade700,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          suffixIcon: widget.user.emailVerified
+                              ? Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Icon(
+                                    Icons.lock_rounded,
+                                    size: 18,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                      if (widget.user.emailVerified)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'Verified email cannot be changed',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  // Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _fullNameController.text =
+                                  widget.user.displayName ?? '';
+                              _emailController.text = widget.user.email ?? '';
+                              _phoneController.clear();
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey.shade300,
+                            foregroundColor: Colors.grey.shade800,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _hasChanges ? _saveProfileChanges : null,
+                          icon: _isSavingProfile
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : const Icon(Icons.save_rounded, size: 18),
+                          label: Text(
+                            _isSavingProfile ? 'Saving...' : 'Save Changes',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal.shade700,
+                            disabledBackgroundColor: Colors.grey.shade300,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ),
 
-          // 🚨 DELETE ACCOUNT SECTION (triggers logout)
+          // Delete Account Section
           SliverToBoxAdapter(
             child: Container(
               margin: const EdgeInsets.fromLTRB(24, 24, 24, 40),
@@ -494,9 +861,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () => _showLogoutDialog(
-                        context,
-                      ), // ✅ DELETE BUTTON → LOGOUT
+                      onPressed: () => _showLogoutDialog(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.shade600,
                         foregroundColor: Colors.white,
@@ -521,81 +886,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsTile(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [color.withOpacity(0.15), color.withOpacity(0.08)],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: color.withOpacity(0.2)),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: Colors.grey,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -320,12 +320,14 @@ class PlayoffGenerator {
         Duration(minutes: matchDuration + breakDuration),
       );
 
+      final dummyTeam = Team(id: 'TBD', name: 'TBD', players: []);
+
       // Final (placeholder - winners determined after semis)
       matches.add(
         Match(
           id: 'P$matchCounter',
-          team1: topTeams[0],
-          team2: topTeams[1],
+          team1: dummyTeam,
+          team2: dummyTeam,
           date: currentTime,
           time: DateFormat('h:mm a').format(currentTime),
           status: 'Pending',
@@ -334,7 +336,7 @@ class PlayoffGenerator {
           winner: null,
           round: 2,
           roundName: 'Final',
-          stage: 'Playoff',
+          stage: 'Final',
         ),
       );
     }
@@ -439,7 +441,7 @@ class _MatchesListViewState extends State<MatchesListView> {
 
   @override
   Widget build(BuildContext context) {
-    // Sync data - League and Knockout from widget.matches
+    // ✅ 1. Pre-compute ALL data BEFORE StreamBuilder
     final leagueMatches = widget.matches
         .where((m) => m.stage == 'League' || m.stage == null)
         .toList();
@@ -452,10 +454,19 @@ class _MatchesListViewState extends State<MatchesListView> {
         .length;
     final leagueTotalCount = leagueMatches.length;
 
+    // ✅ 2. SAFE Final match computation (before StreamBuilder)
+    Match finalMatch = Match.empty(); // Default empty
+    final finalMatches = widget.matches.where(
+      (m) => m.roundName == 'Final' && m.stage == 'Final',
+    );
+    if (finalMatches.isNotEmpty) {
+      finalMatch = finalMatches.first;
+    }
+
     return StreamBuilder<List<Match>>(
       stream: _getPlayoffMatches(),
       builder: (context, playoffSnapshot) {
-        // Get playoff matches from stream
+        // ✅ 3. Safe playoff data handling
         List<Match> playoffMatches = [];
         if (playoffSnapshot.hasData) {
           playoffMatches = playoffSnapshot.data ?? [];
@@ -474,7 +485,21 @@ class _MatchesListViewState extends State<MatchesListView> {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Playoffs Section (Shown first with real-time updates)
+            // ✅ 4. FIXED Final Match Section (SAFE)
+            if (playoffTotalCount == playoffCompletedCount &&
+                playoffTotalCount > 0 &&
+                finalMatch.id.isNotEmpty) ...[
+              _buildSectionHeader(
+                icon: Icons.emoji_events,
+                title: 'Final Match',
+                color: Colors.purple,
+                completedMatches: finalMatch.status == 'Completed' ? 1 : 0,
+                totalMatches: 1,
+              ),
+              _buildMatchCard(finalMatch, color: Colors.purple),
+            ],
+
+            // ✅ 5. Playoffs Section (Real-time)
             if (playoffMatches.isNotEmpty) ...[
               _buildSectionHeader(
                 icon: Icons.emoji_events,
@@ -484,12 +509,12 @@ class _MatchesListViewState extends State<MatchesListView> {
                 totalMatches: playoffTotalCount,
               ),
               ...playoffMatches
-                  .map((match) => _buildMatchCard(match, isLeague: false))
+                  .map((match) => _buildMatchCard(match, color: Colors.amber))
                   .toList(),
               const SizedBox(height: 24),
             ],
 
-            // League Section
+            // ✅ 6. League Section
             if (leagueMatches.isNotEmpty) ...[
               _buildSectionHeader(
                 icon: Icons.sports_tennis,
@@ -499,11 +524,12 @@ class _MatchesListViewState extends State<MatchesListView> {
                 totalMatches: leagueTotalCount,
               ),
               ...leagueMatches
-                  .map((match) => _buildMatchCard(match, isLeague: true))
+                  .map((match) => _buildMatchCard(match, color: Colors.blue))
                   .toList(),
               const SizedBox(height: 24),
             ],
 
+            // ✅ 7. Empty State
             if (playoffMatches.isEmpty &&
                 leagueMatches.isEmpty &&
                 knockoutMatches.isEmpty)
@@ -534,15 +560,6 @@ class _MatchesListViewState extends State<MatchesListView> {
         );
       },
     );
-  }
-
-  String _getRoundNameFromTeamCount(int teamCount) {
-    if (teamCount == 2) return 'Final';
-    if (teamCount == 4) return 'Semi-Final';
-    if (teamCount <= 8) return 'Quarter-Final';
-    if (teamCount <= 16) return 'Round of 16';
-    if (teamCount <= 32) return 'Round of 32';
-    return 'Round of $teamCount';
   }
 
   Widget _buildSectionHeader({
@@ -607,7 +624,7 @@ class _MatchesListViewState extends State<MatchesListView> {
     );
   }
 
-  Widget _buildMatchCard(Match match, {required bool isLeague}) {
+  Widget _buildMatchCard(Match match, {required Color color}) {
     final isBye = match.isBye ?? false;
 
     // Bye matches should not be tappable for scoring
@@ -615,7 +632,6 @@ class _MatchesListViewState extends State<MatchesListView> {
       return _buildByeMatchCard(match);
     }
 
-    final color = isLeague ? Colors.blue : Colors.amber;
     final isCompleted = match.status == 'Completed';
     final score1 = match.score1;
     final score2 = match.score2;
@@ -634,7 +650,7 @@ class _MatchesListViewState extends State<MatchesListView> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.shade300, width: 2),
+              border: Border.all(color: color, width: 2),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -649,9 +665,7 @@ class _MatchesListViewState extends State<MatchesListView> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color.shade600, color.shade400],
-                    ),
+                    gradient: LinearGradient(colors: [color, color]),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(14),
                       topRight: Radius.circular(14),

@@ -25,8 +25,10 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
   final bookingService = BookingService();
   DateTime selectedDate = DateTime.now();
   String? selectedTimeSlot;
+  Set<String> selectedMultipleSlots = {};
   List<TimeSlot> timeSlots = [];
   bool isLoading = false;
+  bool isMultiSelectMode = false;
   final _authService = AuthService();
 
   @override
@@ -84,43 +86,91 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
     setState(() {
       selectedDate = date;
       selectedTimeSlot = null;
+      selectedMultipleSlots.clear();
     });
     _loadTimeSlots();
   }
 
+  void _toggleMultiSelectMode() {
+    setState(() {
+      isMultiSelectMode = !isMultiSelectMode;
+      if (!isMultiSelectMode) {
+        selectedMultipleSlots.clear();
+      } else {
+        selectedTimeSlot = null;
+      }
+    });
+  }
+
   void _proceedToBooking() {
-    if (selectedTimeSlot == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Please select a time slot'),
-            ],
+    if (isMultiSelectMode) {
+      if (selectedMultipleSlots.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Please select at least one time slot'),
+              ],
+            ),
+            backgroundColor: Colors.orange.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-          backgroundColor: Colors.orange.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        );
+        return;
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BookingConfirmationScreen(
+            club: widget.club,
+            court: widget.court,
+            sport: widget.sport,
+            date: selectedDate,
+            timeSlot: selectedMultipleSlots.toList().join(', '),
+            multipleSlots: selectedMultipleSlots.toList(),
           ),
         ),
       );
-      return;
-    }
+    } else {
+      if (selectedTimeSlot == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Please select a time slot'),
+              ],
+            ),
+            backgroundColor: Colors.orange.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        return;
+      }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BookingConfirmationScreen(
-          club: widget.club,
-          court: widget.court,
-          sport: widget.sport,
-          date: selectedDate,
-          timeSlot: selectedTimeSlot!,
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BookingConfirmationScreen(
+            club: widget.club,
+            court: widget.court,
+            sport: widget.sport,
+            date: selectedDate,
+            timeSlot: selectedTimeSlot!,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   String _formatDate(DateTime date) {
@@ -167,7 +217,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
           SingleChildScrollView(
             child: Column(
               children: [
-                // Club Info Header - Improved
+                // Club Info Header
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -274,7 +324,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                   ),
                 ),
 
-                // Date Selector - Improved
+                // Date Selector
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   color: Colors.white,
@@ -394,7 +444,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                   ),
                 ),
 
-                // Legend Section - Improved
+                // Legend Section
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
@@ -432,7 +482,65 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
 
                 Container(height: 1, color: Colors.grey.shade200),
 
-                // Time Slots Section - Improved
+                // Multi-Select Toggle Section
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.layers_rounded,
+                                size: 20,
+                                color: Colors.teal.shade700,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Book Multiple Slots',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.grey.shade900,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Select multiple time slots at once',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Transform.scale(
+                        scale: 0.85,
+                        child: Switch(
+                          value: isMultiSelectMode,
+                          onChanged: (_) => _toggleMultiSelectMode(),
+                          activeColor: Colors.teal.shade700,
+                          activeTrackColor: Colors.teal.shade200,
+                          inactiveTrackColor: Colors.grey.shade300,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Container(height: 1, color: Colors.grey.shade200),
+
+                // Time Slots Section
                 Container(
                   color: Colors.white,
                   child: Column(
@@ -459,19 +567,27 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                                   vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.green.shade50,
+                                  color: isMultiSelectMode
+                                      ? Colors.purple.shade50
+                                      : Colors.green.shade50,
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                    color: Colors.green.shade300,
+                                    color: isMultiSelectMode
+                                        ? Colors.purple.shade300
+                                        : Colors.green.shade300,
                                     width: 1.5,
                                   ),
                                 ),
                                 child: Text(
-                                  '${timeSlots.where((s) => !s.isBooked).length}/${timeSlots.length}',
+                                  isMultiSelectMode
+                                      ? '${selectedMultipleSlots.length} selected'
+                                      : '${timeSlots.where((s) => !s.isBooked).length}/${timeSlots.length}',
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
-                                    color: Colors.green.shade700,
+                                    color: isMultiSelectMode
+                                        ? Colors.purple.shade700
+                                        : Colors.green.shade700,
                                   ),
                                 ),
                               ),
@@ -586,7 +702,57 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (selectedTimeSlot != null)
+                    if (isMultiSelectMode && selectedMultipleSlots.isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.purple.shade50,
+                              Colors.purple.shade100,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.purple.shade300,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              color: Colors.purple.shade700,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Selected Slots',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.purple.shade600,
+                                  ),
+                                ),
+                                Text(
+                                  selectedMultipleSlots.join(',\n'),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.purple.shade900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (!isMultiSelectMode && selectedTimeSlot != null)
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
@@ -637,28 +803,55 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: selectedTimeSlot != null
+                        onPressed:
+                            (isMultiSelectMode &&
+                                    selectedMultipleSlots.isNotEmpty) ||
+                                (!isMultiSelectMode && selectedTimeSlot != null)
                             ? _proceedToBooking
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal.shade700,
+                          backgroundColor: isMultiSelectMode
+                              ? Colors.purple.shade700
+                              : Colors.teal.shade700,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                           disabledBackgroundColor: Colors.grey.shade300,
                           disabledForegroundColor: Colors.grey.shade600,
-                          elevation: selectedTimeSlot != null ? 4 : 0,
+                          elevation:
+                              ((isMultiSelectMode &&
+                                      selectedMultipleSlots.isNotEmpty) ||
+                                  (!isMultiSelectMode &&
+                                      selectedTimeSlot != null))
+                              ? 4
+                              : 0,
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            if (selectedTimeSlot != null)
+                            if ((isMultiSelectMode &&
+                                    selectedMultipleSlots.isNotEmpty) ||
+                                (!isMultiSelectMode &&
+                                    selectedTimeSlot != null))
                               const Icon(Icons.arrow_forward_rounded, size: 20),
-                            SizedBox(width: selectedTimeSlot != null ? 8 : 0),
+                            SizedBox(
+                              width:
+                                  ((isMultiSelectMode &&
+                                          selectedMultipleSlots.isNotEmpty) ||
+                                      (!isMultiSelectMode &&
+                                          selectedTimeSlot != null))
+                                  ? 8
+                                  : 0,
+                            ),
                             Text(
-                              selectedTimeSlot != null
+                              ((isMultiSelectMode &&
+                                          selectedMultipleSlots.isNotEmpty) ||
+                                      (!isMultiSelectMode &&
+                                          selectedTimeSlot != null))
                                   ? 'Proceed to Confirmation'
+                                  : isMultiSelectMode
+                                  ? 'Select at least one slot'
                                   : 'Select a time slot',
                               style: const TextStyle(
                                 fontSize: 15,
@@ -708,7 +901,11 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
 
   Widget _buildTimeSlotCard(TimeSlot slot, DateTime now) {
     final slotKey = '${slot.startTime}-${slot.endTime}';
-    final isSelected = selectedTimeSlot == slotKey;
+    final isSelectedInMultiMode = selectedMultipleSlots.contains(slotKey);
+    final isSelectedInSingleMode = selectedTimeSlot == slotKey;
+    final isSelected = isMultiSelectMode
+        ? isSelectedInMultiMode
+        : isSelectedInSingleMode;
 
     final slotDateTime = _slotStartDateTime(slot.startTime, selectedDate);
     final isToday =
@@ -739,11 +936,19 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
       statusIcon = Icons.block_rounded;
       isClickable = false;
     } else if (isSelected) {
-      bgColor = Colors.teal.shade700;
-      textColor = Colors.white;
-      borderColor = Colors.teal.shade900;
-      statusText = 'Selected';
-      statusIcon = Icons.check_circle_rounded;
+      if (isMultiSelectMode) {
+        bgColor = Colors.purple.shade700;
+        textColor = Colors.white;
+        borderColor = Colors.purple.shade900;
+        statusText = 'Selected';
+        statusIcon = Icons.check_circle_rounded;
+      } else {
+        bgColor = Colors.teal.shade700;
+        textColor = Colors.white;
+        borderColor = Colors.teal.shade900;
+        statusText = 'Selected';
+        statusIcon = Icons.check_circle_rounded;
+      }
       isClickable = true;
     } else if (slot.isBooked) {
       if (bookedByMe) {
@@ -774,7 +979,15 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
       onTap: isClickable
           ? () {
               setState(() {
-                selectedTimeSlot = slotKey;
+                if (isMultiSelectMode) {
+                  if (selectedMultipleSlots.contains(slotKey)) {
+                    selectedMultipleSlots.remove(slotKey);
+                  } else {
+                    selectedMultipleSlots.add(slotKey);
+                  }
+                } else {
+                  selectedTimeSlot = slotKey;
+                }
               });
             }
           : null,
@@ -787,7 +1000,9 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.teal.shade300,
+                    color: isMultiSelectMode
+                        ? Colors.purple.shade300
+                        : Colors.teal.shade300,
                     blurRadius: 12,
                     spreadRadius: 2,
                   ),

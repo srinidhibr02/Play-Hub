@@ -222,6 +222,27 @@ class Match {
       isBye: isBye ?? this.isBye, // ✅ ADD THIS
     );
   }
+
+  static Match empty() {
+    return Match(
+      id: '',
+      team1: Team(id: 'TBD', name: 'TBD', players: []),
+      team2: Team(id: 'TBD', name: 'TBD', players: []),
+      date: DateTime.now(),
+      time: '',
+      status: 'Pending',
+      score1: 0,
+      score2: 0,
+      winner: null,
+      parentTeam1Id: null,
+      parentTeam2Id: null,
+      round: null,
+      roundName: null,
+      stage: null,
+      rematchNumber: null,
+      isBye: false,
+    );
+  }
 }
 
 class TeamStats {
