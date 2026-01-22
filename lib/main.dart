@@ -1,11 +1,15 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:play_hub/firebase_options.dart';
+import 'package:play_hub/flavor_config.dart';
 
 import 'package:play_hub/screens/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  const flavor = String.fromEnvironment('FLAVOR', defaultValue: 'dev');
+  FlavorConfig.init(flavor);
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const SportsEventApp());
 }

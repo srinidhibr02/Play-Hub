@@ -193,7 +193,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       setState(() => isProcessing = true);
 
       var options = {
-        'key': 'rzp_live_S1JxLJsA16r6Rq', // Replace with your Razorpay Key ID
+        'key': 'rzp_live_S1intCExDSf19z', // Replace with your Razorpay Key ID
         'amount': (platformFee * 100).toInt(), // Total amount in paise
         'name': 'PlayHub',
         'description': isMultipleBooking

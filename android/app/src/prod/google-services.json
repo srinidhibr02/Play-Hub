@@ -1,0 +1,106 @@
+{
+  "project_info": {
+    "project_number": "371130915379",
+    "project_id": "play-hub02",
+    "storage_bucket": "play-hub02.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:371130915379:android:e6c583b4481f51d0382146",
+        "android_client_info": {
+          "package_name": "app.zerolpa.playhub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "371130915379-chj9qrbdca2g2637n2h1qhoomalr2tvq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.zerolpa.playhub",
+            "certificate_hash": "3b956ce828cdc81b61caa531b3b71d1a76854297"
+          }
+        },
+        {
+          "client_id": "371130915379-uesm8455jrre118jpi2rla2gm1qqh62b.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.zerolpa.playhub",
+            "certificate_hash": "b70cb8656e8a91bce102597d6d7b92733720f412"
+          }
+        },
+        {
+          "client_id": "371130915379-54ket1adu7iqt2lqdoh4oqhvi3fedlnj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQV3h45Xbx-oEGPJvw874pe6aMY8hN7Io"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "371130915379-54ket1adu7iqt2lqdoh4oqhvi3fedlnj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "371130915379-070v8gqr2iqhkqkjeqgtsmfg8jpcar0f.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.playHub"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:371130915379:android:658084b8df4aab85382146",
+        "android_client_info": {
+          "package_name": "com.example.play_hub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "371130915379-56deks9ppb02tlntlkv0vi600fpkeqlf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.play_hub",
+            "certificate_hash": "fc2de15ac032ac93bf1d8f75dbef5973c671b021"
+          }
+        },
+        {
+          "client_id": "371130915379-54ket1adu7iqt2lqdoh4oqhvi3fedlnj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQV3h45Xbx-oEGPJvw874pe6aMY8hN7Io"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "371130915379-54ket1adu7iqt2lqdoh4oqhvi3fedlnj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "371130915379-070v8gqr2iqhkqkjeqgtsmfg8jpcar0f.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.playHub"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
