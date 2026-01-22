@@ -125,7 +125,7 @@ class _TournamentScreenState extends State<TournamentScreen>
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.teal.withOpacity(0.3),
+                              color: Colors.teal.withAlpha((255 * 0.3).toInt()),
                               blurRadius: 30,
                               spreadRadius: 5,
                             ),
@@ -163,7 +163,7 @@ class _TournamentScreenState extends State<TournamentScreen>
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withAlpha((255 * 0.15).toInt()),
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Column(
@@ -183,7 +183,7 @@ class _TournamentScreenState extends State<TournamentScreen>
                         'Please wait',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withAlpha((255 * 0.9).toInt()),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -563,7 +563,7 @@ class _TournamentScreenState extends State<TournamentScreen>
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withAlpha((255 * 0.05).toInt()),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -684,7 +684,7 @@ class _TournamentScreenState extends State<TournamentScreen>
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withAlpha((255 * 0.2).toInt()),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -727,7 +727,7 @@ class _TournamentScreenState extends State<TournamentScreen>
                       child: Material(
                         borderRadius: BorderRadius.circular(20),
                         elevation: 4,
-                        shadowColor: Colors.teal.withOpacity(0.3),
+                        shadowColor: Colors.teal.withAlpha((255 * 0.3).toInt()),
                         child: TextField(
                           controller: _searchController,
                           onChanged: _searchTournaments,
@@ -812,7 +812,9 @@ class _TournamentScreenState extends State<TournamentScreen>
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.orange.withOpacity(0.2),
+                                color: Colors.orange.withAlpha(
+                                  (255 * 0.2).toInt(),
+                                ),
                                 blurRadius: 15,
                                 offset: const Offset(0, 6),
                               ),
@@ -902,7 +904,7 @@ class _TournamentScreenState extends State<TournamentScreen>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withAlpha((255 * 0.1).toInt()),
                   blurRadius: 20,
                   spreadRadius: 5,
                 ),
@@ -977,7 +979,7 @@ class _TournamentScreenState extends State<TournamentScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((255 * 0.05).toInt()),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -988,7 +990,7 @@ class _TournamentScreenState extends State<TournamentScreen>
         child: InkWell(
           onTap: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Navigate to ${tournamentName} details')),
+              SnackBar(content: Text('Navigate to $tournamentName details')),
             );
           },
           borderRadius: BorderRadius.circular(20),
@@ -1035,10 +1037,10 @@ class _TournamentScreenState extends State<TournamentScreen>
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: distanceColor.withOpacity(0.1),
+                          color: distanceColor.withAlpha((255 * 0.1).toInt()),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: distanceColor.withOpacity(0.4),
+                            color: distanceColor.withAlpha((255 * 0.4).toInt()),
                             width: 1.5,
                           ),
                         ),
@@ -1106,9 +1108,7 @@ class _TournamentScreenState extends State<TournamentScreen>
                     ),
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('View ${tournamentName} details'),
-                        ),
+                        SnackBar(content: Text('View $tournamentName details')),
                       );
                     },
                   ),

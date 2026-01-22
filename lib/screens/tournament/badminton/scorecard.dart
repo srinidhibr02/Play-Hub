@@ -218,8 +218,8 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => WillPopScope(
-        onWillPop: () async => false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
         child: Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
@@ -375,8 +375,12 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        _onWillPop();
+      },
       child: Scaffold(
         backgroundColor: Colors.grey.shade100,
         appBar: AppBar(
@@ -502,7 +506,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withAlpha((255 * 0.05).toInt()),
                     blurRadius: 10,
                     offset: const Offset(0, -2),
                   ),
@@ -594,8 +598,8 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
         boxShadow: [
           BoxShadow(
             color: isLeading
-                ? color.withOpacity(0.15)
-                : Colors.black.withOpacity(0.05),
+                ? color.withAlpha((255 * 0.15).toInt())
+                : Colors.black.withAlpha((255 * 0.05).toInt()),
             blurRadius: isLeading ? 20 : 10,
             offset: const Offset(0, 4),
           ),
@@ -609,7 +613,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withAlpha((255 * 0.1).toInt()),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -695,7 +699,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                     border: Border.all(
                       color: isDisabled
                           ? Colors.grey.shade300
-                          : color.withOpacity(0.3),
+                          : color.withAlpha((255 * 0.3).toInt()),
                       width: 2,
                     ),
                     borderRadius: BorderRadius.circular(12),
@@ -704,7 +708,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                         ? null
                         : [
                             BoxShadow(
-                              color: color.withOpacity(0.1),
+                              color: color.withAlpha((255 * 0.1).toInt()),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -725,8 +729,8 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                   gradient: LinearGradient(
                     colors: [
                       isDisabled
-                          ? Colors.grey.shade400.withOpacity(0.9)
-                          : color.withOpacity(0.9),
+                          ? Colors.grey.shade400.withAlpha((255 * 0.9).toInt())
+                          : color.withAlpha((255 * 0.9).toInt()),
                       isDisabled ? Colors.grey.shade400 : color,
                     ],
                     begin: Alignment.topLeft,
@@ -736,8 +740,8 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                   boxShadow: [
                     BoxShadow(
                       color: isDisabled
-                          ? Colors.grey.shade400.withOpacity(0.3)
-                          : color.withOpacity(0.3),
+                          ? Colors.grey.shade400.withAlpha((255 * 0.3).toInt())
+                          : color.withAlpha((255 * 0.3).toInt()),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -768,7 +772,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
                         ? null
                         : [
                             BoxShadow(
-                              color: color.withOpacity(0.3),
+                              color: color.withAlpha((255 * 0.3).toInt()),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),

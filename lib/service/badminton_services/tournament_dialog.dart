@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:play_hub/service/auth_service.dart';
 import 'package:play_hub/service/badminton_services/badminton_service.dart';
 
 class TournamentDialogs {

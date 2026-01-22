@@ -43,7 +43,7 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.teal.withOpacity(0.2),
+                    color: Colors.teal.withAlpha((255 * 0.2).toInt()),
                     blurRadius: 20,
                     spreadRadius: 5,
                   ),
@@ -220,7 +220,7 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.teal.withOpacity(0.1),
+                        color: Colors.teal.withAlpha((255 * 0.1).toInt()),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -377,7 +377,9 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.grey.withOpacity(0.15),
+                                color: Colors.grey.withAlpha(
+                                  (255 * 0.15).toInt(),
+                                ),
                                 blurRadius: 20,
                                 spreadRadius: 4,
                               ),
@@ -549,7 +551,7 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
 
   Widget _buildClubCard(BuildContext context, Club club) {
     final price = club.pricePerHour[widget.sport] ?? 0.0;
-    final allowBookings = club.allowBookings ?? true;
+    final allowBookings = club.allowBookings;
     final isDisabled = !allowBookings;
 
     // Calculate distance
@@ -588,7 +590,9 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDisabled ? 0.03 : 0.08),
+              color: Colors.black.withAlpha(
+                (255 * (isDisabled ? 0.03 : 0.08)).toInt(),
+              ),
               blurRadius: 16,
               offset: const Offset(0, 4),
               spreadRadius: 2,
@@ -665,7 +669,7 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                         ),
                         child: Container(
                           height: 180,
-                          color: Colors.black.withOpacity(0.4),
+                          color: Colors.black.withAlpha((255 * 0.4).toInt()),
                           child: Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -673,7 +677,9 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                                 Icon(
                                   Icons.lock_outline,
                                   size: 48,
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withAlpha(
+                                    (255 * 0.9).toInt(),
+                                  ),
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
@@ -703,7 +709,9 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withAlpha(
+                                (255 * 0.15).toInt(),
+                              ),
                               blurRadius: 12,
                             ),
                           ],
@@ -744,7 +752,9 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: distanceColor.withOpacity(0.4),
+                                color: distanceColor.withAlpha(
+                                  (255 * 0.4).toInt(),
+                                ),
                                 blurRadius: 8,
                               ),
                             ],
@@ -944,7 +954,7 @@ class _SelectClubScreenState extends State<SelectClubScreen> {
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withAlpha((255 * 0.06).toInt()),
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),

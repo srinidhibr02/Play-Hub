@@ -105,10 +105,11 @@ class _FinalPlayerStatsWidgetState extends State<FinalPlayerStatsWidget>
           stats.matchesPlayed++;
           stats.totalPoints += match.score1;
           stats.totalPointsAgainst += match.score2;
-          if (team1Won)
+          if (team1Won) {
             stats.wins++;
-          else
+          } else {
             stats.losses++;
+          }
         }
       }
 
@@ -118,10 +119,11 @@ class _FinalPlayerStatsWidgetState extends State<FinalPlayerStatsWidget>
           stats.matchesPlayed++;
           stats.totalPoints += match.score2;
           stats.totalPointsAgainst += match.score1;
-          if (!team1Won)
+          if (!team1Won) {
             stats.wins++;
-          else
+          } else {
             stats.losses++;
+          }
         }
       }
     }
@@ -139,7 +141,7 @@ class _FinalPlayerStatsWidgetState extends State<FinalPlayerStatsWidget>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withAlpha((255 * 0.05).toInt()),
               blurRadius: 20,
               offset: const Offset(0, 5),
             ),
@@ -171,7 +173,7 @@ class _FinalPlayerStatsWidgetState extends State<FinalPlayerStatsWidget>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withAlpha((255 * 0.06).toInt()),
               blurRadius: 25,
               offset: const Offset(0, 8),
             ),
@@ -190,7 +192,7 @@ class _FinalPlayerStatsWidgetState extends State<FinalPlayerStatsWidget>
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.orange.withOpacity(0.3),
+                    color: Colors.orange.withAlpha((255 * 0.3).toInt()),
                     blurRadius: 15,
                     offset: const Offset(0, 6),
                   ),
@@ -216,7 +218,7 @@ class _FinalPlayerStatsWidgetState extends State<FinalPlayerStatsWidget>
                           '${sortedPlayers.length} players • ${sortedPlayers.fold<int>(0, (sum, p) => sum + p.matchesPlayed)} matches',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withAlpha((255 * 0.9).toInt()),
                           ),
                         ),
                       ],
@@ -339,7 +341,9 @@ class _FinalPlayerStatsWidgetState extends State<FinalPlayerStatsWidget>
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: stats.performanceColor.withOpacity(0.1),
+                            color: stats.performanceColor.withAlpha(
+                              (255 * 0.1).toInt(),
+                            ),
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -432,7 +436,9 @@ class _FinalPlayerStatsWidgetState extends State<FinalPlayerStatsWidget>
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: stats.performanceColor.withOpacity(0.1),
+                                color: stats.performanceColor.withAlpha(
+                                  (255 * 0.1).toInt(),
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(

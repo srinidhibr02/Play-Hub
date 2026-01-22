@@ -78,7 +78,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         'lastSignInTime': user.metadata.lastSignInTime,
       }, SetOptions(merge: true));
 
-      debugPrint('📁 Firestore users/${userEmail} updated');
+      debugPrint('📁 Firestore users/$userEmail updated');
 
       if (mounted) {
         setState(() => _isSavingProfile = false);
@@ -122,7 +122,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 const SizedBox(width: 12),
                 Flexible(
                   child: Text(
-                    'Update failed: ${e.toString().split(']')[1] ?? e.toString()}',
+                    'Update failed: ${e.toString().split(']')[1]}',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -156,8 +156,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             gradient: LinearGradient(
               colors: [
                 Colors.white,
-                Colors.white.withOpacity(0.92),
-                Colors.grey.shade50.withOpacity(0.9),
+                Colors.white.withAlpha((255 * 0.92).toInt()),
+                Colors.grey.shade50.withAlpha((255 * 0.9).toInt()),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -166,7 +166,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             border: Border.all(color: Colors.grey.shade200, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withAlpha((255 * 0.08).toInt()),
                 blurRadius: 48,
                 offset: const Offset(0, 24),
               ),
@@ -189,7 +189,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.amber.shade300.withOpacity(0.6),
+                      color: Colors.amber.shade300.withAlpha(
+                        (255 * 0.6).toInt(),
+                      ),
                       blurRadius: 10,
                       offset: const Offset(0, 12),
                     ),
@@ -256,7 +258,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   onPressed: () async {
                     Navigator.pop(context);
                     await AuthService().logout();
-                    if (mounted) {
+                    if (context.mounted) {
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute<void>(
                           builder: (_) => const AuthPage(),
@@ -343,7 +345,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               final result = await AuthService().deleteAccount();
-              if (result.success && mounted) {
+              if (result.success && context.mounted) {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(builder: (_) => const AuthPage()),
                 );
@@ -403,7 +405,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                           '${widget.user.email}',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withAlpha((255 * 0.9).toInt()),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -427,7 +429,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withAlpha((255 * 0.1).toInt()),
                     blurRadius: 40,
                     offset: const Offset(0, 20),
                   ),
@@ -445,7 +447,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.teal.shade200.withOpacity(0.6),
+                          color: Colors.teal.shade200.withAlpha(
+                            (255 * 0.6).toInt(),
+                          ),
                           blurRadius: 24,
                           offset: const Offset(0, 12),
                         ),
@@ -463,7 +467,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${widget.user.displayName ?? 'User'}',
+                          widget.user.displayName ?? 'User',
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
@@ -497,7 +501,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withAlpha((255 * 0.08).toInt()),
                     blurRadius: 32,
                     offset: const Offset(0, 16),
                   ),

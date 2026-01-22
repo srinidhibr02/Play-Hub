@@ -91,15 +91,15 @@ class _TournamentListScreenState extends State<TournamentListScreen>
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
                     colors: [
-                      Colors.orange.shade300.withOpacity(0.6),
-                      Colors.yellow.shade200.withOpacity(0.3),
+                      Colors.orange.shade300.withAlpha((255 * 0.6).toInt()),
+                      Colors.yellow.shade200.withAlpha((255 * 0.3).toInt()),
                       Colors.transparent,
                     ],
                   ),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.orange.withOpacity(0.3),
+                      color: Colors.orange.withAlpha((255 * 0.3).toInt()),
                       blurRadius: 40,
                       spreadRadius: 2,
                     ),
@@ -213,7 +213,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.4),
+                        color: Colors.orange.withAlpha((255 * 0.4).toInt()),
                         blurRadius: 25,
                         offset: const Offset(0, 12),
                       ),
@@ -263,7 +263,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
                     border: Border.all(color: Colors.blue.shade200),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.withOpacity(0.2),
+                        color: Colors.blue.withAlpha((255 * 0.2).toInt()),
                         blurRadius: 15,
                         offset: const Offset(0, 8),
                       ),
@@ -330,7 +330,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
               icon: const Icon(Icons.add_rounded, color: Colors.white),
               tooltip: 'Create new tournament',
               style: IconButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.1),
+                backgroundColor: Colors.white.withAlpha((255 * 0.1).toInt()),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -347,7 +347,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
               icon: Icon(Icons.key_rounded, color: Colors.white),
               tooltip: 'Join with Code',
               style: IconButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.1),
+                backgroundColor: Colors.white.withAlpha((255 * 0.1).toInt()),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -672,7 +672,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
               : Border.all(color: Colors.red.shade100, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withAlpha((255 * 0.08).toInt()),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -703,7 +703,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.25),
+                            color: Colors.white.withAlpha((255 * 0.25).toInt()),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
@@ -734,7 +734,9 @@ class _TournamentListScreenState extends State<TournamentListScreen>
                                     'Created ${DateFormat('MMM d').format(createdAt)}',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.white.withOpacity(0.9),
+                                      color: Colors.white.withAlpha(
+                                        (255 * 0.9).toInt(),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -749,7 +751,9 @@ class _TournamentListScreenState extends State<TournamentListScreen>
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withAlpha(
+                                (255 * 0.3).toInt(),
+                              ),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Row(
@@ -885,7 +889,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
                                   244,
                                   67,
                                   54,
-                                ).withOpacity(0.2),
+                                ).withAlpha((255 * 0.2).toInt()),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -943,7 +947,6 @@ class _TournamentListScreenState extends State<TournamentListScreen>
             ),
             onPressed: () {
               Navigator.pop(context);
-              print('$tournamentId & $_userEmail');
               _firestoreService.deleteTournament(
                 _userEmail as String,
                 tournamentId,
@@ -967,7 +970,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withAlpha((255 * 0.1).toInt()),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 24),

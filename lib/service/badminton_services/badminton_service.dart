@@ -574,7 +574,6 @@ class TournamentFirestoreService {
       debugPrint(
         'Checking to see ${match.parentTeam1Id} & ${match.parentTeam2Id}',
       );
-      print(match.id);
       final querySnapshot = await _getUserTournamentsCollection(userEmail)
           .doc(tournamentId)
           .collection('matches')
@@ -679,8 +678,8 @@ class TournamentFirestoreService {
     }
 
     // 🔥 NEW: Calculate netResult (point difference)
-    final score1 = match.score1 ?? 0;
-    final score2 = match.score2 ?? 0;
+    final score1 = match.score1;
+    final score2 = match.score2;
     final pointDifference = match.winner == match.team1.id
         ? (score1 - score2) // Team1 won: +diff for winner, -diff for loser
         : (score2 - score1); // Team2 won: +diff for winner, -diff for loser
@@ -1258,8 +1257,6 @@ extension PlayoffMethods on TournamentFirestoreService {
 
       // ✅ Convert to List<Map<String, dynamic>>
       final playoffMatches = List<Map<String, dynamic>>.from(matches);
-
-      print('Play off match $playoffMatches');
 
       return playoffMatches;
     } catch (e) {

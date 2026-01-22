@@ -181,7 +181,6 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     final multiplier = isMultipleBooking ? widget.multipleSlots!.length : 1;
     final subtotal = price * multiplier;
     final platformFee = subtotal * 0.05;
-    final total = subtotal + platformFee;
 
     final user = authService.currentUser;
     if (user == null) {
@@ -288,8 +287,8 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     final platformFee = subtotal * 0.05;
     final total = subtotal + platformFee;
 
-    return WillPopScope(
-      onWillPop: () async => !isProcessing,
+    return PopScope(
+      canPop: !isProcessing,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Confirm Booking'),
@@ -735,7 +734,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
         border: Border.all(color: Colors.grey.shade200, width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((255 * 0.05).toInt()),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

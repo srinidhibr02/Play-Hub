@@ -3,14 +3,12 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:play_hub/constants/constants.dart';
 import 'package:play_hub/screens/home_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
-import 'src/web/web_wrapper.dart' as web;
 
 class GoogleSignInButton extends StatefulWidget {
   const GoogleSignInButton({super.key});
@@ -99,7 +97,7 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withAlpha((255 * 0.2).toInt()),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -235,7 +233,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
               'Please re-authorize access.';
         });
       } else {
-        print('People API ${response.statusCode} response: ${response.body}');
         setState(() {
           _contactText =
               'People API gave a ${response.statusCode} '
@@ -281,24 +278,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
     return null;
   }
 
-  Future<void> _handleGetAuthCode(GoogleSignInAccount user) async {
-    try {
-      final GoogleSignInServerAuthorization? serverAuth = await user
-          .authorizationClient
-          .authorizeServer(scopes);
-
-      setState(() {
-        _serverAuthCode = serverAuth == null ? '' : serverAuth.serverAuthCode;
-      });
-    } on GoogleSignInException catch (e) {
-      _errorMessage = _errorMessageFromSignInException(e);
-    }
-  }
-
-  Future<void> _handleSignOut() async {
-    await GoogleSignIn.instance.disconnect();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -317,36 +296,34 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
 
       final result = await GoogleSignIn.instance.authenticate();
 
-      if (result != null) {
+      if (mounted) {
+        _hideLoadingDialog();
+        _showLoadingDialog('Authenticating with Firebase...');
+      }
+
+      final authResult = await _signInToFirebaseWithGoogle(result);
+
+      if (mounted) {
+        _hideLoadingDialog();
+      }
+
+      if (authResult.success) {
+        _showMessage(authResult.message, isError: false);
         if (mounted) {
-          _hideLoadingDialog();
-          _showLoadingDialog('Authenticating with Firebase...');
-        }
-
-        final authResult = await _signInToFirebaseWithGoogle(result);
-
-        if (mounted) {
-          _hideLoadingDialog();
-        }
-
-        if (authResult.success) {
-          _showMessage(authResult.message, isError: false);
-          if (mounted) {
-            Future.delayed(const Duration(milliseconds: 1500), () {
-              if (mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const HomePage()),
-                );
-              }
-            });
-          }
-        } else {
-          setState(() {
-            _errorMessage = authResult.message;
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const HomePage()),
+              );
+            }
           });
-          _showMessage(authResult.message, isError: true);
         }
+      } else {
+        setState(() {
+          _errorMessage = authResult.message;
+        });
+        _showMessage(authResult.message, isError: true);
       }
     } catch (e) {
       if (mounted) {
@@ -379,94 +356,6 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
         margin: const EdgeInsets.all(16),
       ),
     );
-  }
-
-  Widget _buildBody() {
-    final GoogleSignInAccount? user = _currentUser;
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: <Widget>[
-        if (user != null)
-          ..._buildAuthenticatedWidgets(user)
-        else
-          ..._buildUnauthenticatedWidgets(),
-        if (_errorMessage.isNotEmpty) Text(_errorMessage),
-      ],
-    );
-  }
-
-  List<Widget> _buildAuthenticatedWidgets(GoogleSignInAccount user) {
-    return <Widget>[
-      ListTile(
-        leading: GoogleUserCircleAvatar(identity: user),
-        title: Text(user.displayName ?? ''),
-        subtitle: Text(user.email),
-      ),
-      const Text('Signed in successfully.'),
-      if (_isAuthorized) ...<Widget>[
-        if (_contactText.isNotEmpty) Text(_contactText),
-        ElevatedButton(
-          child: const Text('REFRESH'),
-          onPressed: () => _handleGetContact(user),
-        ),
-        if (_serverAuthCode.isEmpty)
-          ElevatedButton(
-            child: const Text('REQUEST SERVER CODE'),
-            onPressed: () => _handleGetAuthCode(user),
-          )
-        else
-          Text('Server auth code:\n$_serverAuthCode'),
-      ] else ...<Widget>[
-        const Text('Authorization needed to read your contacts.'),
-        ElevatedButton(
-          onPressed: () => _handleAuthorizeScopes(user),
-          child: const Text('REQUEST PERMISSIONS'),
-        ),
-      ],
-      ElevatedButton(onPressed: _handleSignOut, child: const Text('SIGN OUT')),
-    ];
-  }
-
-  Future<void> _handleAuthorizeScopes(GoogleSignInAccount user) async {
-    try {
-      final GoogleSignInClientAuthorization authorization = await user
-          .authorizationClient
-          .authorizeScopes(scopes);
-      authorization;
-
-      setState(() {
-        _isAuthorized = true;
-        _errorMessage = '';
-      });
-      unawaited(_handleGetContact(_currentUser!));
-    } on GoogleSignInException catch (e) {
-      _errorMessage = _errorMessageFromSignInException(e);
-    }
-  }
-
-  List<Widget> _buildUnauthenticatedWidgets() {
-    return <Widget>[
-      const Text('You are not currently signed in.'),
-      if (GoogleSignIn.instance.supportsAuthenticate())
-        ElevatedButton(
-          onPressed: () async {
-            try {
-              await GoogleSignIn.instance.authenticate();
-            } catch (e) {
-              _errorMessage = e.toString();
-            }
-          },
-          child: const Text('SIGN IN'),
-        )
-      else ...<Widget>[
-        if (kIsWeb)
-          web.renderButton()
-        else
-          const Text(
-            'This platform does not have a known authentication method',
-          ),
-      ],
-    ];
   }
 
   Future<AuthResult> _signInToFirebaseWithGoogle(

@@ -181,7 +181,7 @@ class _StandingsTabState extends State<StandingsTab>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.orange.withOpacity(0.3),
+              color: Colors.orange.withAlpha((255 * 0.3).toInt()),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -192,7 +192,7 @@ class _StandingsTabState extends State<StandingsTab>
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withAlpha((255 * 0.15).toInt()),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -223,7 +223,7 @@ class _StandingsTabState extends State<StandingsTab>
             const Spacer(),
             Icon(
               Icons.leaderboard_outlined,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withAlpha((255 * 0.8).toInt()),
             ),
           ],
         ),
@@ -237,7 +237,9 @@ class _StandingsTabState extends State<StandingsTab>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+        color: theme.colorScheme.surfaceContainerHighest.withAlpha(
+          (255 * 0.6).toInt(),
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -300,7 +302,7 @@ class _StandingsTabState extends State<StandingsTab>
       1 => Colors.amber.shade600,
       2 => Colors.blueGrey.shade400,
       3 => Colors.brown.shade400,
-      _ => theme.colorScheme.surfaceVariant,
+      _ => theme.colorScheme.surfaceContainerHighest,
     };
 
     return Container(
@@ -311,7 +313,7 @@ class _StandingsTabState extends State<StandingsTab>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withAlpha((255 * 0.03).toInt()),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -329,7 +331,7 @@ class _StandingsTabState extends State<StandingsTab>
               boxShadow: isTop3
                   ? [
                       BoxShadow(
-                        color: badgeColor.withOpacity(0.4),
+                        color: badgeColor.withAlpha((255 * 0.4).toInt()),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -476,7 +478,7 @@ class _StandingsTabState extends State<StandingsTab>
             Icon(
               Icons.groups_outlined,
               size: 64,
-              color: theme.colorScheme.onSurface.withOpacity(0.4),
+              color: theme.colorScheme.onSurface.withAlpha((255 * 0.4).toInt()),
             ),
             const SizedBox(height: 16),
             Text(
@@ -489,7 +491,9 @@ class _StandingsTabState extends State<StandingsTab>
             Text(
               'Standings will appear once matches are created and completed.',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withAlpha(
+                  (255 * 0.6).toInt(),
+                ),
               ),
               textAlign: TextAlign.center,
             ),
@@ -519,7 +523,9 @@ class _StandingsTabState extends State<StandingsTab>
             Text(
               error,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withAlpha(
+                  (255 * 0.6).toInt(),
+                ),
               ),
               textAlign: TextAlign.center,
             ),

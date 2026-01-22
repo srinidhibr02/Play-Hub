@@ -87,7 +87,7 @@ class _BadmintonTournamentSetupScreenState
       members.add(name);
       memberController.clear();
     });
-    _showSnackBar('${name} added successfully!', Colors.green);
+    _showSnackBar('$name added successfully!', Colors.green);
 
     // Request focus after adding member
     _focusNode.requestFocus();
@@ -97,7 +97,7 @@ class _BadmintonTournamentSetupScreenState
     setState(() {
       members.remove(name);
     });
-    _showSnackBar('${name} removed', Colors.grey.shade700);
+    _showSnackBar('$name removed', Colors.grey.shade700);
   }
 
   void _showSnackBar(String message, Color color) {
@@ -212,9 +212,6 @@ class _BadmintonTournamentSetupScreenState
   }
 
   String _getPlayerCountMessage(int minPlayers) {
-    final selectedTeam = teamTypes.firstWhere(
-      (t) => t['name'] == selectedTeamType,
-    );
     final isValidCount = _isValidPlayerCount(members.length, selectedTeamType);
 
     if (members.length < minPlayers) {
@@ -303,7 +300,9 @@ class _BadmintonTournamentSetupScreenState
                         color: Colors.white,
                       ),
                       labelColor: Colors.orange.shade600,
-                      unselectedLabelColor: Colors.white.withOpacity(0.7),
+                      unselectedLabelColor: Colors.white.withAlpha(
+                        (255 * 0.7).toInt(),
+                      ),
                       labelStyle: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -367,7 +366,9 @@ class _BadmintonTournamentSetupScreenState
                         value: hasEnoughPlayers
                             ? 1.0
                             : members.length / minPlayers,
-                        backgroundColor: Colors.white.withOpacity(0.3),
+                        backgroundColor: Colors.white.withAlpha(
+                          (255 * 0.3).toInt(),
+                        ),
                         valueColor: AlwaysStoppedAnimation<Color>(
                           hasEnoughPlayers
                               ? Colors.green.shade400
@@ -396,7 +397,7 @@ class _BadmintonTournamentSetupScreenState
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withAlpha((255 * 0.05).toInt()),
                     blurRadius: 10,
                     offset: const Offset(0, -5),
                   ),
@@ -637,7 +638,9 @@ class _BadmintonTournamentSetupScreenState
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: Colors.black.withAlpha(
+                                (255 * 0.04).toInt(),
+                              ),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -661,8 +664,8 @@ class _BadmintonTournamentSetupScreenState
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.orange.shade300.withOpacity(
-                                    0.5,
+                                  color: Colors.orange.shade300.withAlpha(
+                                    (255 * 0.5).toInt(),
                                   ),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
@@ -748,7 +751,9 @@ class _BadmintonTournamentSetupScreenState
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: isSelected ? color.withOpacity(0.1) : Colors.white,
+                  color: isSelected
+                      ? color.withAlpha((255 * 0.1).toInt())
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected ? color : Colors.grey.shade200,
@@ -757,13 +762,13 @@ class _BadmintonTournamentSetupScreenState
                   boxShadow: [
                     if (isSelected)
                       BoxShadow(
-                        color: color.withOpacity(0.3),
+                        color: color.withAlpha((255 * 0.3).toInt()),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       )
                     else
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withAlpha((255 * 0.04).toInt()),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -777,17 +782,17 @@ class _BadmintonTournamentSetupScreenState
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: isSelected
-                              ? [color.withOpacity(0.8), color]
+                              ? [color.withAlpha((255 * 0.8).toInt()), color]
                               : [
-                                  color.withOpacity(0.3),
-                                  color.withOpacity(0.5),
+                                  color.withAlpha((255 * 0.3).toInt()),
+                                  color.withAlpha((255 * 0.5).toInt()),
                                 ],
                         ),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           if (isSelected)
                             BoxShadow(
-                              color: color.withOpacity(0.4),
+                              color: color.withAlpha((255 * 0.4).toInt()),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -823,7 +828,7 @@ class _BadmintonTournamentSetupScreenState
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: color.withOpacity(0.15),
+                              color: color.withAlpha((255 * 0.15).toInt()),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -844,12 +849,15 @@ class _BadmintonTournamentSetupScreenState
                         height: 32,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [color.withOpacity(0.8), color],
+                            colors: [
+                              color.withAlpha((255 * 0.8).toInt()),
+                              color,
+                            ],
                           ),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: color.withOpacity(0.4),
+                              color: color.withAlpha((255 * 0.4).toInt()),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),

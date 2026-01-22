@@ -177,7 +177,7 @@ class MyBookingsWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.teal.shade200.withOpacity(0.5),
+            color: Colors.teal.shade200.withAlpha((255 * 0.5).toInt()),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -205,7 +205,7 @@ class MyBookingsWidget extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withAlpha((255 * 0.2).toInt()),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -222,7 +222,9 @@ class MyBookingsWidget extends StatelessWidget {
                           Text(
                             booking.sport,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withAlpha(
+                                (255 * 0.9).toInt(),
+                              ),
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
@@ -247,7 +249,7 @@ class MyBookingsWidget extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: timeColor.withOpacity(0.9),
+                        color: timeColor.withAlpha((255 * 0.9).toInt()),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -265,7 +267,7 @@ class MyBookingsWidget extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withAlpha((255 * 0.15).toInt()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -279,7 +281,7 @@ class MyBookingsWidget extends StatelessWidget {
                       Container(
                         width: 1,
                         height: 30,
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withAlpha((255 * 0.3).toInt()),
                       ),
                       Expanded(
                         child: _buildInfoItem(
@@ -295,7 +297,7 @@ class MyBookingsWidget extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.location_on_outlined,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withAlpha((255 * 0.8).toInt()),
                       size: 16,
                     ),
                     const SizedBox(width: 6),
@@ -303,7 +305,7 @@ class MyBookingsWidget extends StatelessWidget {
                       child: Text(
                         booking.courtName,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withAlpha((255 * 0.9).toInt()),
                           fontSize: 14,
                         ),
                         maxLines: 1,
@@ -333,7 +335,11 @@ class MyBookingsWidget extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, color: Colors.white.withOpacity(0.9), size: 16),
+        Icon(
+          icon,
+          color: Colors.white.withAlpha((255 * 0.9).toInt()),
+          size: 16,
+        ),
         const SizedBox(width: 6),
         Expanded(
           child: Text(

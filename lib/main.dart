@@ -67,7 +67,7 @@ class SportsEventApp extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
-            shadowColor: Colors.tealAccent.withOpacity(0.5),
+            shadowColor: Colors.tealAccent.withAlpha((255 * 0.5).toInt()),
             elevation: 5,
           ),
         ),

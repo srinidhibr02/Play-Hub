@@ -296,7 +296,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
         ),
         if (_isGenerating)
           Container(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withAlpha((255 * 0.5).toInt()),
             child: Center(
               child: Material(
                 color: Colors.transparent,
@@ -310,7 +310,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
+                        color: Colors.black.withAlpha((255 * 0.15).toInt()),
                         blurRadius: 20,
                         spreadRadius: 0,
                         offset: const Offset(0, 10),
@@ -374,7 +374,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.shade200.withOpacity(0.5),
+            color: Colors.blue.shade200.withAlpha((255 * 0.5).toInt()),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -394,7 +394,9 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.shade600.withOpacity(0.3),
+                        color: Colors.blue.shade600.withAlpha(
+                          (255 * 0.3).toInt(),
+                        ),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -437,7 +439,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withAlpha((255 * 0.8).toInt()),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: Colors.blue.shade200, width: 1.5),
               ),
@@ -487,7 +489,9 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   elevation: 4,
-                  shadowColor: Colors.blue.shade600.withOpacity(0.5),
+                  shadowColor: Colors.blue.shade600.withAlpha(
+                    (255 * 0.5).toInt(),
+                  ),
                 ),
               ),
             ),
@@ -511,7 +515,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.amber.shade200.withOpacity(0.6),
+            color: Colors.amber.shade200.withAlpha((255 * 0.6).toInt()),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -529,7 +533,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.amber.shade600.withOpacity(0.4),
+                    color: Colors.amber.shade600.withAlpha((255 * 0.4).toInt()),
                     blurRadius: 12,
                     spreadRadius: 4,
                   ),
@@ -564,7 +568,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withAlpha((255 * 0.9).toInt()),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.amber.shade300, width: 2),
               ),
@@ -623,7 +627,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
           border: Border.all(color: Colors.grey.shade200, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withAlpha((255 * 0.06).toInt()),
               blurRadius: 12,
               offset: const Offset(0, 2),
             ),
@@ -685,7 +689,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withAlpha((255 * 0.3).toInt()),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -855,7 +859,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withAlpha((255 * 0.9).toInt()),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.orange.shade300, width: 1.5),
               ),
@@ -1025,7 +1029,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
 
       setState(() => _isGenerating = false);
 
-      if (!mounted) return;
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -1072,7 +1076,6 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
     Set<String> teamsWithByeBefore,
     int roundNumber,
   ) {
-    print('Previous round bye team $teamsWithByeBefore');
     final matches = <Match>[];
     var availableTeams = List<Team>.from(advancingTeams)..shuffle();
     var currentTime = widget.startDate ?? DateTime.now();
@@ -1187,20 +1190,5 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
       return match.team1;
     }
     return match.score1 > match.score2 ? match.team1 : match.team2;
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Scheduled':
-        return Colors.blue.shade500;
-      case 'Ongoing':
-        return Colors.orange.shade500;
-      case 'Completed':
-        return Colors.green.shade500;
-      case 'Pending':
-        return Colors.grey.shade500;
-      default:
-        return Colors.grey.shade500;
-    }
   }
 }
