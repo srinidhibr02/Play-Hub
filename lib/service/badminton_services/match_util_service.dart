@@ -381,7 +381,7 @@ class _MatchesListViewState extends State<MatchesListView> {
 
   Stream<List<Match>> _getPlayoffMatches() {
     return _firestore
-        .collection('sharedTournaments')
+        .collection('friendlyTournaments')
         .doc(widget.tournamentId)
         .snapshots()
         .asyncMap((tournamentSnapshot) async {
@@ -399,7 +399,7 @@ class _MatchesListViewState extends State<MatchesListView> {
 
           // Fetch matches snapshot
           final matchSnapshot = await _firestore
-              .collection('sharedTournaments')
+              .collection('friendlyTournaments')
               .doc(widget.tournamentId)
               .collection('matches')
               .get(); // ✅ Use .get() for single snapshot

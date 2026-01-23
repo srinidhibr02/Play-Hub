@@ -7,7 +7,7 @@ import 'package:play_hub/screens/booking_ui_screens.dart';
 import 'package:play_hub/screens/tabs/clubs_page.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
 import 'package:play_hub/screens/tournament/tournament_setup_screen.dart';
-import 'package:play_hub/screens/tournament_screen.dart';
+import 'package:play_hub/screens/clubTournament/tournament_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
 import 'package:play_hub/widgets/my_bookings_widget.dart';
 

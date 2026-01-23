@@ -959,7 +959,7 @@ class _BadmintonMatchScheduleScreenState
     String tournamentId,
   ) {
     return _firestore
-        .collection('sharedTournaments')
+        .collection('friendlyTournaments')
         .doc(tournamentId)
         .collection('matches')
         .snapshots()

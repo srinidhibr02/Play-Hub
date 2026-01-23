@@ -40,7 +40,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
     String tournamentId,
   ) {
     final matchesStream = _firestore
-        .collection('sharedTournaments')
+        .collection('friendlyTournaments')
         .doc(tournamentId)
         .collection('matches')
         .snapshots()
@@ -62,7 +62,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
   ) async {
     try {
       final tournamentRef = _firestore
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId);
 
       // ✅ Update nested stats.totalMatches field atomically

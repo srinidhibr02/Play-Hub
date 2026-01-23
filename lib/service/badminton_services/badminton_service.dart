@@ -10,7 +10,7 @@ class TournamentFirestoreService {
 
   // Get user's local tournaments collection reference
   CollectionReference _getUserTournamentsCollection(String userEmail) {
-    return _firestore.collection('sharedTournaments');
+    return _firestore.collection('friendlyTournaments');
   }
 
   Query _getUserTournamentsQuery(String userEmail) {
@@ -26,7 +26,7 @@ class TournamentFirestoreService {
   ) async {
     try {
       await FirebaseFirestore.instance
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId)
           .collection('matches')
           .doc('_metadata')
@@ -38,7 +38,7 @@ class TournamentFirestoreService {
       // Update each match individually
       for (var match in reorderedMatches) {
         await FirebaseFirestore.instance
-            .collection('sharedTournaments')
+            .collection('friendlyTournaments')
             .doc(tournamentId)
             .collection('matches')
             .doc(match.id)
@@ -124,7 +124,7 @@ class TournamentFirestoreService {
     for (Team team in teams) {
       // ✅ FIXED: Go directly to matches subcollection
       DocumentReference teamRef = _firestore
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId) // Tournament document
           .collection('teams') // Teams subcollection
           .doc(team.id); // Team document
@@ -163,7 +163,7 @@ class TournamentFirestoreService {
       for (Match match in batchMatches) {
         // ✅ FIXED: Direct path to matches subcollection
         DocumentReference matchRef = _firestore
-            .collection('sharedTournaments')
+            .collection('friendlyTournaments')
             .doc(tournamentId)
             .collection('matches')
             .doc(match.id);
@@ -244,7 +244,7 @@ class TournamentFirestoreService {
 
       // ✅ FIXED: Direct path to tournament matches subcollection
       final matchesSnapshot = await _firestore
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId)
           .collection('matches')
           .orderBy('scheduledDate')
@@ -268,7 +268,7 @@ class TournamentFirestoreService {
     String tournamentId,
   ) {
     return _firestore
-        .collection('sharedTournaments')
+        .collection('friendlyTournaments')
         .doc(tournamentId)
         .collection('matches')
         .orderBy('scheduledDate') // ✅ Server-side ordering
@@ -327,7 +327,7 @@ class TournamentFirestoreService {
         for (Match match in batchMatches) {
           // ✅ FIXED
           DocumentReference matchRef = _firestore
-              .collection('sharedTournaments')
+              .collection('friendlyTournaments')
               .doc(tournamentId)
               .collection('matches')
               .doc(match.id);
@@ -364,7 +364,7 @@ class TournamentFirestoreService {
 
       // ✅ FIXED: Update tournament stats
       DocumentSnapshot tournamentDoc = await _firestore
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId)
           .get();
 
@@ -374,7 +374,7 @@ class TournamentFirestoreService {
         int currentTotal = data['stats']['totalMatches'] ?? 0;
 
         await _firestore
-            .collection('sharedTournaments')
+            .collection('friendlyTournaments')
             .doc(tournamentId)
             .update({
               'stats.totalMatches': currentTotal + matches.length,
@@ -396,7 +396,7 @@ class TournamentFirestoreService {
     try {
       // ✅ FIXED
       DocumentSnapshot doc = await _firestore
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId)
           .get();
 
@@ -459,7 +459,7 @@ class TournamentFirestoreService {
   Stream<List<Team>> getTeams(String userEmail, String tournamentId) {
     // ✅ FIXED
     return _firestore
-        .collection('sharedTournaments')
+        .collection('friendlyTournaments')
         .doc(tournamentId)
         .collection('teams')
         .snapshots()
@@ -511,7 +511,7 @@ class TournamentFirestoreService {
   Stream<List<TeamStats>> getTeamStats(String userEmail, String tournamentId) {
     // ✅ FIXED
     return _firestore
-        .collection('sharedTournaments')
+        .collection('friendlyTournaments')
         .doc(tournamentId)
         .collection('teams')
         .snapshots()
@@ -542,7 +542,7 @@ class TournamentFirestoreService {
     Match updatedMatch,
   ) async {
     final matchRef = _firestore
-        .collection('sharedTournaments')
+        .collection('friendlyTournaments')
         .doc(tournamentId)
         .collection('matches')
         .doc(updatedMatch.id);
@@ -825,7 +825,7 @@ class TournamentFirestoreService {
   Future<void> completeTournament(String tournamentId) async {
     try {
       final tournamentRef = FirebaseFirestore.instance
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId);
 
       await tournamentRef.update({
@@ -860,7 +860,7 @@ class TournamentFirestoreService {
 
   Stream<List<Map<String, dynamic>>> getJoinedTournaments(String userEmail) {
     return _firestore
-        .collection('sharedTournaments')
+        .collection('friendlyTournaments')
         .where('joinedPlayers', arrayContains: userEmail)
         .snapshots()
         .map(
@@ -877,11 +877,12 @@ class TournamentFirestoreService {
     String userEmail,
   ) async {
     try {
-      await _firestore.collection('sharedTournaments').doc(tournamentId).update(
-        {
-          'joinedPlayers': FieldValue.arrayUnion([userEmail]),
-        },
-      );
+      await _firestore
+          .collection('friendlyTournaments')
+          .doc(tournamentId)
+          .update({
+            'joinedPlayers': FieldValue.arrayUnion([userEmail]),
+          });
     } catch (e) {
       throw Exception('Failed to add player to tournament: $e');
     }
@@ -894,7 +895,7 @@ class TournamentFirestoreService {
   ) async {
     try {
       DocumentSnapshot doc = await _firestore
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(shareCode)
           .get();
 
@@ -949,7 +950,7 @@ class TournamentFirestoreService {
   Stream<List<Match>> getMatchesByShareCode(String shareCode) async* {
     try {
       DocumentSnapshot shareDoc = await _firestore
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(shareCode)
           .get();
 
@@ -972,7 +973,7 @@ class TournamentFirestoreService {
   Stream<List<TeamStats>> getTeamStatsByShareCode(String shareCode) async* {
     try {
       DocumentSnapshot shareDoc = await _firestore
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(shareCode)
           .get();
 
@@ -1070,7 +1071,7 @@ extension PlayoffMethods on TournamentFirestoreService {
       }
 
       final matchesRef = FirebaseFirestore.instance
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId)
           .collection('matches');
 
@@ -1093,7 +1094,7 @@ extension PlayoffMethods on TournamentFirestoreService {
 
       // Update tournament metadata
       final tournamentRef = FirebaseFirestore.instance
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId);
 
       batch.update(tournamentRef, {
@@ -1148,7 +1149,7 @@ extension PlayoffMethods on TournamentFirestoreService {
   ) async {
     try {
       final userRef = FirebaseFirestore.instance
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId);
 
       final docSnapshot = await userRef.get();
@@ -1245,7 +1246,7 @@ extension PlayoffMethods on TournamentFirestoreService {
   ) async {
     try {
       final userRef = FirebaseFirestore.instance
-          .collection('sharedTournaments')
+          .collection('friendlyTournaments')
           .doc(tournamentId)
           .collection('matches')
           .where('stage', isEqualTo: 'Playoff');

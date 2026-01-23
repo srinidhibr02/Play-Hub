@@ -6,7 +6,7 @@ class TournamentStatsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   CollectionReference _getUserTournamentsCollection(String userEmail) {
-    return _firestore.collection('sharedTournaments');
+    return _firestore.collection('friendlyTournaments');
   }
 
   /// Fetch all completed matches for a tournament

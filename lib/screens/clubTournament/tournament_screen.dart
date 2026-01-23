@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:play_hub/screens/clubTournament/tournament_details_screen.dart';
 
 class TournamentScreen extends StatefulWidget {
   const TournamentScreen({super.key});
@@ -1107,8 +1108,12 @@ class _TournamentScreenState extends State<TournamentScreen>
                       ),
                     ),
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('View $tournamentName details')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => TournamentDetailsScreen(
+                            tournamentId: tournament['id'] as String,
+                          ),
+                        ),
                       );
                     },
                   ),
