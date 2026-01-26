@@ -229,10 +229,10 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 14),
             Expanded(
               child: _buildActionCard(
-                icon: Icons.people_alt,
-                title: 'Join Club',
+                icon: Icons.sports,
+                title: 'Tournaments',
                 color: Colors.purple,
-                onTap: () => _navigateTo(const ClubsScreen()), // ✅ FIXED
+                onTap: () => _navigateTo(TournamentScreen()), // ✅ FIXED
               ),
             ),
             const SizedBox(width: 14),

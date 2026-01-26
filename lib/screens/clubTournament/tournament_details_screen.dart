@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:play_hub/screens/clubTournament/tournament_registration_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
 
 class TournamentDetailsScreen extends StatefulWidget {
@@ -17,93 +18,30 @@ class TournamentDetailsScreen extends StatefulWidget {
 
 class _TournamentDetailsScreenState extends State<TournamentDetailsScreen> {
   final _firestore = FirebaseFirestore.instance;
-  final _authService = AuthService();
-  bool isRegistering = false;
-  bool isUserRegistered = false;
   late String _selectedCategory = '';
+  late String _selectedEventType = '';
 
   @override
   void initState() {
     super.initState();
-    _checkUserRegistration();
   }
 
-  Future<void> _checkUserRegistration() async {
-    try {
-      final userId = _authService.currentUserEmailId;
-      if (userId == null) return;
-
-      final doc = await _firestore
-          .collection('tournaments')
-          .doc(widget.tournamentId)
-          .get();
-
-      if (doc.exists) {
-        final participants = List<String>.from(doc['participants'] ?? []);
-        setState(() {
-          isUserRegistered = participants.contains(userId);
-        });
-      }
-    } catch (e) {
-      debugPrint('Error checking registration: $e');
-    }
-  }
-
-  Future<void> _registerForTournament() async {
-    final userId = _authService.currentUserEmailId;
-    if (userId == null) {
-      _showSnackBar('Please login to register', isError: true);
-      return;
-    }
-
-    setState(() => isRegistering = true);
-
-    try {
-      await _firestore
-          .collection('tournaments')
-          .doc(widget.tournamentId)
-          .update({
-            'participants': FieldValue.arrayUnion([userId]),
-            'currentParticipants': FieldValue.increment(1),
-          });
-
-      setState(() {
-        isUserRegistered = true;
-        isRegistering = false;
-      });
-
-      _showSnackBar('Successfully registered for tournament!');
-    } catch (e) {
-      setState(() => isRegistering = false);
-      _showSnackBar('Registration failed: $e', isError: true);
-    }
-  }
-
-  Future<void> _unregisterFromTournament() async {
-    final userId = _authService.currentUserEmailId;
-    if (userId == null) return;
-
-    setState(() => isRegistering = true);
-
-    try {
-      await _firestore
-          .collection('tournaments')
-          .doc(widget.tournamentId)
-          .update({
-            'participants': FieldValue.arrayRemove([userId]),
-            'currentParticipants': FieldValue.increment(-1),
-          });
-
-      setState(() {
-        isUserRegistered = false;
-        isRegistering = false;
-      });
-
-      _showSnackBar('Unregistered from tournament');
-    } catch (e) {
-      setState(() => isRegistering = false);
-      _showSnackBar('Unregistration failed: $e', isError: true);
-    }
+  void _navigateToRegistration(
+    String name,
+    String finalCategory,
+    num entryFee,
+  ) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TournamentRegistrationScreen(
+          tournamentId: widget.tournamentId,
+          category: finalCategory,
+          entryFee: entryFee,
+          tournamentName: name,
+        ),
+      ),
+    );
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -152,7 +90,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen> {
           );
         }
 
-        // ✅ Parse tournament data with new schema
+        // Parse tournament data
         final tournament = snapshot.data!.data() as Map<String, dynamic>;
         final status = tournament['status'] as String;
         final sport = tournament['sport'] as String;
@@ -160,32 +98,29 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen> {
         final organizer = tournament['organizer'] as String;
         final description = tournament['description'] as String;
 
-        // New: entryFee has mixed structure - some are maps (Female, male), some are direct values (Mixed-Doubles)
+        // Parse entry fees
         final entryFeeMap =
             tournament['entryFee'] as Map<String, dynamic>? ?? {};
 
-        // Separate nested categories (Female, male) from direct event types (Mixed-Doubles)
-        final Map<String, Map<String, num>> categoryFees = {}; // Female, male
-        final Map<String, num> directEventFees = {}; // Mixed-Doubles, etc
+        final Map<String, Map<String, num>> categoryFees = {};
+        final Map<String, num> directEventFees = {};
 
         entryFeeMap.forEach((key, value) {
           if (value is Map<String, dynamic>) {
-            // This is a category (Female, male) with nested events
             categoryFees[key] = value.cast<String, num>();
           } else if (value is num) {
-            // This is a direct event type (Mixed-Doubles)
             directEventFees[key] = value;
           }
         });
 
-        // Get all unique event types from both categories and direct events
-        final Set<String> allEventTypes = {};
-        categoryFees.values.forEach((catFees) {
-          allEventTypes.addAll(catFees.keys);
-        });
-        allEventTypes.addAll(directEventFees.keys);
+        // Get all event types for selected category
+        final List<String> eventTypesForCategory = [];
+        if (categoryFees.containsKey(_selectedCategory)) {
+          eventTypesForCategory.addAll(categoryFees[_selectedCategory]!.keys);
+        }
+        eventTypesForCategory.addAll(directEventFees.keys);
 
-        // State variable for selected category
+        // Get selected category
         late String selectedCategory;
         if (categoryFees.isNotEmpty) {
           selectedCategory = _selectedCategory.isEmpty
@@ -202,12 +137,34 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen> {
         final registrationDeadline =
             (tournament['registrationDeadline'] as Timestamp).toDate();
 
-        // ✅ Calculate states
+        // Calculate states
         final isRegistrationOpen =
             status == 'open' && DateTime.now().isBefore(registrationDeadline);
         final isFull = currentParticipants >= maxParticipants;
 
-        // ✅ RETURN Scaffold INSIDE StreamBuilder
+        // Get entry fee for selected event type
+        late num selectedEntryFee;
+        if (categoryFees.containsKey(selectedCategory) &&
+            categoryFees[selectedCategory]!.containsKey(_selectedEventType)) {
+          selectedEntryFee =
+              categoryFees[selectedCategory]![_selectedEventType]!;
+        } else if (directEventFees.containsKey(_selectedEventType)) {
+          selectedEntryFee = directEventFees[_selectedEventType]!;
+        } else {
+          selectedEntryFee = 0;
+        }
+
+        // Build final category string (e.g., "Male Doubles", "Female Singles")
+        late String finalCategory;
+        if (_selectedCategory.isNotEmpty && _selectedEventType.isNotEmpty) {
+          finalCategory =
+              '${_selectedCategory.substring(0, 1).toUpperCase()}${_selectedCategory.substring(1)} $_selectedEventType';
+        }
+
+        // Check if both are selected
+        final isBothSelected =
+            _selectedCategory.isNotEmpty && _selectedEventType.isNotEmpty;
+
         return Scaffold(
           body: CustomScrollView(
             slivers: [
@@ -351,13 +308,10 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen> {
                       child: Row(
                         children: [
                           _buildStatCard(
-                            '₹${categoryFees.isNotEmpty && categoryFees[selectedCategory]?.isNotEmpty == true
-                                ? categoryFees[selectedCategory]!.values.reduce(math.min).toStringAsFixed(0)
-                                : [...categoryFees.values.where((fees) => fees.isNotEmpty).map((fees) => fees.values.reduce(math.min)), ...directEventFees.values].isNotEmpty
-                                ? [...categoryFees.values.where((fees) => fees.isNotEmpty).map((fees) => fees.values.reduce(math.min)), ...directEventFees.values].reduce(math.min).toStringAsFixed(0)
-                                : '0'}',
-
-                            'Starting From',
+                            isBothSelected
+                                ? '₹${selectedEntryFee.toStringAsFixed(0)}'
+                                : 'Select',
+                            'Entry Fee',
                             Colors.blue,
                           ),
                           const SizedBox(width: 12),
@@ -403,149 +357,168 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Available Event Types with Category Selector
-                    if (allEventTypes.isNotEmpty)
+                    // Category Selector
+                    if (categoryFees.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Category Selector (if multiple categories available)
-                            if (categoryFees.isNotEmpty &&
-                                categoryFees.length > 1)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Select Category',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey.shade800,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    children: categoryFees.keys.map((category) {
-                                      final isSelected =
-                                          selectedCategory == category;
-                                      return GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedCategory = category;
-                                          });
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isSelected
-                                                ? Colors.teal.shade700
-                                                : Colors.grey.shade200,
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                            border: Border.all(
-                                              color: isSelected
-                                                  ? Colors.teal.shade700
-                                                  : Colors.grey.shade300,
-                                              width: 1.5,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            category[0].toUpperCase() +
-                                                category.substring(1),
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: isSelected
-                                                  ? Colors.white
-                                                  : Colors.grey.shade700,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                  const SizedBox(height: 16),
-                                ],
-                              ),
-
                             Text(
-                              'Available Event Types',
+                              'Select Category',
                               style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade900,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade800,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
                             Wrap(
                               spacing: 8,
-                              runSpacing: 8,
-                              children: allEventTypes.map((eventType) {
-                                // Get fee from selected category or direct event fees
-                                num? fee;
-                                if (categoryFees.containsKey(
-                                  selectedCategory,
-                                )) {
-                                  fee =
-                                      categoryFees[selectedCategory]![eventType];
-                                }
-                                fee ??= directEventFees[eventType];
-
-                                // Skip if fee is not found
-                                if (fee == null) return SizedBox.shrink();
-
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.purple.shade50,
-                                        Colors.purple.shade100,
-                                      ],
+                              children: categoryFees.keys.map((category) {
+                                final isSelected =
+                                    _selectedCategory == category;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedCategory = category;
+                                      _selectedEventType = '';
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
                                     ),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: Colors.purple.shade300,
-                                      width: 1.5,
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? Colors.teal.shade700
+                                          : Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? Colors.teal.shade700
+                                            : Colors.grey.shade300,
+                                        width: 1.5,
+                                      ),
                                     ),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        eventType,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.purple.shade900,
-                                        ),
+                                    child: Text(
+                                      category[0].toUpperCase() +
+                                          category.substring(1),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.grey.shade700,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '₹${fee.toStringAsFixed(0)}',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.purple.shade700,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 );
                               }).toList(),
                             ),
+                            const SizedBox(height: 20),
                           ],
                         ),
                       ),
-                    const SizedBox(height: 20),
+                    // Event Type Selector
+                    if (_selectedCategory.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Select Event Type',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: eventTypesForCategory.map((eventType) {
+                                num? fee;
+                                if (categoryFees.containsKey(
+                                  _selectedCategory,
+                                )) {
+                                  fee =
+                                      categoryFees[_selectedCategory]![eventType];
+                                }
+                                fee ??= directEventFees[eventType];
+
+                                if (fee == null) return SizedBox.shrink();
+
+                                final isSelected =
+                                    _selectedEventType == eventType;
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedEventType = eventType;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: isSelected
+                                            ? [
+                                                Colors.purple.shade600,
+                                                Colors.purple.shade700,
+                                              ]
+                                            : [
+                                                Colors.purple.shade50,
+                                                Colors.purple.shade100,
+                                              ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? Colors.purple.shade700
+                                            : Colors.purple.shade300,
+                                        width: isSelected ? 2 : 1.5,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          eventType,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : Colors.purple.shade900,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '₹${fee.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : Colors.purple.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
                     // Registration Deadline
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -574,50 +547,45 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          ...rules
-                              .asMap()
-                              .entries
-                              .map(
-                                (entry) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        width: 24,
-                                        height: 24,
-                                        decoration: BoxDecoration(
-                                          color: Colors.teal.shade100,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            '${entry.key + 1}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.teal.shade700,
-                                            ),
-                                          ),
+                          ...rules.asMap().entries.map((entry) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: Colors.teal.shade100,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${entry.key + 1}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.teal.shade700,
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          entry.value,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey.shade700,
-                                            height: 1.4,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              )
-                              .toList(),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      entry.value,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade700,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
                         ],
                       ),
                     ),
@@ -638,10 +606,50 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen> {
               ),
             ],
           ),
-          // ✅ FAB NOW WORKS - Variables in scope!
-          floatingActionButton: _buildRegistrationButton(
-            isRegistrationOpen,
-            isFull,
+          floatingActionButton: Container(
+            margin: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: (isRegistrationOpen && !isFull && isBothSelected)
+                    ? () => _navigateToRegistration(
+                        name,
+                        finalCategory,
+                        selectedEntryFee,
+                      )
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal.shade700,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  disabledBackgroundColor: Colors.grey.shade400,
+                  elevation: 0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      isFull
+                          ? 'Tournament Full'
+                          : !isRegistrationOpen
+                          ? 'Registration Closed'
+                          : !isBothSelected
+                          ? 'Select Category & Event Type'
+                          : 'Register Now',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
           floatingActionButtonLocation:
               FloatingActionButtonLocation.centerFloat,
@@ -741,102 +749,6 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRegistrationButton(bool isRegistrationOpen, bool isFull) {
-    bool canRegister = isRegistrationOpen && !isFull && !isUserRegistered;
-    bool canUnregister = isUserRegistered && isRegistrationOpen;
-
-    return Container(
-      margin: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          if (canUnregister)
-            Expanded(
-              child: ElevatedButton(
-                onPressed: isRegistering ? null : _unregisterFromTournament,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade400,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  disabledBackgroundColor: Colors.grey.shade300,
-                ),
-                child: isRegistering
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.close_rounded, size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            'Unregister',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            )
-          else
-            Expanded(
-              child: ElevatedButton(
-                onPressed: canRegister && !isRegistering
-                    ? _registerForTournament
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal.shade700,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  disabledBackgroundColor: Colors.grey.shade400,
-                  elevation: canRegister ? 4 : 0,
-                ),
-                child: isRegistering
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.check_circle, size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            isFull
-                                ? 'Tournament Full'
-                                : !isRegistrationOpen
-                                ? 'Registration Closed'
-                                : 'Register Now',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            ),
         ],
       ),
     );
