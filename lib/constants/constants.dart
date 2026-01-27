@@ -13,4 +13,4 @@ class AuthResult {
   }
 }
 
-String get seVersion => '1.0.4';
+String get seVersion => '1.0.5';

@@ -219,7 +219,7 @@ class _BadmintonMatchScheduleScreenState
 
       matches.add(
         Match(
-          id: 'M_BYE',
+          id: 'M1_BYE',
           team1: byeTeam,
           team2: byeTeam,
           date: currentTime,
@@ -1205,7 +1205,7 @@ class _BadmintonMatchScheduleScreenState
     );
   }
 
-  void _openScorecard(Match match) {
+  void _openScorecard(Match match, bool isBestOf3) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1218,6 +1218,7 @@ class _BadmintonMatchScheduleScreenState
               updatedMatch,
             );
           },
+          isBestOf3: isBestOf3,
         ),
       ),
     );

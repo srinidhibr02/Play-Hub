@@ -587,6 +587,7 @@ class TournamentFirestoreService {
           'score1': match.score1,
           'score2': match.score2,
           'status': match.status,
+          'setResults': match.setResults ?? [],
           'winner': match.winner,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
@@ -877,6 +878,7 @@ class TournamentFirestoreService {
     String userEmail,
   ) async {
     try {
+      print('addPlayerToTournament: $tournamentId, $userEmail');
       await _firestore
           .collection('friendlyTournaments')
           .doc(tournamentId)
@@ -914,31 +916,30 @@ class TournamentFirestoreService {
           _authService.currentUserEmailId; // Your auth service
 
       if (creatorEmail != null && creatorEmail == currentUserEmail) {
-        if (context.mounted) {
-          // ✅ Safety check
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.campaign, color: Colors.white, size: 20),
-                  SizedBox(width: 12),
-                  Text('You are the creator of this tournament! 👑'),
-                ],
-              ),
-              backgroundColor: Colors.teal.shade600,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              duration: const Duration(seconds: 3),
+        // ✅ Safety check
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.campaign, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Text('You are the creator of this tournament! 👑'),
+              ],
             ),
-          );
-        } else {
-          await addPlayerToTournament(shareCode, currentUserEmail!);
-        }
+            backgroundColor: Colors.teal.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        print('I am not going anywhere');
+        await addPlayerToTournament(shareCode, currentUserEmail!);
       }
 
-      debugPrint('✅ Found tournament: ${data['name'] ?? 'Unnamed'}');
+      debugPrint('✅ Found tournament: ${data['id'] ?? 'Unnamed'}');
       return data;
     } catch (e) {
       debugPrint('❌ Error getting tournament by share code: $e');

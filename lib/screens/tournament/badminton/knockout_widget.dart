@@ -11,7 +11,7 @@ class KnockoutMatchesWidget extends StatefulWidget {
   final int? breakDuration;
   final DateTime? startDate;
   final TimeOfDay? startTime;
-  final Function(Match) onMatchTap;
+  final Function(Match, bool) onMatchTap;
   final Function(Match) onScoreUpdate;
 
   const KnockoutMatchesWidget({
@@ -34,6 +34,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
   final _badmintonService = TournamentFirestoreService();
   bool _isGenerating = false;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  Map<String, bool> _matchBestOf3Mode = {}; // Track Best of 3 mode per match
 
   Stream<List<Match>> _getAllMatchesStream(
     String userEmail,
@@ -48,7 +49,6 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
           return snapshot.docs.map((doc) => Match.fromMap(doc.data())).toList();
         });
 
-    // Listen to matches count and update tournament stats
     matchesStream.listen((matches) async {
       await _updateTournamentStats(tournamentId, matches.length);
     });
@@ -65,7 +65,6 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
           .collection('friendlyTournaments')
           .doc(tournamentId);
 
-      // ✅ Update nested stats.totalMatches field atomically
       await tournamentRef.update({'stats.totalMatches': totalMatches});
 
       debugPrint(
@@ -74,6 +73,38 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
     } catch (e) {
       debugPrint('❌ Error updating stats: $e');
     }
+  }
+
+  void _toggleBestOf3(Match match) {
+    setState(() {
+      _matchBestOf3Mode[match.id] = !(_matchBestOf3Mode[match.id] ?? false);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              _matchBestOf3Mode[match.id]! ? Icons.check : Icons.info,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              _matchBestOf3Mode[match.id]!
+                  ? 'Best of 3 enabled for this match'
+                  : 'Single match mode enabled',
+            ),
+          ],
+        ),
+        backgroundColor: _matchBestOf3Mode[match.id]!
+            ? Colors.blue.shade600
+            : Colors.grey.shade700,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override
@@ -196,7 +227,6 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
               );
             }
 
-            // Group matches by round
             final matchesByRound = <int, List<Match>>{};
             for (final match in knockoutMatches) {
               final round = match.round ?? 1;
@@ -204,7 +234,20 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
               matchesByRound[round]!.add(match);
             }
 
-            // Get current round info
+            // Sort matches in each round: Completed first (newest), then Scheduled
+            for (final roundMatches in matchesByRound.values) {
+              roundMatches.sort((a, b) {
+                // Completed matches first
+                if (a.status == 'Completed' && b.status != 'Completed')
+                  return -1;
+                if (a.status != 'Completed' && b.status == 'Completed')
+                  return 1;
+
+                // Within same status, sort by date (newest first)
+                return b.date.compareTo(a.date);
+              });
+            }
+
             final latestRound = _getLatestRoundNumber(knockoutMatches);
             final currentRoundMatches = matchesByRound[latestRound] ?? [];
             final allCurrentRoundCompleted =
@@ -224,7 +267,9 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
             final isTournamentComplete =
                 allCurrentRoundCompleted && advancingTeamsCount == 1;
 
-            final sortedRounds = matchesByRound.keys.toList()..sort();
+            // Sort rounds in descending order (latest round first)
+            final sortedRounds = matchesByRound.keys.toList()
+              ..sort((a, b) => b.compareTo(a));
 
             if (isTournamentComplete) {
               _badmintonService.completeTournament(widget.tournamentId);
@@ -613,11 +658,14 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
     final score2 = match.score2;
     final team1Won = score1 > score2;
     final team2Won = score2 > score1;
+    final isBestOf3 = _matchBestOf3Mode[match.id] ?? false;
+    final hasSetResults =
+        match.setResults != null && match.setResults!.isNotEmpty;
 
     return GestureDetector(
       onTap: () {
         debugPrint('Match tapped: ${match.id}');
-        widget.onMatchTap(match);
+        widget.onMatchTap(match, isBestOf3);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -636,7 +684,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => widget.onMatchTap(match),
+            onTap: () => widget.onMatchTap(match, isBestOf3),
             borderRadius: BorderRadius.circular(16),
             child: Column(
               children: [
@@ -715,6 +763,8 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                         score: score1,
                         isWinner: team1Won && isCompleted,
                         isLoser: team2Won && isCompleted,
+                        setResults: hasSetResults ? match.setResults : null,
+                        isTeam1: true,
                       ),
                       const SizedBox(height: 14),
                       Divider(height: 1, color: Colors.grey.shade300),
@@ -725,7 +775,11 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                         score: score2,
                         isWinner: team2Won && isCompleted,
                         isLoser: team1Won && isCompleted,
+                        setResults: hasSetResults ? match.setResults : null,
+                        isTeam1: false,
                       ),
+
+                      // ✅ SET RESULTS NOW DISPLAYED INLINE IN _buildTeamScoreRow
                       const SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -771,6 +825,91 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      if (!isCompleted)
+                        GestureDetector(
+                          onTap: () => _toggleBestOf3(match),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isBestOf3
+                                  ? Colors.blue.shade50
+                                  : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isBestOf3
+                                    ? Colors.blue.shade300
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Match Format',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: isBestOf3
+                                            ? Colors.blue.shade800
+                                            : Colors.grey.shade800,
+                                      ),
+                                    ),
+                                    Text(
+                                      isBestOf3
+                                          ? 'Best of 3 Series'
+                                          : 'Single Match',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isBestOf3
+                                            ? Colors.blue.shade700
+                                            : Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isBestOf3
+                                        ? Colors.blue.shade600
+                                        : Colors.grey.shade400,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        isBestOf3 ? Icons.check : Icons.add,
+                                        color: Colors.white,
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        isBestOf3 ? 'Enabled' : 'Enable',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -781,6 +920,8 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
       ),
     );
   }
+
+  // ✅ NEW: Build set results display
 
   Widget _buildByeMatchCard(Match match) {
     return Container(
@@ -905,17 +1046,20 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
     required int score,
     required bool isWinner,
     required bool isLoser,
+    List<Map<String, int>>? setResults,
+    required bool isTeam1,
   }) {
     return Row(
       children: [
         Expanded(
+          flex: 2,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 teamName,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: isWinner ? Colors.green.shade700 : Colors.black87,
                   decoration: isLoser
@@ -924,11 +1068,11 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
                 ),
               ),
               if (players.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   players.join(' & '),
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: Colors.grey.shade600,
                     height: 1.2,
                   ),
@@ -939,6 +1083,52 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
             ],
           ),
         ),
+        // ✅ NEW: Display set scores inline
+        if (setResults != null && setResults.isNotEmpty)
+          for (int i = 0; i < setResults.length; i++)
+            Expanded(
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isTeam1
+                        ? (setResults[i]['team1']! > setResults[i]['team2']!
+                              ? Colors.green.shade100
+                              : Colors.white)
+                        : (setResults[i]['team2']! > setResults[i]['team1']!
+                              ? Colors.green.shade100
+                              : Colors.white),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isTeam1
+                          ? (setResults[i]['team1']! > setResults[i]['team2']!
+                                ? Colors.green.shade400
+                                : Colors.grey.shade300)
+                          : (setResults[i]['team2']! > setResults[i]['team1']!
+                                ? Colors.green.shade400
+                                : Colors.grey.shade300),
+                    ),
+                  ),
+                  child: Text(
+                    '${isTeam1 ? setResults[i]['team1'] : setResults[i]['team2']}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isTeam1
+                          ? (setResults[i]['team1']! > setResults[i]['team2']!
+                                ? Colors.green.shade700
+                                : Colors.black87)
+                          : (setResults[i]['team2']! > setResults[i]['team1']!
+                                ? Colors.green.shade700
+                                : Colors.black87),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         const SizedBox(width: 12),
         if (isWinner)
           Container(
@@ -949,7 +1139,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
             ),
             child: Icon(
               Icons.check_circle,
-              size: 16,
+              size: 14,
               color: Colors.green.shade700,
             ),
           )
@@ -962,14 +1152,14 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
             ),
             child: Icon(
               Icons.close_rounded,
-              size: 16,
+              size: 14,
               color: Colors.red.shade700,
             ),
           ),
         Text(
           '$score',
           style: const TextStyle(
-            fontSize: 28,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: Colors.black87,
             height: 1,

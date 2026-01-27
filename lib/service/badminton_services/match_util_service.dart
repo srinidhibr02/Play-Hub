@@ -362,7 +362,7 @@ class MatchesListView extends StatefulWidget {
   final List<Match> matches;
   final String tournamentId;
   final Function(Match)? onScoreUpdate;
-  final Function(Match) onMatchTap;
+  final Function(Match, bool) onMatchTap;
 
   const MatchesListView({
     super.key,
@@ -644,7 +644,7 @@ class _MatchesListViewState extends State<MatchesListView> {
       builder: (BuildContext context) {
         return GestureDetector(
           onTap: () {
-            widget.onMatchTap.call(match);
+            widget.onMatchTap.call(match, false);
             _openScorecard(match, context);
           },
           child: Container(
@@ -1342,7 +1342,7 @@ class TournamentMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: Colors.white),
+      icon: const Icon(Icons.more_vert, color: Colors.black),
       onSelected: (value) {
         if (value == 'share') onShare();
         if (value == 'info') onInfo();
