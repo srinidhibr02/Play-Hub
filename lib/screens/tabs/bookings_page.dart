@@ -129,7 +129,7 @@ class _BookingsScreenState extends State<BookingsScreen>
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withAlpha((255 * 0.2).toInt()),
               borderRadius: BorderRadius.circular(30),
             ),
             child: TabBar(
@@ -282,7 +282,7 @@ class _BookingsScreenState extends State<BookingsScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.teal.shade100.withOpacity(0.3),
+            color: Colors.teal.shade100.withAlpha((255 * 0.3).toInt()),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -308,7 +308,7 @@ class _BookingsScreenState extends State<BookingsScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withAlpha((255 * 0.2).toInt()),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -337,7 +337,7 @@ class _BookingsScreenState extends State<BookingsScreen>
                           '${booking.sport} • ${booking.courtName}',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withAlpha((255 * 0.9).toInt()),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -351,7 +351,7 @@ class _BookingsScreenState extends State<BookingsScreen>
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.9),
+                      color: statusColor.withAlpha((255 * 0.9).toInt()),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(

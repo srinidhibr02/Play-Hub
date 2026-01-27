@@ -13,6 +13,11 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    buildFeatures {
+        buildConfig = true
+    }
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -29,15 +34,43 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionCode = 9
+        versionName = "1.0.5"
     }
+
+    signingConfigs {
+        create("release") {
+            keyAlias = "playhub-key"
+            keyPassword = "playhub"
+            storeFile = file("/Users/arjunbr02/playhub-release-key.jks")
+            storePassword = "playhub"
+        }
+    }
+
+    flavorDimensions += "environment"
+    
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationId = "com.example.play_hub"
+            buildConfigField("String", "FLAVOR", "\"dev\"")
+            // google-services.json from android/app/src/dev/
+        }
+        
+        create("prod") {
+            dimension = "environment"
+            applicationId = "app.zerolpa.playhub"
+            buildConfigField("String", "FLAVOR", "\"prod\"")
+            // google-services.json from android/app/src/prod/
+        }
+    }
+
 
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

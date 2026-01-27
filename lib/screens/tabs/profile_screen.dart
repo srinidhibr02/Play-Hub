@@ -114,7 +114,7 @@ class ProfileScreen extends StatelessWidget {
     showAboutDialog(
       context: context,
       applicationName: 'Play Hub',
-      applicationVersion: '$seVersion',
+      applicationVersion: seVersion,
       applicationIcon: Image.asset(
         'images/whiteBGlogo.png',
         width: 64,
@@ -213,7 +213,9 @@ class ProfileScreen extends StatelessWidget {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
+                                    color: Colors.black.withAlpha(
+                                      (255 * 0.2).toInt(),
+                                    ),
                                     blurRadius: 20,
                                     offset: const Offset(0, 10),
                                   ),
@@ -250,7 +252,9 @@ class ProfileScreen extends StatelessWidget {
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
+                                        color: Colors.black.withAlpha(
+                                          (255 * 0.1).toInt(),
+                                        ),
                                         blurRadius: 8,
                                       ),
                                     ],
@@ -281,7 +285,7 @@ class ProfileScreen extends StatelessWidget {
                           email,
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withAlpha((255 * 0.9).toInt()),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -292,10 +296,12 @@ class ProfileScreen extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withAlpha((255 * 0.2).toInt()),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withAlpha(
+                                (255 * 0.3).toInt(),
+                              ),
                             ),
                           ),
                           child: Text(
@@ -502,7 +508,7 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((255 * 0.05).toInt()),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),

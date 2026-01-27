@@ -6,7 +6,7 @@ class TournamentStatsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   CollectionReference _getUserTournamentsCollection(String userEmail) {
-    return _firestore.collection('sharedTournaments');
+    return _firestore.collection('friendlyTournaments');
   }
 
   /// Fetch all completed matches for a tournament
@@ -191,7 +191,7 @@ class TournamentStatsService {
     // Process completed matches
     for (final match in completedMatches) {
       try {
-        final status = match.status?.toLowerCase() ?? '';
+        final status = match.status.toLowerCase();
         if (status != 'completed' ||
             match.winner == null ||
             match.winner!.isEmpty) {
@@ -210,8 +210,8 @@ class TournamentStatsService {
         }
 
         final team1Won = match.winner == match.team1.id;
-        final score1 = match.score1 ?? 0;
-        final score2 = match.score2 ?? 0;
+        final score1 = match.score1;
+        final score2 = match.score2;
 
         // 🔥 Calculate point difference for this match
         final pointDifference = team1Won
@@ -257,9 +257,9 @@ class TournamentStatsService {
         }
 
         debugPrint(
-          '✅ Match ${match.id}: Team1=${score1}-${score2}=Team2, diff=$pointDifference',
+          '✅ Match ${match.id}: Team1=$score1-$score2=Team2, diff=$pointDifference',
         );
-      } catch (e, stackTrace) {
+      } catch (e) {
         debugPrint('⚠️ Error processing match ${match.id}: $e');
         continue;
       }

@@ -1,11 +1,15 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:play_hub/firebase_options.dart';
+import 'package:play_hub/flavor_config.dart';
 
 import 'package:play_hub/screens/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  const flavor = String.fromEnvironment('FLAVOR', defaultValue: 'dev');
+  FlavorConfig.init(flavor);
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const SportsEventApp());
 }
@@ -63,7 +67,7 @@ class SportsEventApp extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
-            shadowColor: Colors.tealAccent.withOpacity(0.5),
+            shadowColor: Colors.tealAccent.withAlpha((255 * 0.5).toInt()),
             elevation: 5,
           ),
         ),

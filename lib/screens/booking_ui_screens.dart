@@ -97,7 +97,7 @@ class SelectSportScreen extends StatelessWidget {
     return Material(
       borderRadius: BorderRadius.circular(16),
       elevation: 6,
-      shadowColor: color.withOpacity(0.4),
+      shadowColor: color.withAlpha((255 * 0.4).toInt()),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -111,7 +111,7 @@ class SelectSportScreen extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [color.withOpacity(0.8), color],
+              colors: [color.withAlpha((255 * 0.8).toInt()), color],
             ),
             borderRadius: BorderRadius.circular(16),
           ),
@@ -124,7 +124,7 @@ class SelectSportScreen extends StatelessWidget {
                   child: Image.asset(
                     image,
                     fit: BoxFit.cover,
-                    color: Colors.black.withOpacity(0.18),
+                    color: Colors.black.withAlpha((255 * 0.18).toInt()),
                     colorBlendMode: BlendMode.darken,
                   ),
                 ),
@@ -139,7 +139,7 @@ class SelectSportScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.35),
+                    color: Colors.black.withAlpha((255 * 0.35).toInt()),
                     borderRadius: const BorderRadius.only(
                       bottomRight: Radius.circular(16),
                       bottomLeft: Radius.circular(16),
@@ -154,7 +154,7 @@ class SelectSportScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.35),
+                          color: Colors.white.withAlpha((255 * 0.35).toInt()),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(icon, size: 32, color: Colors.white),

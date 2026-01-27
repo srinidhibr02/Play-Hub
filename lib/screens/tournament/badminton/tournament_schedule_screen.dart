@@ -219,7 +219,7 @@ class _BadmintonMatchScheduleScreenState
 
       matches.add(
         Match(
-          id: 'M_BYE',
+          id: 'M1_BYE',
           team1: byeTeam,
           team2: byeTeam,
           date: currentTime,
@@ -393,8 +393,6 @@ class _BadmintonMatchScheduleScreenState
           .where((m) => m.roundName!.contains('Semi-Final'))
           .toList();
 
-      semiFinals.forEach((m) => print('${m.winner}'));
-
       final finalMatch = matches.where((m) => m.stage == 'Final').firstOrNull;
       // Check if both semi-finals are completed
 
@@ -406,8 +404,6 @@ class _BadmintonMatchScheduleScreenState
         final semifinal1Winner = semiFinals[0].winner;
         final semifinal2Winner = semiFinals[1].winner;
 
-        print('Winners are $semifinal1Winner and $semifinal2Winner');
-
         if (semifinal1Winner != null && semifinal2Winner != null) {
           // Find the team objects
           final winner1Team = semiFinals[0].team1.id == semifinal1Winner
@@ -416,7 +412,7 @@ class _BadmintonMatchScheduleScreenState
           final winner2Team = semiFinals[1].team1.id == semifinal2Winner
               ? semiFinals[1].team1
               : semiFinals[1].team2;
-          print('Finalists are ${winner1Team.id} and ${winner2Team.id}');
+
           // Update final match with winners
           final updatedFinal = Match(
             id: finalMatch.id,
@@ -559,10 +555,16 @@ class _BadmintonMatchScheduleScreenState
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+            colors: [
+              color.withAlpha((255 * 0.1).toInt()),
+              color.withAlpha((255 * 0.05).toInt()),
+            ],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+          border: Border.all(
+            color: color.withAlpha((255 * 0.3).toInt()),
+            width: 1.5,
+          ),
         ),
         child: Row(
           children: [
@@ -570,7 +572,7 @@ class _BadmintonMatchScheduleScreenState
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [color, color.withOpacity(0.7)],
+                  colors: [color, color.withAlpha((255 * 0.7).toInt())],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -603,7 +605,7 @@ class _BadmintonMatchScheduleScreenState
             Icon(
               Icons.arrow_forward_ios,
               size: 18,
-              color: color.withOpacity(0.6),
+              color: color.withAlpha((255 * 0.6).toInt()),
             ),
           ],
         ),
@@ -957,7 +959,7 @@ class _BadmintonMatchScheduleScreenState
     String tournamentId,
   ) {
     return _firestore
-        .collection('sharedTournaments')
+        .collection('friendlyTournaments')
         .doc(tournamentId)
         .collection('matches')
         .snapshots()
@@ -1031,7 +1033,6 @@ class _BadmintonMatchScheduleScreenState
             playoffMatches.every((m) => m.status == 'Completed');
 
         if (allPlayoffCompleted) {
-          print('All Playoff Completed $allPlayoffCompleted');
           _watchSemiFinalsCompletion(playoffMatches);
         }
 
@@ -1079,7 +1080,7 @@ class _BadmintonMatchScheduleScreenState
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.shade200.withOpacity(0.5),
+            color: Colors.green.shade200.withAlpha((255 * 0.5).toInt()),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -1099,7 +1100,9 @@ class _BadmintonMatchScheduleScreenState
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.green.shade600.withOpacity(0.3),
+                        color: Colors.green.shade600.withAlpha(
+                          (255 * 0.3).toInt(),
+                        ),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -1141,7 +1144,7 @@ class _BadmintonMatchScheduleScreenState
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withAlpha((255 * 0.8).toInt()),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: Colors.green.shade200, width: 1.5),
               ),
@@ -1190,7 +1193,9 @@ class _BadmintonMatchScheduleScreenState
                     borderRadius: BorderRadius.circular(14),
                   ),
                   elevation: 4,
-                  shadowColor: Colors.green.shade600.withOpacity(0.5),
+                  shadowColor: Colors.green.shade600.withAlpha(
+                    (255 * 0.5).toInt(),
+                  ),
                 ),
               ),
             ),
@@ -1200,7 +1205,7 @@ class _BadmintonMatchScheduleScreenState
     );
   }
 
-  void _openScorecard(Match match) {
+  void _openScorecard(Match match, bool isBestOf3) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1213,6 +1218,7 @@ class _BadmintonMatchScheduleScreenState
               updatedMatch,
             );
           },
+          isBestOf3: isBestOf3,
         ),
       ),
     );

@@ -144,11 +144,11 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen>
             leading: Container(
               margin: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withAlpha((255 * 0.1).toInt()),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.transparent.withOpacity(0.1),
+                    color: Colors.transparent.withAlpha((255 * 0.1).toInt()),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -196,7 +196,7 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen>
                           '${widget.totalRatings} reviews • ${widget.currentRating.toStringAsFixed(1)}⭐',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withAlpha((255 * 0.9).toInt()),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -218,7 +218,7 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen>
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withAlpha((255 * 0.08).toInt()),
                     blurRadius: 24,
                     offset: const Offset(0, 12),
                   ),
@@ -262,7 +262,9 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen>
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.teal.shade300.withOpacity(0.5),
+                              color: Colors.teal.shade300.withAlpha(
+                                (255 * 0.5).toInt(),
+                              ),
                               blurRadius: 12,
                               offset: const Offset(0, 6),
                             ),
@@ -344,7 +346,7 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen>
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withAlpha((255 * 0.06).toInt()),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -650,7 +652,7 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((255 * 0.05).toInt()),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),

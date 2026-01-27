@@ -34,6 +34,7 @@ class Match {
   int score1;
   int score2;
   String? winner;
+  List<Map<String, int>>? setResults; // 🔥 NEW FIELD FOR SET RESULTS
   final String? parentTeam1Id;
   final String? parentTeam2Id;
   final int? round;
@@ -51,6 +52,7 @@ class Match {
     required this.status,
     required this.score1,
     required this.score2,
+    this.setResults,
     this.winner,
     this.parentTeam1Id,
     this.parentTeam2Id,
@@ -71,6 +73,7 @@ class Match {
       'status': status,
       'score1': score1,
       'score2': score2,
+      'setResults': setResults ?? [], // ✅ FIXED: Properly serialize setResults
       'winner': winner,
       'parentTeam1Id': parentTeam1Id,
       'parentTeam2Id': parentTeam2Id,
@@ -78,7 +81,7 @@ class Match {
       'roundName': roundName,
       'stage': stage,
       'rematchNumber': rematchNumber,
-      'isBye': isBye ?? false, // ✅ ADD THIS
+      'isBye': isBye ?? false,
     };
   }
 
@@ -117,6 +120,21 @@ class Match {
         parsedDate = DateTime.now();
       }
 
+      // ✅ FIXED: Parse setResults from JSON
+      List<Map<String, int>>? parsedSetResults;
+      final setResultsData = json['setResults'] as List?;
+      if (setResultsData != null && setResultsData.isNotEmpty) {
+        parsedSetResults = (setResultsData).map((item) {
+          if (item is Map<String, dynamic>) {
+            return {
+              'team1': (item['team1'] as num?)?.toInt() ?? 0,
+              'team2': (item['team2'] as num?)?.toInt() ?? 0,
+            };
+          }
+          return {'team1': 0, 'team2': 0};
+        }).toList();
+      }
+
       return Match(
         id: json['id'] as String? ?? '',
         team1: team1,
@@ -126,6 +144,7 @@ class Match {
         status: json['status'] as String? ?? 'Scheduled',
         score1: (json['score1'] as num?)?.toInt() ?? 0,
         score2: (json['score2'] as num?)?.toInt() ?? 0,
+        setResults: parsedSetResults, // ✅ FIXED: Assign parsed setResults
         winner: json['winner'] as String?,
         parentTeam1Id: json['parentTeam1Id'] as String?,
         parentTeam2Id: json['parentTeam2Id'] as String?,
@@ -133,7 +152,7 @@ class Match {
         roundName: json['roundName'] as String?,
         stage: json['stage'] as String?,
         rematchNumber: (json['rematchNumber'] as num?)?.toInt(),
-        isBye: json['isBye'] as bool? ?? false, // ✅ ADD THIS
+        isBye: json['isBye'] as bool? ?? false,
       );
     } catch (e) {
       rethrow;
@@ -162,6 +181,21 @@ class Match {
       final scheduledDate = map['scheduledDate'] as Timestamp?;
       final date = scheduledDate?.toDate() ?? DateTime.now();
 
+      // ✅ FIXED: Parse setResults from Firestore
+      List<Map<String, int>>? parsedSetResults;
+      final setResultsData = map['setResults'] as List?;
+      if (setResultsData != null && setResultsData.isNotEmpty) {
+        parsedSetResults = (setResultsData).map((item) {
+          if (item is Map<String, dynamic>) {
+            return {
+              'team1': (item['team1'] as num?)?.toInt() ?? 0,
+              'team2': (item['team2'] as num?)?.toInt() ?? 0,
+            };
+          }
+          return {'team1': 0, 'team2': 0};
+        }).toList();
+      }
+
       return Match(
         id: map['id'] as String? ?? '',
         team1: team1,
@@ -171,6 +205,7 @@ class Match {
         status: map['status'] as String? ?? 'Scheduled',
         score1: (map['score1'] as num?)?.toInt() ?? 0,
         score2: (map['score2'] as num?)?.toInt() ?? 0,
+        setResults: parsedSetResults, // ✅ FIXED: Assign parsed setResults
         winner: map['winner'] as String?,
         parentTeam1Id: map['parentTeam1Id'] as String?,
         parentTeam2Id: map['parentTeam2Id'] as String?,
@@ -178,7 +213,7 @@ class Match {
         roundName: map['roundName'] as String?,
         stage: map['stage'] as String?,
         rematchNumber: (map['rematchNumber'] as num?)?.toInt(),
-        isBye: map['isBye'] as bool? ?? false, // ✅ ADD THIS
+        isBye: map['isBye'] as bool? ?? false,
       );
     } catch (e) {
       // Return default match to prevent crash
@@ -191,7 +226,7 @@ class Match {
         status: 'Error',
         score1: 0,
         score2: 0,
-        isBye: false, // ✅ ADD THIS
+        isBye: false,
       );
     }
   }
@@ -201,7 +236,8 @@ class Match {
     int? score1,
     int? score2,
     String? winner,
-    bool? isBye, // ✅ ADD THIS
+    List<Map<String, int>>? setResults, // ✅ FIXED: Added setResults parameter
+    bool? isBye,
   }) {
     return Match(
       id: id,
@@ -212,6 +248,9 @@ class Match {
       status: status ?? this.status,
       score1: score1 ?? this.score1,
       score2: score2 ?? this.score2,
+      setResults:
+          setResults ??
+          this.setResults, // ✅ FIXED: Preserve or update setResults
       winner: winner ?? this.winner,
       parentTeam1Id: parentTeam1Id,
       parentTeam2Id: parentTeam2Id,
@@ -219,7 +258,7 @@ class Match {
       roundName: roundName,
       stage: stage,
       rematchNumber: rematchNumber,
-      isBye: isBye ?? this.isBye, // ✅ ADD THIS
+      isBye: isBye ?? this.isBye,
     );
   }
 
@@ -240,6 +279,7 @@ class Match {
       roundName: null,
       stage: null,
       rematchNumber: null,
+      setResults: [], // ✅ Initialize empty setResults
       isBye: false,
     );
   }

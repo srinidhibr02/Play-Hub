@@ -264,7 +264,9 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.teal.withOpacity(0.3),
+                                  color: Colors.teal.withAlpha(
+                                    (255 * 0.3).toInt(),
+                                  ),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -529,7 +531,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                         child: Switch(
                           value: isMultiSelectMode,
                           onChanged: (_) => _toggleMultiSelectMode(),
-                          activeColor: Colors.teal.shade700,
+                          activeThumbColor: Colors.teal.shade700,
                           activeTrackColor: Colors.teal.shade200,
                           inactiveTrackColor: Colors.grey.shade300,
                         ),
@@ -691,7 +693,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withAlpha((255 * 0.08).toInt()),
                     blurRadius: 16,
                     offset: const Offset(0, -4),
                     spreadRadius: 2,
@@ -883,7 +885,10 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            border: Border.all(color: color.withOpacity(0.5), width: 1),
+            border: Border.all(
+              color: color.withAlpha((255 * 0.5).toInt()),
+              width: 1,
+            ),
           ),
         ),
         const SizedBox(width: 6),
@@ -1009,7 +1014,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withAlpha((255 * 0.04).toInt()),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -1033,8 +1038,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (statusIcon != null)
-                        Icon(statusIcon, size: 13, color: textColor),
+                      Icon(statusIcon, size: 13, color: textColor),
                       const SizedBox(width: 4),
                       Text(
                         statusText,
@@ -1054,7 +1058,7 @@ class _SelectDateTimeScreenState extends State<SelectDateTimeScreen> {
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withAlpha((255 * 0.05).toInt()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),

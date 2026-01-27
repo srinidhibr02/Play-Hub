@@ -354,7 +354,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
               '${teams.length} ${widget.teamType == 'Singles' ? 'players' : 'teams'} ready',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.white.withOpacity(0.85),
+                color: Colors.white.withAlpha((255 * 0.85).toInt()),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -396,7 +396,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
               border: Border.all(color: Colors.orange.shade200, width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: Colors.orange.withAlpha((255 * 0.1).toInt()),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -413,7 +413,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.3),
+                        color: Colors.orange.withAlpha((255 * 0.3).toInt()),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -504,12 +504,12 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: color.withOpacity(0.3),
+                        color: color.withAlpha((255 * 0.3).toInt()),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.4),
+                          color: color.withAlpha((255 * 0.4).toInt()),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -522,7 +522,10 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                           height: 60,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [color.withOpacity(0.8), color],
+                              colors: [
+                                color.withAlpha((255 * 0.8).toInt()),
+                                color,
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
@@ -567,14 +570,14 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                   boxShadow: isHovering
                       ? [
                           BoxShadow(
-                            color: Colors.orange.withOpacity(0.4),
+                            color: Colors.orange.withAlpha((255 * 0.4).toInt()),
                             blurRadius: 16,
                             offset: const Offset(0, 8),
                           ),
                         ]
                       : [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withAlpha((255 * 0.08).toInt()),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -601,7 +604,10 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3), width: 2),
+        border: Border.all(
+          color: color.withAlpha((255 * 0.3).toInt()),
+          width: 2,
+        ),
       ),
       child: Row(
         children: [
@@ -610,14 +616,14 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
             height: 60,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withOpacity(0.8), color],
+                colors: [color.withAlpha((255 * 0.8).toInt()), color],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.4),
+                  color: color.withAlpha((255 * 0.4).toInt()),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -645,9 +651,11 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: color.withAlpha((255 * 0.15).toInt()),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: color.withOpacity(0.4)),
+                    border: Border.all(
+                      color: color.withAlpha((255 * 0.4).toInt()),
+                    ),
                   ),
                   child: Text(
                     '#${index + 1}',
@@ -673,7 +681,11 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
               ],
             ),
           ),
-          Icon(Icons.drag_indicator, color: color.withOpacity(0.5), size: 20),
+          Icon(
+            Icons.drag_indicator,
+            color: color.withAlpha((255 * 0.5).toInt()),
+            size: 20,
+          ),
         ],
       ),
     );
@@ -695,7 +707,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.12),
+                color: color.withAlpha((255 * 0.12).toInt()),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -706,7 +718,10 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: color.withOpacity(0.25), width: 2),
+              border: Border.all(
+                color: color.withAlpha((255 * 0.25).toInt()),
+                width: 2,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -718,14 +733,17 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [color.withOpacity(0.85), color],
+                          colors: [
+                            color.withAlpha((255 * 0.85).toInt()),
+                            color,
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: color.withOpacity(0.4),
+                            color: color.withAlpha((255 * 0.4).toInt()),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -795,13 +813,13 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            color.withOpacity(0.15),
-                            color.withOpacity(0.1),
+                            color.withAlpha((255 * 0.15).toInt()),
+                            color.withAlpha((255 * 0.1).toInt()),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: color.withOpacity(0.4),
+                          color: color.withAlpha((255 * 0.4).toInt()),
                           width: 1.5,
                         ),
                       ),
@@ -831,7 +849,9 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(showExpanded ? 0.15 : 0.08),
+                          color: color.withAlpha(
+                            (255 * (showExpanded ? 0.15 : 0.08)).toInt(),
+                          ),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -887,7 +907,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
             ),
             child: _buildPlayerChip(player, color, playerIndex),
           );
-        }).toList(),
+        }),
         if (hasMore)
           Container(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -908,8 +928,6 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
   Widget _buildExpandedPlayersGrid(Team team, Color color) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final chipsPerRow = (constraints.maxWidth / 140).floor().clamp(1, 6);
-
         return Wrap(
           spacing: 10,
           runSpacing: 10,
@@ -943,14 +961,14 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [color.withOpacity(0.9), color],
+              colors: [color.withAlpha((255 * 0.9).toInt()), color],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.5),
+                color: color.withAlpha((255 * 0.5).toInt()),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -964,7 +982,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                 height: 24,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withAlpha((255 * 0.3).toInt()),
                   border: Border.all(color: Colors.white, width: 1.5),
                 ),
                 child: Center(
@@ -1025,14 +1043,14 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                 boxShadow: isHovering
                     ? [
                         BoxShadow(
-                          color: Colors.orange.withOpacity(0.4),
+                          color: Colors.orange.withAlpha((255 * 0.4).toInt()),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
                       ]
                     : [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
+                          color: Colors.black.withAlpha((255 * 0.08).toInt()),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -1063,19 +1081,22 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isHovering
-              ? [color.withOpacity(0.85), color]
-              : [color.withOpacity(0.12), color.withOpacity(0.08)],
+              ? [color.withAlpha((255 * 0.85).toInt()), color]
+              : [
+                  color.withAlpha((255 * 0.12).toInt()),
+                  color.withAlpha((255 * 0.08).toInt()),
+                ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isHovering ? color : color.withOpacity(0.25),
+          color: isHovering ? color : color.withAlpha((255 * 0.25).toInt()),
           width: isHovering ? 2 : 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(isHovering ? 0.25 : 0.08),
+            color: color.withAlpha((255 * (isHovering ? 0.25 : 0.08)).toInt()),
             blurRadius: isHovering ? 10 : 3,
             offset: const Offset(0, 2),
           ),
@@ -1114,7 +1135,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withAlpha((255 * 0.1).toInt()),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -1160,7 +1181,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   elevation: 4,
-                  shadowColor: Colors.orange.withOpacity(0.4),
+                  shadowColor: Colors.orange.withAlpha((255 * 0.4).toInt()),
                 ),
               ),
             ),

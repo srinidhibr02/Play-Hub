@@ -145,7 +145,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                         offset: const Offset(0, 2),
                       ),
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withAlpha((255 * 0.04).toInt()),
                         blurRadius: 24,
                         offset: const Offset(0, 2),
                       ),
@@ -183,8 +183,9 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                               boxShadow: tournamentFormat == 'round_robin'
                                   ? [
                                       BoxShadow(
-                                        color: Colors.orange.shade400
-                                            .withOpacity(0.4),
+                                        color: Colors.orange.shade400.withAlpha(
+                                          (255 * 0.4).toInt(),
+                                        ),
                                         blurRadius: 12,
                                         offset: const Offset(0, 4),
                                       ),
@@ -238,8 +239,9 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
                               boxShadow: tournamentFormat == 'knockout'
                                   ? [
                                       BoxShadow(
-                                        color: Colors.orange.shade400
-                                            .withOpacity(0.4),
+                                        color: Colors.orange.shade400.withAlpha(
+                                          (255 * 0.4).toInt(),
+                                        ),
                                         blurRadius: 12,
                                         offset: const Offset(0, 4),
                                       ),
@@ -526,7 +528,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((255 * 0.05).toInt()),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -607,10 +609,13 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3), width: 2),
+        border: Border.all(
+          color: color.withAlpha((255 * 0.3).toInt()),
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((255 * 0.05).toInt()),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -621,7 +626,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withAlpha((255 * 0.1).toInt()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 28),
@@ -875,7 +880,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((255 * 0.05).toInt()),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -917,7 +922,9 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
               activeTrackColor: Colors.orange.shade600,
               inactiveTrackColor: Colors.orange.shade100,
               thumbColor: Colors.orange.shade600,
-              overlayColor: Colors.orange.shade200.withOpacity(0.3),
+              overlayColor: Colors.orange.shade200.withAlpha(
+                (255 * 0.3).toInt(),
+              ),
             ),
             child: Slider(
               value: value,

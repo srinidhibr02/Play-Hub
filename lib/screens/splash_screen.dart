@@ -102,7 +102,9 @@ class _SplashScreenState extends State<SplashScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.teal.shade100.withOpacity(0.6),
+                          color: Colors.teal.shade100.withAlpha(
+                            (255 * 0.6).toInt(),
+                          ),
                           blurRadius: 20,
                           spreadRadius: 8,
                           offset: const Offset(0, 4),
@@ -130,7 +132,9 @@ class _SplashScreenState extends State<SplashScreen>
                   Text(
                     'Sports Event Manager',
                     style: theme.textTheme.titleLarge?.copyWith(
-                      color: Colors.teal.shade700.withOpacity(0.75),
+                      color: Colors.teal.shade700.withAlpha(
+                        (255 * 0.75).toInt(),
+                      ),
                       letterSpacing: 2,
                       fontWeight: FontWeight.w400,
                     ),

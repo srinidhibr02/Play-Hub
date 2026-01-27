@@ -48,7 +48,7 @@ class BookingSuccessScreen extends StatelessWidget {
                           (isMultipleBooking
                                   ? Colors.purple.shade300
                                   : Colors.green.shade300)
-                              .withOpacity(0.5),
+                              .withAlpha((255 * 0.5).toInt()),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
@@ -104,7 +104,7 @@ class BookingSuccessScreen extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withAlpha((255 * 0.05).toInt()),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),

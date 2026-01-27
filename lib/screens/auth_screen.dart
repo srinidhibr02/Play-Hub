@@ -105,7 +105,6 @@ class _AuthPageState extends State<AuthPage>
         email: _loginEmailController.text.trim(),
         password: _loginPasswordController.text.trim(),
       );
-      print(_loginPasswordController.text.trim());
       if (!mounted) return;
 
       if (result.success) {
@@ -183,7 +182,7 @@ class _AuthPageState extends State<AuthPage>
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
+                  color: Colors.black.withAlpha((255 * 0.12).toInt()),
                   blurRadius: 32,
                   offset: const Offset(0, 16),
                 ),
@@ -203,7 +202,9 @@ class _AuthPageState extends State<AuthPage>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.teal.shade300.withOpacity(0.4),
+                        color: Colors.teal.shade300.withAlpha(
+                          (255 * 0.4).toInt(),
+                        ),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -782,7 +783,7 @@ class _AuthPageState extends State<AuthPage>
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.teal.shade300.withOpacity(0.5),
+            color: Colors.teal.shade300.withAlpha((255 * 0.5).toInt()),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),

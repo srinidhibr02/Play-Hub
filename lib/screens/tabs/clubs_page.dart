@@ -391,7 +391,9 @@ class _ClubsScreenState extends State<ClubsScreen>
                                 'Find the best sports clubs near you',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withAlpha(
+                                    (255 * 0.8).toInt(),
+                                  ),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -413,7 +415,9 @@ class _ClubsScreenState extends State<ClubsScreen>
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.teal.withOpacity(0.15),
+                              color: Colors.teal.withAlpha(
+                                (255 * 0.15).toInt(),
+                              ),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -475,9 +479,9 @@ class _ClubsScreenState extends State<ClubsScreen>
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Column(
                               children: [
-                                ..._filteredClubs
-                                    .map((club) => _buildClubCard(club))
-                                    .toList(),
+                                ..._filteredClubs.map(
+                                  (club) => _buildClubCard(club),
+                                ),
                                 if (_isLoadingMore)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -514,7 +518,7 @@ class _ClubsScreenState extends State<ClubsScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.15),
+                color: Colors.teal.withAlpha((255 * 0.15).toInt()),
                 shape: BoxShape.circle,
               ),
               child: CircularProgressIndicator(
@@ -536,7 +540,7 @@ class _ClubsScreenState extends State<ClubsScreen>
               'Locating sports venues in your area',
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.teal.withOpacity(0.7),
+                color: Colors.teal.withAlpha((255 * 0.7).toInt()),
               ),
             ),
             const SizedBox(height: 40),
@@ -546,7 +550,7 @@ class _ClubsScreenState extends State<ClubsScreen>
                 borderRadius: BorderRadius.circular(10),
                 child: LinearProgressIndicator(
                   minHeight: 4,
-                  backgroundColor: Colors.white.withOpacity(0.2),
+                  backgroundColor: Colors.white.withAlpha((255 * 0.2).toInt()),
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               ),
@@ -570,7 +574,7 @@ class _ClubsScreenState extends State<ClubsScreen>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withAlpha((255 * 0.1).toInt()),
                     blurRadius: 20,
                   ),
                 ],
@@ -631,7 +635,7 @@ class _ClubsScreenState extends State<ClubsScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withAlpha((255 * 0.06).toInt()),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -687,7 +691,7 @@ class _ClubsScreenState extends State<ClubsScreen>
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withAlpha((255 * 0.15).toInt()),
                             blurRadius: 8,
                           ),
                         ],
@@ -729,7 +733,7 @@ class _ClubsScreenState extends State<ClubsScreen>
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.teal.withOpacity(0.4),
+                              color: Colors.teal.withAlpha((255 * 0.4).toInt()),
                               blurRadius: 8,
                             ),
                           ],
@@ -807,7 +811,7 @@ class _ClubsScreenState extends State<ClubsScreen>
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
-                        children: (sports as List)
+                        children: (sports)
                             .take(3)
                             .map(
                               (sport) => Container(

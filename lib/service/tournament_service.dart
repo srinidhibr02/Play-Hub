@@ -4,5 +4,4 @@ class TournamentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Future<Map<String, dynamic>?>
-  getTournament() {}
 }

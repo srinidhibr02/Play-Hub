@@ -32,7 +32,6 @@ class MatchGenerator {
 
   List<Match> generate() {
     if (teams.length < 2) return [];
-    print('iam telling you $tournamentFormat');
 
     if (tournamentFormat == 'knockout') {
       return _generateKnockout();
@@ -363,7 +362,7 @@ class MatchesListView extends StatefulWidget {
   final List<Match> matches;
   final String tournamentId;
   final Function(Match)? onScoreUpdate;
-  final Function(Match) onMatchTap;
+  final Function(Match, bool) onMatchTap;
 
   const MatchesListView({
     super.key,
@@ -382,7 +381,7 @@ class _MatchesListViewState extends State<MatchesListView> {
 
   Stream<List<Match>> _getPlayoffMatches() {
     return _firestore
-        .collection('sharedTournaments')
+        .collection('friendlyTournaments')
         .doc(widget.tournamentId)
         .snapshots()
         .asyncMap((tournamentSnapshot) async {
@@ -400,7 +399,7 @@ class _MatchesListViewState extends State<MatchesListView> {
 
           // Fetch matches snapshot
           final matchSnapshot = await _firestore
-              .collection('sharedTournaments')
+              .collection('friendlyTournaments')
               .doc(widget.tournamentId)
               .collection('matches')
               .get(); // ✅ Use .get() for single snapshot
@@ -508,9 +507,9 @@ class _MatchesListViewState extends State<MatchesListView> {
                 completedMatches: playoffCompletedCount,
                 totalMatches: playoffTotalCount,
               ),
-              ...playoffMatches
-                  .map((match) => _buildMatchCard(match, color: Colors.amber))
-                  .toList(),
+              ...playoffMatches.map(
+                (match) => _buildMatchCard(match, color: Colors.amber),
+              ),
               const SizedBox(height: 24),
             ],
 
@@ -523,9 +522,9 @@ class _MatchesListViewState extends State<MatchesListView> {
                 completedMatches: leagueCompletedCount,
                 totalMatches: leagueTotalCount,
               ),
-              ...leagueMatches
-                  .map((match) => _buildMatchCard(match, color: Colors.blue))
-                  .toList(),
+              ...leagueMatches.map(
+                (match) => _buildMatchCard(match, color: Colors.blue),
+              ),
               const SizedBox(height: 24),
             ],
 
@@ -577,7 +576,7 @@ class _MatchesListViewState extends State<MatchesListView> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withAlpha((255 * 0.1).toInt()),
         border: Border.all(color: color, width: 2),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -599,7 +598,10 @@ class _MatchesListViewState extends State<MatchesListView> {
                 ),
                 Text(
                   '$completedMatches / $totalMatches matches completed',
-                  style: TextStyle(fontSize: 12, color: color.withOpacity(0.7)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: color.withAlpha((255 * 0.7).toInt()),
+                  ),
                 ),
               ],
             ),
@@ -642,7 +644,7 @@ class _MatchesListViewState extends State<MatchesListView> {
       builder: (BuildContext context) {
         return GestureDetector(
           onTap: () {
-            widget.onMatchTap?.call(match);
+            widget.onMatchTap.call(match, false);
             _openScorecard(match, context);
           },
           child: Container(
@@ -653,7 +655,7 @@ class _MatchesListViewState extends State<MatchesListView> {
               border: Border.all(color: color, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withAlpha((255 * 0.05).toInt()),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -880,7 +882,7 @@ class _MatchesListViewState extends State<MatchesListView> {
         border: Border.all(color: Colors.orange.shade400, width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.15),
+            color: Colors.orange.withAlpha((255 * 0.15).toInt()),
             blurRadius: 8,
             spreadRadius: 1,
           ),
@@ -1108,7 +1110,7 @@ class MatchCard extends StatelessWidget {
           border: Border.all(color: color.shade300, width: 2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withAlpha((255 * 0.05).toInt()),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1340,7 +1342,7 @@ class TournamentMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: Colors.white),
+      icon: const Icon(Icons.more_vert, color: Colors.black),
       onSelected: (value) {
         if (value == 'share') onShare();
         if (value == 'info') onInfo();
@@ -1523,11 +1525,6 @@ class CustomMatchGenerator {
       playerMatchCount[pair2[0]] = (playerMatchCount[pair2[0]] ?? 0) + 1;
       playerMatchCount[pair2[1]] = (playerMatchCount[pair2[1]] ?? 0) + 1;
     }
-
-    debugPrint('📊 Player participation after fair selection:');
-    playerMatchCount.forEach((player, count) {
-      debugPrint('   $player: $count matches');
-    });
 
     return selectedMatchups;
   }

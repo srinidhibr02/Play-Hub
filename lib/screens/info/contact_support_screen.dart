@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart';
 
 class ContactSupportScreen extends StatefulWidget {
   final User user;
@@ -41,12 +40,17 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 12),
-                Text('Thank you! Your feedback has been sent.', style: TextStyle(fontWeight: FontWeight.w600)),
+                Text(
+                  'Thank you! Your feedback has been sent.',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
               ],
             ),
             backgroundColor: Color(0xFF10B981),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
             duration: Duration(seconds: 3),
           ),
         );
@@ -61,12 +65,17 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
               children: [
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 12),
-                Text('Failed to send feedback: $e', style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(
+                  'Failed to send feedback: $e',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ],
             ),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         );
       }
@@ -87,7 +96,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 1,
-        shadowColor: Colors.black.withOpacity(0.1),
+        shadowColor: Colors.black.withAlpha((255 * 0.1).toInt()),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Navigator.pop(context),
@@ -161,7 +170,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withAlpha((255 * 0.06).toInt()),
                       blurRadius: 24,
                       offset: const Offset(0, 12),
                     ),
@@ -178,7 +187,10 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                             color: Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Icon(Icons.person_outline_rounded, color: Colors.grey),
+                          child: const Icon(
+                            Icons.person_outline_rounded,
+                            color: Colors.grey,
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -187,11 +199,17 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                             children: [
                               const Text(
                                 'Name',
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
                               ),
                               Text(
                                 widget.user.displayName ?? 'Anonymous',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
@@ -207,7 +225,10 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                             color: Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Icon(Icons.email_outlined, color: Colors.grey),
+                          child: const Icon(
+                            Icons.email_outlined,
+                            color: Colors.grey,
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -216,11 +237,17 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                             children: [
                               const Text(
                                 'Email',
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
                               ),
                               Text(
                                 widget.user.email ?? '',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ],
                           ),
@@ -249,7 +276,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withAlpha((255 * 0.06).toInt()),
                       blurRadius: 24,
                       offset: const Offset(0, 12),
                     ),
@@ -271,7 +298,10 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.blue.shade400, width: 2),
+                          borderSide: BorderSide(
+                            color: Colors.blue.shade400,
+                            width: 2,
+                          ),
                         ),
                         filled: true,
                         fillColor: Colors.grey.shade50,
@@ -315,7 +345,9 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.9)),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white.withAlpha((255 * 0.9).toInt()),
+                            ),
                           ),
                         )
                       : const Icon(Icons.send_rounded, size: 24),
@@ -347,7 +379,11 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                         color: Colors.orange.shade100,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(Icons.info_outline_rounded, color: Colors.orange.shade700, size: 24),
+                      child: Icon(
+                        Icons.info_outline_rounded,
+                        color: Colors.orange.shade700,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -356,12 +392,18 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                         children: [
                           const Text(
                             'What happens next?',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Your feedback will be reviewed by our team. We\'ll respond within 24 hours via email.',
-                            style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
                         ],
                       ),

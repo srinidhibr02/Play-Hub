@@ -30,7 +30,6 @@ class BookingService {
       }
       return null;
     } catch (e) {
-      print('Error getting club: $e');
       return null;
     }
   }
@@ -81,9 +80,6 @@ class BookingService {
             if (endPeriod == 'PM' && endHour != 12) endHour += 12;
             if (endPeriod == 'AM' && endHour == 12) endHour = 0;
 
-            print(
-              '📅 $dayName: ${match.group(0)} → $startHour:00 - $endHour:00',
-            );
             return (startHour: startHour, endHour: endHour);
           }
         }
@@ -101,7 +97,6 @@ class BookingService {
 
       return (startHour: 6, endHour: 23);
     } catch (e) {
-      print('❌ Parse error: $e');
       return (startHour: 6, endHour: 23);
     }
   }
@@ -172,7 +167,6 @@ class BookingService {
 
         // Skip if slot time has already passed
         if (isElapsed) {
-          print('⏭️ Skipping elapsed slot: $slotKey');
           continue;
         }
 
@@ -187,12 +181,8 @@ class BookingService {
         );
       }
 
-      print(
-        '✅ Generated ${slots.length} available slots: $startHour:00 - $endHour:00',
-      );
       return slots;
     } catch (e) {
-      print('Error getting available slots: $e');
       return [];
     }
   }
@@ -287,7 +277,6 @@ class BookingService {
         bookingId: docRef.id,
       );
     } catch (e) {
-      print('Error creating booking: $e');
       return BookingResult(
         success: false,
         message: 'Failed to create booking. Please try again.',
@@ -322,7 +311,6 @@ class BookingService {
         message: 'Booking cancelled successfully',
       );
     } catch (e) {
-      print('Error cancelling booking: $e');
       return BookingResult(success: false, message: 'Failed to cancel booking');
     }
   }
@@ -346,7 +334,6 @@ class BookingService {
 
       return snapshot.docs.map((doc) => Club.fromFirestore(doc)).toList();
     } catch (e) {
-      print('Error searching clubs: $e');
       return [];
     }
   }

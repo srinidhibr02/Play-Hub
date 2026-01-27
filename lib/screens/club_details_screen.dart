@@ -171,7 +171,7 @@ class _ClubDetailsScreenState extends State<ClubDetailsScreen> {
             leading: Container(
               margin: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withAlpha((255 * 0.5).toInt()),
                 shape: BoxShape.circle,
               ),
               child: IconButton(
@@ -183,7 +183,7 @@ class _ClubDetailsScreenState extends State<ClubDetailsScreen> {
               Container(
                 margin: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withAlpha((255 * 0.5).toInt()),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -234,7 +234,7 @@ class _ClubDetailsScreenState extends State<ClubDetailsScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
+                          color: Colors.black.withAlpha((255 * 0.6).toInt()),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -354,8 +354,9 @@ class _ClubDetailsScreenState extends State<ClubDetailsScreen> {
                                     borderRadius: BorderRadius.circular(14),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.amber.shade300
-                                            .withOpacity(0.4),
+                                        color: Colors.amber.shade300.withAlpha(
+                                          (255 * 0.4).toInt(),
+                                        ),
                                         blurRadius: 8,
                                         offset: const Offset(0, 4),
                                       ),
@@ -515,7 +516,9 @@ class _ClubDetailsScreenState extends State<ClubDetailsScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.teal.shade100.withOpacity(0.3),
+                                  color: Colors.teal.shade100.withAlpha(
+                                    (255 * 0.3).toInt(),
+                                  ),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),

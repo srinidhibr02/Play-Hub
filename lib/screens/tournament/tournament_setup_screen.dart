@@ -119,7 +119,7 @@ class _TournamentSetupScreenState extends State<TournamentSetupScreen> {
                       'Choose your sport & play with your friends',
                       style: TextStyle(
                         fontSize: 15,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withAlpha((255 * 0.9).toInt()),
                       ),
                     ),
                   ],
@@ -193,7 +193,9 @@ class _TournamentSetupScreenState extends State<TournamentSetupScreen> {
                                       )
                                     else
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
+                                        color: Colors.black.withAlpha(
+                                          (255 * 0.05).toInt(),
+                                        ),
                                         blurRadius: 5,
                                         offset: const Offset(0, 2),
                                       ),
@@ -208,8 +210,12 @@ class _TournamentSetupScreenState extends State<TournamentSetupScreen> {
                                         height: 60,
                                         decoration: BoxDecoration(
                                           color: isSelected
-                                              ? Colors.white.withOpacity(0.3)
-                                              : sport['color'].withOpacity(0.1),
+                                              ? Colors.white.withAlpha(
+                                                  (255 * 0.3).toInt(),
+                                                )
+                                              : sport['color'].withAlpha(
+                                                  (255 * 0.1).toInt(),
+                                                ),
                                           borderRadius: BorderRadius.circular(
                                             15,
                                           ),
@@ -244,8 +250,8 @@ class _TournamentSetupScreenState extends State<TournamentSetupScreen> {
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 color: isSelected
-                                                    ? Colors.white.withOpacity(
-                                                        0.9,
+                                                    ? Colors.white.withAlpha(
+                                                        (255 * 0.9).toInt(),
                                                       )
                                                     : Colors.grey.shade600,
                                               ),
@@ -287,7 +293,7 @@ class _TournamentSetupScreenState extends State<TournamentSetupScreen> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withAlpha((255 * 0.05).toInt()),
                       blurRadius: 10,
                       offset: const Offset(0, -5),
                     ),

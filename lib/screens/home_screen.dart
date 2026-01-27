@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:play_hub/screens/auth_screen.dart';
 import 'package:play_hub/screens/tabs/clubs_page.dart';
 import 'package:play_hub/screens/tabs/home_page.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
@@ -13,7 +14,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  final _userEmailId = AuthService().currentUserEmailId;
+  final _authService = AuthService();
+  late String? _userEmailId;
   int _selectedIndex = 0;
   late PageController _pageController;
   late AnimationController _indicatorController;
@@ -43,6 +45,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _userEmailId = _authService.currentUserEmailId;
     _pageController = PageController(initialPage: _selectedIndex);
     _indicatorController = AnimationController(
       duration: const Duration(milliseconds: 250),
@@ -52,6 +55,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       CurvedAnimation(parent: _indicatorController, curve: Curves.easeInOut),
     );
     _indicatorController.forward();
+
+    // Listen for auth state changes
+    _authService.authStateChanges.listen((user) {
+      setState(() {
+        _userEmailId = _authService.currentUserEmailId;
+      });
+
+      // If user logs out, navigate them out of this page
+      if (user == null && mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const AuthPage()),
+        );
+      }
+    });
   }
 
   @override
@@ -82,7 +99,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     setState(() => _selectedIndex = index);
   }
 
-  // NEW: Handle device back button
+  // Handle device back button
   Future<bool> _onWillPop() async {
     final NavigatorState? navigator =
         _navigatorKeys[_selectedIndex].currentState;
@@ -107,6 +124,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    // Check if user is authenticated
+    bool isUserAuthenticated = _userEmailId != null && _userEmailId!.isNotEmpty;
+
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -146,7 +166,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ),
           ],
         ),
-        bottomNavigationBar: _buildCustomBottomNav(),
+        // Only show bottom nav if user is authenticated
+        bottomNavigationBar: isUserAuthenticated
+            ? _buildCustomBottomNav()
+            : null,
       ),
     );
   }

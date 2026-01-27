@@ -1,16 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/widgets.dart';
 
 Future<void> initializeSampleData() async {
   final firestore = FirebaseFirestore.instance;
-  print('Starting to add sample data...');
 
   await _addSampleTournaments(firestore);
-
-  print('✅ Successfully tournaments sample data to Firebase!');
 }
 
 Future<void> _addSampleTournaments(FirebaseFirestore firestore) async {
-  print('\nAdding sample tournaments...');
   final tournaments = [
     {
       'clubId': 'P1DgudkAn76ItbzfS8bp',
@@ -139,9 +136,8 @@ Future<void> _addSampleTournaments(FirebaseFirestore firestore) async {
   for (var tournament in tournaments) {
     try {
       await firestore.collection('tournaments').add(tournament);
-      print('Added tournament: ${tournament['name']}');
     } catch (e) {
-      print('Error adding tournament: $e');
+      debugPrint('Error adding tournament: $e');
     }
   }
 }

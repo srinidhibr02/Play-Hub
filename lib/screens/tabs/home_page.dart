@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -9,7 +7,7 @@ import 'package:play_hub/screens/booking_ui_screens.dart';
 import 'package:play_hub/screens/tabs/clubs_page.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
 import 'package:play_hub/screens/tournament/tournament_setup_screen.dart';
-import 'package:play_hub/screens/tournament_screen.dart';
+import 'package:play_hub/screens/clubTournament/tournament_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
 import 'package:play_hub/widgets/my_bookings_widget.dart';
 
@@ -27,9 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          // ✅ SAFE BACK - Uses current context navigator
           Navigator.maybePop(context);
         }
       },
@@ -142,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.teal.shade300.withOpacity(0.5),
+            color: Colors.teal.shade300.withAlpha((255 * 0.5).toInt()),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -232,10 +229,10 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 14),
             Expanded(
               child: _buildActionCard(
-                icon: Icons.people_alt,
-                title: 'Join Club',
+                icon: Icons.sports,
+                title: 'Tournaments',
                 color: Colors.purple,
-                onTap: () => _navigateTo(const ClubsScreen()), // ✅ FIXED
+                onTap: () => _navigateTo(TournamentScreen()), // ✅ FIXED
               ),
             ),
             const SizedBox(width: 14),
@@ -266,9 +263,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withAlpha((255 * 0.12).toInt()),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withAlpha((255 * 0.3).toInt())),
         ),
         child: Column(
           children: [
@@ -347,13 +344,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     image: AssetImage(sport['image'] as String),
                     fit: BoxFit.fill,
                     colorFilter: ColorFilter.mode(
-                      (sport['color'] as Color).withOpacity(0.6),
+                      (sport['color'] as Color).withAlpha((255 * 0.6).toInt()),
                       BlendMode.darken,
                     ),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: (sport['color'] as Color).withOpacity(0.3),
+                      color: (sport['color'] as Color).withAlpha(
+                        (255 * 0.3).toInt(),
+                      ),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
