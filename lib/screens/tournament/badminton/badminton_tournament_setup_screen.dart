@@ -13,6 +13,9 @@ class _BadmintonTournamentSetupScreenState
     extends State<BadmintonTournamentSetupScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
+  late AnimationController _pulseController;
+  late AnimationController _scaleController;
+
   final List<String> members = [];
   final TextEditingController memberController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
@@ -50,6 +53,17 @@ class _BadmintonTournamentSetupScreenState
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
+    // Animation controllers
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
     // Auto-focus on screen load
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
@@ -61,14 +75,16 @@ class _BadmintonTournamentSetupScreenState
     _tabController.dispose();
     memberController.dispose();
     _focusNode.dispose();
+    _pulseController.dispose();
+    _scaleController.dispose();
     super.dispose();
   }
 
   bool _isValidPlayerCount(int count, String teamType) {
     if (teamType == 'Singles') {
-      return true; // No constraint on odd/even for singles
+      return true;
     } else if (teamType == 'Doubles' || teamType == 'Custom') {
-      return count % 2 == 0; // Must be even for Doubles and Custom
+      return count % 2 == 0;
     }
     return false;
   }
@@ -88,8 +104,7 @@ class _BadmintonTournamentSetupScreenState
       memberController.clear();
     });
     _showSnackBar('$name added successfully!', Colors.green);
-
-    // Request focus after adding member
+    _scaleController.forward().then((_) => _scaleController.reverse());
     _focusNode.requestFocus();
   }
 
@@ -103,11 +118,29 @@ class _BadmintonTournamentSetupScreenState
   void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Row(
+          children: [
+            Icon(
+              color == Colors.green
+                  ? Icons.check_circle
+                  : color == Colors.red
+                  ? Icons.error_outline
+                  : Icons.info_outline,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              message,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
+        elevation: 4,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -153,41 +186,118 @@ class _BadmintonTournamentSetupScreenState
   void _clearAllPlayers() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red.shade600),
-            const SizedBox(width: 12),
-            const Text('Clear All Players?'),
-          ],
-        ),
-        content: const Text('This will remove all players from the list.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                members.clear();
-              });
-              Navigator.pop(context);
-              _showSnackBar('All players removed', Colors.grey.shade700);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.red.shade600,
+                  size: 28,
+                ),
               ),
-            ),
-            child: const Text(
-              'Clear All',
-              style: TextStyle(color: Colors.white),
-            ),
+              const SizedBox(height: 20),
+              Text(
+                'Remove All Players?',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade900,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This action will remove all players from the list.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.red.shade600, Colors.red.shade500],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withAlpha((255 * 0.3).toInt()),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            members.clear();
+                          });
+                          Navigator.pop(context);
+                          _showSnackBar(
+                            'All players removed',
+                            Colors.grey.shade700,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Remove All',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -201,12 +311,10 @@ class _BadmintonTournamentSetupScreenState
     final isValidCount = _isValidPlayerCount(members.length, selectedTeamType);
 
     if (isOnPlayersTab && members.length >= minPlayers && isValidCount) {
-      // Move to Format tab
       _tabController.animateTo(1);
     } else if (!isOnPlayersTab &&
         members.length >= minPlayers &&
         isValidCount) {
-      // Proceed to scheduling
       _proceedToScheduling();
     }
   }
@@ -234,7 +342,6 @@ class _BadmintonTournamentSetupScreenState
     final hasEnoughPlayers = members.length >= minPlayers && isValidCount;
     final isOnPlayersTab = _tabController.index == 0;
 
-    // Determine button state
     String buttonText;
     IconData buttonIcon;
     bool buttonEnabled;
@@ -242,143 +349,174 @@ class _BadmintonTournamentSetupScreenState
     if (isOnPlayersTab) {
       if (hasEnoughPlayers) {
         buttonText = 'Next: Choose Format';
-        buttonIcon = Icons.arrow_forward;
+        buttonIcon = Icons.arrow_forward_rounded;
         buttonEnabled = true;
       } else {
         buttonText = 'Add More Players';
-        buttonIcon = Icons.lock;
+        buttonIcon = Icons.lock_rounded;
         buttonEnabled = false;
       }
     } else {
       buttonText = 'Continue to Schedule';
-      buttonIcon = Icons.calendar_month;
+      buttonIcon = Icons.calendar_month_rounded;
       buttonEnabled = hasEnoughPlayers;
     }
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        backgroundColor: Colors.orange.shade600,
         elevation: 0,
-        title: const Text(
-          'Badminton Tournament',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Create Tournament',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: Colors.grey.shade900,
+                letterSpacing: -0.5,
+              ),
+            ),
+            Text(
+              'Badminton Tournament setup',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
         ),
         actions: [
           if (members.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep, color: Colors.white),
-              onPressed: _clearAllPlayers,
-              tooltip: 'Clear All',
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.delete_sweep_rounded,
+                    color: Colors.red.shade600,
+                  ),
+                  onPressed: _clearAllPlayers,
+                  tooltip: 'Clear All',
+                ),
+              ),
             ),
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // Tab Bar with Progress Indicator
+            // Modern Tab Bar
             Container(
-              color: Colors.orange.shade600,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      onTap: (index) {
-                        setState(() {}); // Rebuild to update button
-                      },
-                      indicator: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: Colors.white,
-                      ),
-                      labelColor: Colors.orange.shade600,
-                      unselectedLabelColor: Colors.white.withAlpha(
-                        (255 * 0.7).toInt(),
-                      ),
-                      labelStyle: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      tabs: [
-                        Tab(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.person_add, size: 20),
-                              const SizedBox(width: 8),
-                              const Text('Players'),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _tabController.index == 0
-                                      ? Colors.orange.shade600
-                                      : Colors.orange.shade100,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  members.length.toString(),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: _tabController.index == 0
-                                        ? Colors.white
-                                        : Colors.orange.shade600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Tab(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.settings, size: 20),
-                              SizedBox(width: 8),
-                              Text('Format'),
-                            ],
-                          ),
-                        ),
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  onTap: (index) {
+                    setState(() {});
+                  },
+                  indicator: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.orange.shade600,
+                        Colors.deepOrange.shade500,
                       ],
                     ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withAlpha((255 * 0.25).toInt()),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  // Progress Indicator
-                  Container(
-                    height: 4,
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: hasEnoughPlayers
-                            ? 1.0
-                            : members.length / minPlayers,
-                        backgroundColor: Colors.white.withAlpha(
-                          (255 * 0.3).toInt(),
-                        ),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          hasEnoughPlayers
-                              ? Colors.green.shade400
-                              : Colors.white,
-                        ),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey.shade600,
+                  labelStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  dividerColor: Colors.transparent,
+                  tabs: [
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.person_add_rounded, size: 20),
+                          const SizedBox(width: 8),
+                          const Text('Players'),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _tabController.index == 0
+                                  ? Colors.white.withAlpha((255 * 0.2).toInt())
+                                  : Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              members.length.toString(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: _tabController.index == 0
+                                    ? Colors.white
+                                    : Colors.orange.shade600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.settings_rounded, size: 20),
+                          SizedBox(width: 8),
+                          Text('Format'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Progress Indicator
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  minHeight: 6,
+                  value: hasEnoughPlayers ? 1.0 : members.length / minPlayers,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    hasEnoughPlayers
+                        ? Colors.green.shade500
+                        : Colors.orange.shade600,
                   ),
-                  const SizedBox(height: 8),
-                ],
+                ),
               ),
             ),
 
@@ -390,16 +528,16 @@ class _BadmintonTournamentSetupScreenState
               ),
             ),
 
-            // Bottom Info & Continue Button
+            // Bottom Action Bar
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withAlpha((255 * 0.05).toInt()),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
+                    color: Colors.black.withAlpha((255 * 0.08).toInt()),
+                    blurRadius: 16,
+                    offset: const Offset(0, -4),
                   ),
                 ],
               ),
@@ -410,17 +548,20 @@ class _BadmintonTournamentSetupScreenState
                   children: [
                     if (!hasEnoughPlayers && isOnPlayersTab)
                       Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        margin: const EdgeInsets.only(bottom: 14),
                         decoration: BoxDecoration(
                           color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange.shade200),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.orange.shade200,
+                            width: 1.5,
+                          ),
                         ),
                         child: Row(
                           children: [
                             Icon(
-                              Icons.info_outline,
+                              Icons.info_rounded,
                               color: Colors.orange.shade600,
                               size: 20,
                             ),
@@ -432,46 +573,79 @@ class _BadmintonTournamentSetupScreenState
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.orange.shade700,
+                                  height: 1.4,
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: buttonEnabled ? _handleContinueButton : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade600,
-                          disabledBackgroundColor: Colors.grey.shade300,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: buttonEnabled ? 4 : 0,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              buttonIcon,
-                              color: buttonEnabled
-                                  ? Colors.white
-                                  : Colors.grey.shade500,
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: buttonEnabled
+                            ? LinearGradient(
+                                colors: [
+                                  Colors.orange.shade600,
+                                  Colors.deepOrange.shade500,
+                                ],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              )
+                            : null,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: buttonEnabled
+                            ? [
+                                BoxShadow(
+                                  color: Colors.orange.withAlpha(
+                                    (255 * 0.4).toInt(),
+                                  ),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: buttonEnabled
+                              ? _handleContinueButton
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: buttonEnabled
+                                ? Colors.transparent
+                                : Colors.grey.shade300,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            const SizedBox(width: 12),
-                            Text(
-                              buttonText,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                            elevation: 0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                buttonIcon,
                                 color: buttonEnabled
                                     ? Colors.white
                                     : Colors.grey.shade500,
+                                size: 22,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 12),
+                              Text(
+                                buttonText,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: buttonEnabled
+                                      ? Colors.white
+                                      : Colors.grey.shade500,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -488,8 +662,10 @@ class _BadmintonTournamentSetupScreenState
   Widget _buildPlayersTab(int minPlayers) {
     return Column(
       children: [
-        Padding(
+        // Header with Input
+        Container(
           padding: const EdgeInsets.all(16),
+          color: Colors.white,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -504,15 +680,16 @@ class _BadmintonTournamentSetupScreenState
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade800,
+                          color: Colors.grey.shade900,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Minimum: $minPlayers players',
+                        'Minimum: $minPlayers players needed',
                         style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -520,92 +697,128 @@ class _BadmintonTournamentSetupScreenState
                 ],
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: memberController,
-                focusNode: _focusNode,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  hintText: 'Enter player name',
-                  prefixIcon: Icon(Icons.person, color: Colors.orange.shade600),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      Icons.add_circle,
-                      color: Colors.orange.shade600,
-                      size: 28,
+              // Input Field
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.shade300),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha((255 * 0.02).toInt()),
+                      blurRadius: 8,
                     ),
-                    onPressed: _addMember,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: Colors.grey.shade300,
-                      width: 1.5,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: Colors.orange.shade600,
-                      width: 2,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
+                  ],
                 ),
-                onSubmitted: (_) => _addMember(),
+                child: TextField(
+                  controller: memberController,
+                  focusNode: _focusNode,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    hintText: 'Enter player name',
+                    hintStyle: TextStyle(color: Colors.grey.shade400),
+                    prefixIcon: Icon(
+                      Icons.person_add_rounded,
+                      color: Colors.orange.shade600,
+                    ),
+                    suffixIcon: GestureDetector(
+                      onTap: _addMember,
+                      child: Container(
+                        margin: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.orange.shade600,
+                              Colors.deepOrange.shade500,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.add_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Colors.transparent,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                  ),
+                  onSubmitted: (_) => _addMember(),
+                ),
               ),
             ],
           ),
         ),
+
+        // Players List
         Expanded(
           child: members.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          shape: BoxShape.circle,
+                      ScaleTransition(
+                        scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                          CurvedAnimation(
+                            parent: _pulseController,
+                            curve: Curves.easeInOut,
+                          ),
                         ),
-                        child: Icon(
-                          Icons.people_outline,
-                          size: 64,
-                          color: Colors.orange.shade300,
+                        child: Container(
+                          padding: const EdgeInsets.all(28),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.orange.withAlpha(
+                                  (255 * 0.2).toInt(),
+                                ),
+                                blurRadius: 24,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.people_outline_rounded,
+                            size: 56,
+                            color: Colors.orange.shade300,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'No players added yet',
+                        'No Players Added Yet',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade700,
+                          color: Colors.grey.shade800,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Add players to create your tournament',
+                        'Add players above to create your tournament',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade500,
+                          height: 1.5,
                         ),
+                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 24),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   itemCount: members.length,
                   itemBuilder: (context, index) {
                     final member = members[index];
@@ -616,15 +829,17 @@ class _BadmintonTournamentSetupScreenState
                       background: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade400,
+                          gradient: LinearGradient(
+                            colors: [Colors.red.shade500, Colors.red.shade400],
+                          ),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         alignment: Alignment.centerRight,
                         padding: const EdgeInsets.only(right: 20),
                         child: const Icon(
-                          Icons.delete,
+                          Icons.delete_rounded,
                           color: Colors.white,
-                          size: 28,
+                          size: 24,
                         ),
                       ),
                       child: Container(
@@ -634,14 +849,14 @@ class _BadmintonTournamentSetupScreenState
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: Colors.grey.shade200,
-                            width: 1.5,
+                            width: 1,
                           ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withAlpha(
-                                (255 * 0.04).toInt(),
+                                (255 * 0.05).toInt(),
                               ),
-                              blurRadius: 8,
+                              blurRadius: 10,
                               offset: const Offset(0, 2),
                             ),
                           ],
@@ -649,7 +864,7 @@ class _BadmintonTournamentSetupScreenState
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
-                            vertical: 8,
+                            vertical: 10,
                           ),
                           leading: Container(
                             width: 48,
@@ -657,15 +872,17 @@ class _BadmintonTournamentSetupScreenState
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Colors.orange.shade400,
+                                  Colors.orange.shade500,
                                   Colors.orange.shade600,
                                 ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              shape: BoxShape.circle,
+                              borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.orange.shade300.withAlpha(
-                                    (255 * 0.5).toInt(),
+                                    (255 * 0.4).toInt(),
                                   ),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
@@ -688,22 +905,31 @@ class _BadmintonTournamentSetupScreenState
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
+                              color: Colors.grey,
                             ),
                           ),
                           subtitle: Text(
-                            'Player ${index + 1}',
+                            'Player ${index + 1} of ${members.length}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey.shade600,
+                              color: Colors.grey.shade500,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          trailing: IconButton(
-                            icon: Icon(
-                              Icons.close,
-                              color: Colors.red.shade400,
-                              size: 22,
+                          trailing: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.red.shade200),
                             ),
-                            onPressed: () => _removeMember(member),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: Colors.red.shade500,
+                                size: 20,
+                              ),
+                              onPressed: () => _removeMember(member),
+                            ),
                           ),
                         ),
                       ),
@@ -726,13 +952,17 @@ class _BadmintonTournamentSetupScreenState
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
+              color: Colors.grey.shade900,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Choose how players will compete',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            'Select how players will compete',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 24),
           ...teamTypes.map((team) {
@@ -749,51 +979,54 @@ class _BadmintonTournamentSetupScreenState
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
                 margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? color.withAlpha((255 * 0.1).toInt())
+                      ? color.withAlpha((255 * 0.08).toInt())
                       : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(
                     color: isSelected ? color : Colors.grey.shade200,
-                    width: isSelected ? 2.5 : 1.5,
+                    width: isSelected ? 2 : 1.5,
                   ),
                   boxShadow: [
                     if (isSelected)
                       BoxShadow(
-                        color: color.withAlpha((255 * 0.3).toInt()),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        color: color.withAlpha((255 * 0.25).toInt()),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
                       )
                     else
                       BoxShadow(
                         color: Colors.black.withAlpha((255 * 0.04).toInt()),
-                        blurRadius: 8,
+                        blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
                   ],
                 ),
                 child: Row(
                   children: [
+                    // Icon Container
                     Container(
-                      width: 64,
-                      height: 64,
+                      width: 68,
+                      height: 68,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: isSelected
-                              ? [color.withAlpha((255 * 0.8).toInt()), color]
+                              ? [color.withAlpha((255 * 0.7).toInt()), color]
                               : [
-                                  color.withAlpha((255 * 0.3).toInt()),
-                                  color.withAlpha((255 * 0.5).toInt()),
+                                  color.withAlpha((255 * 0.25).toInt()),
+                                  color.withAlpha((255 * 0.4).toInt()),
                                 ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           if (isSelected)
                             BoxShadow(
-                              color: color.withAlpha((255 * 0.4).toInt()),
-                              blurRadius: 8,
+                              color: color.withAlpha((255 * 0.35).toInt()),
+                              blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
                         ],
@@ -801,6 +1034,8 @@ class _BadmintonTournamentSetupScreenState
                       child: Icon(team['icon'], color: Colors.white, size: 32),
                     ),
                     const SizedBox(width: 16),
+
+                    // Info Section
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -817,40 +1052,47 @@ class _BadmintonTournamentSetupScreenState
                           Text(
                             team['description'],
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               color: Colors.grey.shade600,
+                              height: 1.3,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: 4,
+                              vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: color.withAlpha((255 * 0.15).toInt()),
+                              color: color.withAlpha((255 * 0.12).toInt()),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: color.withAlpha((255 * 0.2).toInt()),
+                              ),
                             ),
                             child: Text(
                               'Min. ${team['minPlayers']} players',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 11,
                                 color: color,
                                 fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
+
+                    // Selection Indicator
                     if (isSelected)
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              color.withAlpha((255 * 0.8).toInt()),
+                              color.withAlpha((255 * 0.7).toInt()),
                               color,
                             ],
                           ),
@@ -858,15 +1100,29 @@ class _BadmintonTournamentSetupScreenState
                           boxShadow: [
                             BoxShadow(
                               color: color.withAlpha((255 * 0.4).toInt()),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
                             ),
                           ],
                         ),
                         child: const Icon(
-                          Icons.check,
+                          Icons.check_rounded,
                           color: Colors.white,
-                          size: 18,
+                          size: 20,
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.radio_button_unchecked_rounded,
+                          color: Colors.grey.shade400,
+                          size: 20,
                         ),
                       ),
                   ],
@@ -874,6 +1130,7 @@ class _BadmintonTournamentSetupScreenState
               ),
             );
           }),
+          const SizedBox(height: 24),
         ],
       ),
     );

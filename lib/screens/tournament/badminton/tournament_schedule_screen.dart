@@ -893,7 +893,7 @@ class _BadmintonMatchScheduleScreenState
         indicator: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           gradient: LinearGradient(
-            colors: [Colors.orange.shade600, Colors.orange.shade400],
+            colors: [Colors.orange.shade600, Colors.deepOrange.shade500],
           ),
         ),
         labelColor: Colors.white,

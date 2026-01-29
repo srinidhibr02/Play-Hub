@@ -187,7 +187,7 @@ class _FinalPlayerStatsWidgetState extends State<FinalPlayerStatsWidget>
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.orange.shade400, Colors.orange.shade500],
+                  colors: [Colors.orange.shade600, Colors.deepOrange.shade500],
                 ),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [

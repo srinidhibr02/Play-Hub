@@ -13,7 +13,7 @@ class TeamReviewScreen extends StatefulWidget {
   final int totalMatches;
   final bool allowRematches;
   final String tournamentFormat;
-  final int? customTeamSize; // NEW: Custom team size
+  final int? customTeamSize;
 
   const TeamReviewScreen({
     super.key,
@@ -38,18 +38,20 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
     with TickerProviderStateMixin {
   late List<Team> teams;
   late AnimationController _fabAnimationController;
+  late AnimationController _listAnimationController;
+  Set<String> _expandedTeams = {};
 
   final List<Color> teamColors = [
-    Colors.orange,
     Colors.blue,
-    Colors.red,
     Colors.purple,
+    Colors.red,
     Colors.green,
     Colors.teal,
     Colors.indigo,
     Colors.pink,
     Colors.cyan,
     Colors.amber,
+    Colors.deepOrange,
   ];
 
   @override
@@ -57,7 +59,11 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
     super.initState();
     _generateTeams();
     _fabAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    )..forward();
+    _listAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     )..forward();
   }
@@ -65,6 +71,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
   @override
   void dispose() {
     _fabAnimationController.dispose();
+    _listAnimationController.dispose();
     super.dispose();
   }
 
@@ -73,7 +80,6 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
     List<String> shuffledMembers = List<String>.from(widget.members)..shuffle();
 
     if (widget.teamType == 'Singles') {
-      // Singles: Each player is their own team
       for (int i = 0; i < shuffledMembers.length; i++) {
         teams.add(
           Team(
@@ -84,7 +90,6 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
         );
       }
     } else if (widget.teamType == 'Doubles') {
-      // Doubles: 2 players per team
       for (int i = 0; i < shuffledMembers.length; i += 2) {
         if (i + 1 < shuffledMembers.length) {
           teams.add(
@@ -97,11 +102,9 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
         }
       }
     } else {
-      // Custom: Use customTeamSize to divide members
       final teamSize = widget.customTeamSize ?? 3;
 
       for (int i = 0; i < shuffledMembers.length; i += teamSize) {
-        // Ensure we have enough members for a complete team
         if (i + teamSize <= shuffledMembers.length) {
           List<String> teamPlayers = [];
           for (int j = 0; j < teamSize; j++) {
@@ -122,117 +125,187 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
 
   void _shuffleTeams() {
     setState(() {
+      _expandedTeams.clear();
       _generateTeams();
     });
-    _showSnackBar('Teams reshuffled!', Colors.orange.shade600);
+    _showSnackBar('Teams reshuffled!', Colors.green.shade600);
   }
 
   void _proceedToSchedule() {
     showDialog(
       context: context,
-      barrierDismissible: false, // ✅ Prevent outside taps
+      barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
+        return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
-          title: Row(
-            children: [
-              Icon(Icons.schedule, color: Colors.orange.shade600, size: 28),
-              SizedBox(width: 12),
-              Text(
-                'Confirm Schedule',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade800,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.schedule_rounded,
+                    color: Colors.orange.shade600,
+                    size: 32,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.tournamentFormat == 'knockout') ...[
+                const SizedBox(height: 20),
                 Text(
-                  'Schedule ${widget.totalMatches} matches for ${teams.length} teams?',
-                  style: TextStyle(fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'This included match count from all the rounds.',
+                  'Confirm Schedule',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                    fontStyle: FontStyle.italic,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Schedule ${widget.totalMatches} matches for ${teams.length} ${widget.teamType == 'Singles' ? 'players' : 'teams'}?',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey.shade700,
+                    height: 1.5,
                   ),
                   textAlign: TextAlign.center,
                 ),
-              ] else ...[
-                Text(
-                  'Schedule ${widget.totalMatches} matches for ${teams.length} teams?',
-                  style: TextStyle(fontSize: 16),
-                ),
-              ],
-
-              SizedBox(height: 12),
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Colors.orange.shade600,
-                      size: 20,
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.orange.shade200,
+                      width: 1.5,
                     ),
-                    SizedBox(width: 8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDetailRow(
+                        '${widget.teamType} tournament',
+                        Colors.orange.shade600,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildDetailRow(
+                        '${widget.tournamentFormat.toUpperCase()} format',
+                        Colors.blue.shade600,
+                      ),
+                      if (widget.allowRematches) ...[
+                        const SizedBox(height: 8),
+                        _buildDetailRow(
+                          '${widget.rematches}x rematches',
+                          Colors.purple.shade600,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
                     Expanded(
-                      child: Text(
-                        '• ${widget.teamType} tournament\n• ${widget.tournamentFormat.toUpperCase()} format\n'
-                        '${widget.allowRematches ? "• ${widget.rematches} x rematches" : "• No rematches"}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.orange.shade800,
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.orange.shade600,
+                              Colors.deepOrange.shade500,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.orange.withAlpha(
+                                (255 * 0.3).toInt(),
+                              ),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).pop();
+                            _navigateToSchedule();
+                          },
+                          icon: const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                          label: const Text(
+                            'Generate',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-            ),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                _navigateToSchedule(); // Navigate
-              },
-              icon: Icon(Icons.arrow_forward, size: 18),
-              label: Text('Generate Schedule'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange.shade600,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
         );
       },
+    );
+  }
+
+  Widget _buildDetailRow(String text, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade800,
+          ),
+        ),
+      ],
     );
   }
 
@@ -253,8 +326,8 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
           breakDuration: widget.breakDuration,
           totalMatches: widget.totalMatches,
           allowRematches: widget.allowRematches,
-          customTeamSize: widget.customTeamSize, // Pass custom team size
-          members: widget.members, // ✅ ADD THIS - Required for Firestore
+          customTeamSize: widget.customTeamSize,
+          members: widget.members,
           tournamentFormat: widget.tournamentFormat,
         ),
       ),
@@ -282,7 +355,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
             const SizedBox(width: 12),
             Text(
               message,
@@ -305,8 +378,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
     } else if (widget.teamType == 'Doubles') {
       return 'Drag players between teams';
     } else {
-      // Custom doubles format
-      return 'Drag to customize teams • Doubles pairs will be auto-generated';
+      return 'Customize your teams';
     }
   }
 
@@ -326,55 +398,61 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
-      extendBodyBehindAppBar: false,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
         elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.orange.shade500, Colors.orange.shade600],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Review Teams',
               style: TextStyle(
                 fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                color: Colors.grey.shade900,
+                letterSpacing: -0.5,
               ),
             ),
             Text(
               '${teams.length} ${widget.teamType == 'Singles' ? 'players' : 'teams'} ready',
               style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withAlpha((255 * 0.85).toInt()),
-                fontWeight: FontWeight.w500,
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+                color: Colors.grey.shade500,
               ),
             ),
           ],
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
             child: ScaleTransition(
-              scale: Tween<double>(begin: 0, end: 1).animate(
+              scale: Tween<double>(begin: 0.5, end: 1).animate(
                 CurvedAnimation(
                   parent: _fabAnimationController,
                   curve: Curves.elasticOut,
                 ),
               ),
-              child: IconButton(
-                onPressed: _shuffleTeams,
-                icon: const Icon(Icons.shuffle, color: Colors.white, size: 26),
-                tooltip: 'Shuffle Teams',
-                splashRadius: 24,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: _shuffleTeams,
+                  icon: Icon(
+                    Icons.shuffle_rounded,
+                    color: Colors.orange.shade600,
+                    size: 22,
+                  ),
+                  tooltip: 'Shuffle Teams',
+                  splashRadius: 24,
+                ),
               ),
             ),
           ),
@@ -382,7 +460,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
       ),
       body: Column(
         children: [
-          // Modern Info Banner
+          // Info Banner
           Container(
             margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             padding: const EdgeInsets.all(16),
@@ -396,7 +474,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
               border: Border.all(color: Colors.orange.shade200, width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.orange.withAlpha((255 * 0.1).toInt()),
+                  color: Colors.orange.withAlpha((255 * 0.08).toInt()),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -407,22 +485,13 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.orange.shade600, Colors.orange.shade700],
-                    ),
+                    color: Colors.orange.shade100,
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.orange.withAlpha((255 * 0.3).toInt()),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
-                  child: const Icon(
-                    Icons.lightbulb_outline,
-                    color: Colors.white,
-                    size: 22,
+                  child: Icon(
+                    Icons.lightbulb_outline_rounded,
+                    color: Colors.orange.shade600,
+                    size: 20,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -445,6 +514,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                           fontSize: 12,
                           color: Colors.orange.shade700,
                           fontWeight: FontWeight.w500,
+                          height: 1.3,
                         ),
                       ),
                     ],
@@ -495,74 +565,11 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                 'playerIndex': 0,
                 'player': team.players[0],
               },
-              feedback: Stack(
-                children: [
-                  Container(
-                    width: 300,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: color.withAlpha((255 * 0.3).toInt()),
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withAlpha((255 * 0.4).toInt()),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                color.withAlpha((255 * 0.8).toInt()),
-                                color,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              team.players[0][0].toUpperCase(),
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            team.players[0],
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              feedback: _buildSinglePlayerCardDrag(team, index, color),
               childWhenDragging: Opacity(
                 opacity: 0.4,
-                child: _buildSinglePlayerCard(team, index, color),
+                child: _buildSinglePlayerCard(team, index, color, false),
               ),
-              onDragStarted: () {},
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.only(bottom: 12),
@@ -570,26 +577,20 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                   boxShadow: isHovering
                       ? [
                           BoxShadow(
-                            color: Colors.orange.withAlpha((255 * 0.4).toInt()),
-                            blurRadius: 16,
-                            offset: const Offset(0, 8),
+                            color: Colors.orange.withAlpha((255 * 0.3).toInt()),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
                           ),
                         ]
                       : [
                           BoxShadow(
-                            color: Colors.black.withAlpha((255 * 0.08).toInt()),
+                            color: Colors.black.withAlpha((255 * 0.06).toInt()),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ],
-                  border: Border.all(
-                    color: isHovering
-                        ? Colors.orange.shade600
-                        : Colors.transparent,
-                    width: 2,
-                  ),
                 ),
-                child: _buildSinglePlayerCard(team, index, color),
+                child: _buildSinglePlayerCard(team, index, color, isHovering),
               ),
             );
           },
@@ -598,34 +599,39 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
     );
   }
 
-  Widget _buildSinglePlayerCard(Team team, int index, Color color) {
+  Widget _buildSinglePlayerCard(
+    Team team,
+    int index,
+    Color color,
+    bool isHovering,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: color.withAlpha((255 * 0.3).toInt()),
-          width: 2,
+          color: isHovering ? color : color.withAlpha((255 * 0.2).toInt()),
+          width: isHovering ? 2 : 1.5,
         ),
       ),
       child: Row(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withAlpha((255 * 0.8).toInt()), color],
+                colors: [color.withAlpha((255 * 0.7).toInt()), color],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: color.withAlpha((255 * 0.4).toInt()),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+                  color: color.withAlpha((255 * 0.3).toInt()),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -633,47 +639,47 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
               child: Text(
                 team.players[0][0].toUpperCase(),
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                    horizontal: 8,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: color.withAlpha((255 * 0.15).toInt()),
+                    color: color.withAlpha((255 * 0.1).toInt()),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: color.withAlpha((255 * 0.4).toInt()),
+                      color: color.withAlpha((255 * 0.3).toInt()),
                     ),
                   ),
                   child: Text(
                     '#${index + 1}',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: color,
                       letterSpacing: 0.5,
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   team.players[0],
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
+                    color: Colors.grey.shade900,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -682,11 +688,62 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
             ),
           ),
           Icon(
-            Icons.drag_indicator,
-            color: color.withAlpha((255 * 0.5).toInt()),
+            Icons.drag_indicator_rounded,
+            color: color.withAlpha((255 * 0.4).toInt()),
             size: 20,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSinglePlayerCardDrag(Team team, int index, Color color) {
+    return Material(
+      elevation: 8,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: 280,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color, width: 2),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [color.withAlpha((255 * 0.8).toInt()), color],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  team.players[0][0].toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                team.players[0],
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade900,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -698,188 +755,140 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
       itemBuilder: (context, index) {
         final team = teams[index];
         final color = teamColors[index % teamColors.length];
-        final bool showExpanded = _expandedTeams.contains(team.id);
+        final showExpanded = _expandedTeams.contains(team.id);
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          margin: const EdgeInsets.only(bottom: 16),
+          margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: color.withAlpha((255 * 0.12).toInt()),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
+                color: color.withAlpha((255 * 0.1).toInt()),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: color.withAlpha((255 * 0.25).toInt()),
-                width: 2,
+                color: color.withAlpha((255 * 0.2).toInt()),
+                width: 1.5,
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Team Header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            color.withAlpha((255 * 0.85).toInt()),
-                            color,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: color.withAlpha((255 * 0.4).toInt()),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.groups,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            team.name,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: color,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Text(
-                                '${team.players.length} members',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              if (team.players.length > 6) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade100,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    '+${team.players.length - 6}',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.orange.shade700,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (showExpanded) {
+                        _expandedTeams.remove(team.id);
+                      } else {
+                        _expandedTeams.add(team.id);
+                      }
+                    });
+                  },
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              color.withAlpha((255 * 0.8).toInt()),
+                              color,
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            color.withAlpha((255 * 0.15).toInt()),
-                            color.withAlpha((255 * 0.1).toInt()),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withAlpha((255 * 0.3).toInt()),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: color.withAlpha((255 * 0.4).toInt()),
-                          width: 1.5,
+                        child: const Icon(
+                          Icons.groups_rounded,
+                          color: Colors.white,
+                          size: 22,
                         ),
                       ),
-                      child: Text(
-                        'T${index + 1}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                          letterSpacing: 0.5,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              team.name,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: color,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${team.players.length} member${team.players.length > 1 ? 's' : ''}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Expand Button
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          if (showExpanded) {
-                            _expandedTeams.remove(team.id);
-                          } else {
-                            _expandedTeams.add(team.id);
-                          }
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.all(8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
-                          color: color.withAlpha(
-                            (255 * (showExpanded ? 0.15 : 0.08)).toInt(),
+                          color: color.withAlpha((255 * 0.1).toInt()),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: color.withAlpha((255 * 0.3).toInt()),
                           ),
-                          borderRadius: BorderRadius.circular(12),
                         ),
+                        child: Text(
+                          'T${index + 1}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedRotation(
+                        turns: showExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
                         child: Icon(
-                          showExpanded ? Icons.expand_less : Icons.expand_more,
+                          Icons.expand_more_rounded,
                           color: color,
                           size: 20,
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // Compact Preview
                 if (!showExpanded) _buildCompactPlayersPreview(team, color),
 
                 // Expanded Grid
                 if (showExpanded)
-                  AnimatedOpacity(
-                    opacity: 1.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 12),
-                        _buildExpandedPlayersGrid(team, color),
-                      ],
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: _buildExpandedPlayersGrid(team, color),
                   ),
               ],
             ),
@@ -889,60 +898,52 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
     );
   }
 
-  // Track expanded teams
-  Set<String> _expandedTeams = {};
-
   Widget _buildCompactPlayersPreview(Team team, Color color) {
-    final previewPlayers = team.players.take(3).toList();
-    final hasMore = team.players.length > 3;
+    final previewPlayers = team.players.take(4).toList();
+    final hasMore = team.players.length > 4;
 
-    return Row(
-      children: [
-        ...previewPlayers.asMap().entries.map((entry) {
-          final playerIndex = entry.key;
-          final player = entry.value;
-          return Padding(
-            padding: EdgeInsets.only(
-              right: playerIndex < previewPlayers.length - 1 ? 8 : 0,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          ...previewPlayers.asMap().entries.map((entry) {
+            final player = entry.value;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _buildPlayerChip(player, color, entry.key),
+            );
+          }),
+          if (hasMore)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Text(
+                '+${team.players.length - 4}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
             ),
-            child: _buildPlayerChip(player, color, playerIndex),
-          );
-        }),
-        if (hasMore)
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(50),
-              border: Border.all(color: const Color.fromRGBO(224, 224, 224, 1)),
-            ),
-            child: Text(
-              '+${team.players.length - 3}',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildExpandedPlayersGrid(Team team, Color color) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: team.players.asMap().entries.map((entry) {
-            final playerIndex = entry.key;
-            final player = entry.value;
-            return _buildDraggablePlayerChip(
-              team.id,
-              playerIndex,
-              player,
-              color,
-            );
-          }).toList(),
-        );
-      },
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: team.players.asMap().entries.map((entry) {
+        final playerIndex = entry.key;
+        final player = entry.value;
+        return _buildDraggablePlayerChip(team.id, playerIndex, player, color);
+      }).toList(),
     );
   }
 
@@ -956,58 +957,8 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
       data: {'teamId': teamId, 'playerIndex': playerIndex, 'player': player},
       feedback: Material(
         elevation: 12,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [color.withAlpha((255 * 0.9).toInt()), color],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: color.withAlpha((255 * 0.5).toInt()),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withAlpha((255 * 0.3).toInt()),
-                  border: Border.all(color: Colors.white, width: 1.5),
-                ),
-                child: Center(
-                  child: Text(
-                    '${playerIndex + 1}',
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                player,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
+        borderRadius: BorderRadius.circular(12),
+        child: _buildPlayerChipDrag(player, color, playerIndex),
       ),
       childWhenDragging: Opacity(
         opacity: 0.3,
@@ -1034,36 +985,9 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
         builder: (context, candidateData, rejectedData) {
           final isHovering = candidateData.isNotEmpty;
           return AnimatedScale(
-            scale: isHovering ? 1.1 : 1.0,
+            scale: isHovering ? 1.08 : 1.0,
             duration: const Duration(milliseconds: 200),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: isHovering
-                    ? [
-                        BoxShadow(
-                          color: Colors.orange.withAlpha((255 * 0.4).toInt()),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withAlpha((255 * 0.08).toInt()),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                border: Border.all(
-                  color: isHovering
-                      ? Colors.orange.shade600
-                      : Colors.transparent,
-                  width: 2,
-                ),
-              ),
-              child: _buildPlayerChip(player, color, playerIndex, isHovering),
-            ),
+            child: _buildPlayerChip(player, color, playerIndex, isHovering),
           );
         },
       ),
@@ -1077,27 +1001,25 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
     bool isHovering = false,
   ]) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isHovering
               ? [color.withAlpha((255 * 0.85).toInt()), color]
               : [
-                  color.withAlpha((255 * 0.12).toInt()),
                   color.withAlpha((255 * 0.08).toInt()),
+                  color.withAlpha((255 * 0.05).toInt()),
                 ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isHovering ? color : color.withAlpha((255 * 0.25).toInt()),
-          width: isHovering ? 2 : 1.5,
+          width: isHovering ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withAlpha((255 * (isHovering ? 0.25 : 0.08)).toInt()),
-            blurRadius: isHovering ? 10 : 3,
+            color: color.withAlpha((255 * (isHovering ? 0.2 : 0.06)).toInt()),
+            blurRadius: isHovering ? 8 : 2,
             offset: const Offset(0, 2),
           ),
         ],
@@ -1108,7 +1030,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
           Text(
             playerName,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: isHovering ? Colors.white : color,
             ),
@@ -1116,28 +1038,51 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
             overflow: TextOverflow.ellipsis,
           ),
           if (isHovering) ...[
-            const SizedBox(width: 5),
-            Icon(
-              Icons.open_with,
-              size: 12,
-              color: isHovering ? Colors.white : color,
-            ),
+            const SizedBox(width: 4),
+            Icon(Icons.open_with_rounded, size: 12, color: Colors.white),
           ],
         ],
       ),
     );
   }
 
+  Widget _buildPlayerChipDrag(String playerName, Color color, int playerIndex) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color.withAlpha((255 * 0.9).toInt()), color],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: color.withAlpha((255 * 0.4).toInt()),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Text(
+        playerName,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomActionBar() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha((255 * 0.1).toInt()),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
+            color: Colors.black.withAlpha((255 * 0.08).toInt()),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -1148,14 +1093,14 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _shuffleTeams,
-                icon: const Icon(Icons.shuffle, size: 20),
+                icon: const Icon(Icons.shuffle_rounded, size: 18),
                 label: const Text('Shuffle'),
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: Colors.orange.shade600, width: 2),
+                  side: BorderSide(color: Colors.orange.shade600, width: 1.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   foregroundColor: Colors.orange.shade600,
                 ),
               ),
@@ -1163,25 +1108,42 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
             const SizedBox(width: 12),
             Expanded(
               flex: 2,
-              child: ElevatedButton.icon(
-                onPressed: _proceedToSchedule,
-                icon: const Icon(
-                  Icons.calendar_month,
-                  size: 20,
-                  color: Colors.white,
-                ),
-                label: const Text(
-                  'Schedule Matches',
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade600,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.orange.shade600,
+                      Colors.deepOrange.shade500,
+                    ],
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  elevation: 4,
-                  shadowColor: Colors.orange.withAlpha((255 * 0.4).toInt()),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withAlpha((255 * 0.3).toInt()),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: _proceedToSchedule,
+                  icon: const Icon(
+                    Icons.calendar_month_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Schedule',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ),
             ),

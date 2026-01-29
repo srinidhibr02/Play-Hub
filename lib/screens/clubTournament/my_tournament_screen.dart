@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:play_hub/screens/clubTournament/tournament_info_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
 import 'package:play_hub/screens/clubTournament/tournament_details_screen.dart';
 
@@ -593,8 +594,10 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
                       onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => TournamentDetailsScreen(
+                            builder: (context) => TournamentInfoScreen(
                               tournamentId: tournament['id'] as String,
+                              tournamentName: tournamentName,
+                              startDate: tournament['date'],
                             ),
                           ),
                         );
