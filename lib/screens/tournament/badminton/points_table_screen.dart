@@ -174,7 +174,7 @@ class _StandingsTabState extends State<StandingsTab>
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.orange.shade700, Colors.orange.shade500],
+            colors: [Colors.orange.shade600, Colors.deepOrange.shade500],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
