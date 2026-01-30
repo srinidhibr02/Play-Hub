@@ -5,7 +5,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class TournamentRegistrationScreen extends StatefulWidget {
   final String tournamentId;
-  final String category; // e.g., "maleDoubles", "femaleSingles"
+  final String category;
   final num entryFee;
   final String tournamentName;
 
@@ -23,13 +23,14 @@ class TournamentRegistrationScreen extends StatefulWidget {
 }
 
 class _TournamentRegistrationScreenState
-    extends State<TournamentRegistrationScreen> {
+    extends State<TournamentRegistrationScreen>
+    with SingleTickerProviderStateMixin {
   final _firestore = FirebaseFirestore.instance;
   final _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   late Razorpay _razorpay;
+  late AnimationController _animationController;
 
-  // Form Controllers
   late TextEditingController _fullNameController;
   late TextEditingController _phoneController;
   late TextEditingController _participantController;
@@ -44,27 +45,35 @@ class _TournamentRegistrationScreenState
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    )..forward();
+
     _fullNameController = TextEditingController();
     _phoneController = TextEditingController();
     _participantController = TextEditingController();
 
-    // Initialize Razorpay
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
 
-    // Calculate booking fee (5% of entry fee)
     bookingFee = widget.entryFee * 0.05;
-
-    // Initialize participants list
     participants = [];
-
-    // Set max participants based on category
     maxParticipants = widget.category.toLowerCase().contains('singles') ? 1 : 2;
 
-    // Pre-fill user data if available
     _prefillUserData();
+  }
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _phoneController.dispose();
+    _participantController.dispose();
+    _razorpay.clear();
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _prefillUserData() async {
@@ -95,7 +104,7 @@ class _TournamentRegistrationScreenState
 
     if (participants.length >= maxParticipants) {
       _showErrorSnackBar(
-        'Maximum $maxParticipants participant${maxParticipants > 1 ? 's' : ''} allowed for this category',
+        'Maximum $maxParticipants participant${maxParticipants > 1 ? 's' : ''} allowed',
       );
       return;
     }
@@ -104,7 +113,7 @@ class _TournamentRegistrationScreenState
       participants.add(name.trim().toUpperCase());
     });
     _participantController.clear();
-    _showSuccessSnackBar('Participant added successfully!');
+    _showSuccessSnackBar('Participant added!');
   }
 
   void _removeParticipant(String name) {
@@ -139,7 +148,6 @@ class _TournamentRegistrationScreenState
         throw Exception('User not authenticated');
       }
 
-      // Create registration document with pending status
       final registrationRef = _firestore
           .collection('tournaments')
           .doc(widget.tournamentId)
@@ -161,8 +169,6 @@ class _TournamentRegistrationScreenState
       });
 
       setState(() => isSubmitting = false);
-
-      // Proceed to payment
       _initiatePayment();
     } catch (e) {
       setState(() => isSubmitting = false);
@@ -173,8 +179,8 @@ class _TournamentRegistrationScreenState
   void _initiatePayment() {
     try {
       final options = {
-        'key': 'rzp_live_S1intCExDSf19z', // Replace with your Razorpay Key ID
-        'amount': (bookingFee * 100).toInt(), // Amount in paise
+        'key': 'rzp_live_S1intCExDSf19z',
+        'amount': (bookingFee * 100).toInt(),
         'name': widget.tournamentName,
         'description':
             'Tournament Registration - ${_formatCategory(widget.category)}',
@@ -198,9 +204,7 @@ class _TournamentRegistrationScreenState
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     paymentId = response.paymentId;
-    debugPrint('Payment Success: ${response.paymentId}');
 
-    // Update registration with payment ID and mark as confirmed
     try {
       await _firestore
           .collection('tournaments')
@@ -214,8 +218,6 @@ class _TournamentRegistrationScreenState
           });
 
       if (!mounted) return;
-
-      // Show booking confirmation screen
       _showBookingConfirmation();
     } catch (e) {
       _showErrorSnackBar('Failed to update payment details: $e');
@@ -226,7 +228,6 @@ class _TournamentRegistrationScreenState
     debugPrint('Payment Error: ${response.code} - ${response.message}');
     _showErrorSnackBar('Payment failed: ${response.message}');
 
-    // Delete the pending registration
     _firestore
         .collection('tournaments')
         .doc(widget.tournamentId)
@@ -300,107 +301,112 @@ class _TournamentRegistrationScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Registration'),
-        backgroundColor: Colors.teal.shade700,
-        foregroundColor: Colors.white,
+        title: const Text('Tournament Registration'),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.grey.shade900,
         elevation: 0,
+        centerTitle: true,
+        titleTextStyle: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: Colors.black87,
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tournament Info Card with Enhanced Design
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.teal.shade600, Colors.teal.shade800],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.teal.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+              // Tournament Info Card
+              FadeTransition(
+                opacity: _animationController,
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.teal.shade600, Colors.teal.shade800],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.tournamentName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.teal.withOpacity(0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Category',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white.withOpacity(0.8),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatCategory(widget.category),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.emoji_events_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              'Entry Fee',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white.withOpacity(0.8),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '₹${widget.entryFee.toStringAsFixed(0)}',
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              widget.tournamentName,
                               style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
                                 color: Colors.white,
+                                letterSpacing: -0.3,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildInfoItem(
+                              'Category',
+                              _formatCategory(widget.category),
+                              Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildInfoItem(
+                              'Entry Fee',
+                              '₹${widget.entryFee.toStringAsFixed(0)}',
+                              Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 28),
+
+              const SizedBox(height: 32),
 
               // Personal Information Section
-              _buildSectionTitle('Personal Information'),
-              const SizedBox(height: 12),
+              _buildSectionHeader(
+                'Personal Information',
+                Icons.person_rounded,
+                Colors.blue,
+              ),
+              const SizedBox(height: 16),
 
-              // Full Name Field
               _buildTextFormField(
                 controller: _fullNameController,
                 label: 'Full Name',
@@ -415,11 +421,10 @@ class _TournamentRegistrationScreenState
               ),
               const SizedBox(height: 16),
 
-              // Phone Number Field
               _buildTextFormField(
                 controller: _phoneController,
                 label: 'Phone Number',
-                hint: 'Enter your phone number',
+                hint: 'Enter your 10-digit phone number',
                 icon: Icons.phone,
                 keyboardType: TextInputType.phone,
                 validator: (value) {
@@ -435,13 +440,28 @@ class _TournamentRegistrationScreenState
                   return null;
                 },
               ),
-              const SizedBox(height: 28),
+
+              const SizedBox(height: 32),
 
               // Participants Section
-              _buildSectionTitle('Participants'),
-              const SizedBox(height: 12),
+              _buildSectionHeader(
+                'Add Participants',
+                Icons.group_rounded,
+                Colors.purple,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                maxParticipants == 2
+                    ? 'Add 2 participants for doubles'
+                    : 'Add your name to confirm participation',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 16),
 
-              // Participant Input with Add Button
               Row(
                 children: [
                   Expanded(
@@ -449,21 +469,25 @@ class _TournamentRegistrationScreenState
                       controller: _participantController,
                       decoration: InputDecoration(
                         hintText: 'First & Last Name',
-                        prefixIcon: const Icon(Icons.person_add),
+                        prefixIcon: Icon(
+                          Icons.person_add_rounded,
+                          color: Colors.grey.shade400,
+                        ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide(
                             color: Colors.grey.shade300,
                             width: 1.5,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide(
-                            color: Colors.teal.shade700,
+                            color: Colors.purple.shade700,
                             width: 2,
                           ),
                         ),
@@ -480,11 +504,23 @@ class _TournamentRegistrationScreenState
                   const SizedBox(width: 12),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.teal.shade700,
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.purple.shade600,
+                          Colors.purple.shade700,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.purple.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.add, color: Colors.white),
+                      icon: const Icon(Icons.add_rounded, color: Colors.white),
                       onPressed: () {
                         _addParticipant(_participantController.text);
                       },
@@ -492,9 +528,9 @@ class _TournamentRegistrationScreenState
                   ),
                 ],
               ),
+
               const SizedBox(height: 20),
 
-              // Added Participants List
               if (participants.isNotEmpty)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,28 +539,28 @@ class _TournamentRegistrationScreenState
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Added Participants',
+                          'Participants Added',
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade800,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey.shade900,
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                            horizontal: 10,
+                            vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.teal.shade100,
+                            color: Colors.purple.shade100,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             '${participants.length}/$maxParticipants',
                             style: TextStyle(
                               fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.teal.shade700,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.purple.shade700,
                             ),
                           ),
                         ),
@@ -542,7 +578,12 @@ class _TournamentRegistrationScreenState
                             vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.green.shade50,
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.green.shade50,
+                                Colors.green.shade100,
+                              ],
+                            ),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: Colors.green.shade300,
@@ -555,30 +596,36 @@ class _TournamentRegistrationScreenState
                               Row(
                                 children: [
                                   Container(
-                                    width: 28,
-                                    height: 28,
+                                    width: 32,
+                                    height: 32,
                                     decoration: BoxDecoration(
-                                      color: Colors.green.shade700,
-                                      borderRadius: BorderRadius.circular(6),
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.green.shade700,
+                                          Colors.green.shade600,
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Center(
                                       child: Text(
                                         '${index + 1}',
                                         style: const TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.white,
                                         ),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 14),
                                   Text(
                                     participant,
                                     style: TextStyle(
                                       fontSize: 14,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.w700,
                                       color: Colors.grey.shade800,
+                                      letterSpacing: -0.3,
                                     ),
                                   ),
                                 ],
@@ -586,13 +633,13 @@ class _TournamentRegistrationScreenState
                               GestureDetector(
                                 onTap: () => _removeParticipant(participant),
                                 child: Container(
-                                  padding: const EdgeInsets.all(4),
+                                  padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
                                     color: Colors.red.shade100,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Icon(
-                                    Icons.close,
+                                    Icons.close_rounded,
                                     color: Colors.red.shade600,
                                     size: 18,
                                   ),
@@ -603,106 +650,191 @@ class _TournamentRegistrationScreenState
                         ),
                       );
                     }).toList(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                   ],
                 ),
 
-              // Booking Fee Summary
+              // Payment Summary Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.orange.shade100, Colors.amber.shade100],
+                    colors: [Colors.amber.shade50, Colors.orange.shade50],
                   ),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.orange.shade300, width: 1.5),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.payment_rounded,
+                                color: Colors.orange.shade600,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Booking Fee',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.orange.shade600,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  '(Pay now to confirm)',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.orange.shade500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                         Text(
-                          'Pay ₹${bookingFee.toStringAsFixed(2)} to confirm your slot',
+                          '₹${bookingFee.toStringAsFixed(2)}',
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                             color: Colors.orange.shade900,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '(Non-refundable)',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.red.shade700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Pay ₹${widget.entryFee.toStringAsFixed(0)} at venue',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.orange.shade700,
                           ),
                         ),
                       ],
                     ),
-                    Text(
-                      '₹${bookingFee.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade900,
-                      ),
+                    Divider(color: Colors.orange.shade300, height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Remaining at Venue',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '(Pay on tournament day)',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.orange.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '₹${widget.entryFee.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.orange.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Divider(color: Colors.orange.shade300, height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total Entry Fee',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey.shade900,
+                          ),
+                        ),
+                        Text(
+                          '₹${(bookingFee + widget.entryFee).toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.teal.shade700,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
+
+              const SizedBox(height: 24),
 
               // Submit Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
-                child: ElevatedButton(
-                  onPressed: isSubmitting ? null : _createRegistration,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal.shade700,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    disabledBackgroundColor: Colors.grey.shade400,
-                    elevation: 0,
-                  ),
-                  child: isSubmitting
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                      : const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.check_circle_outline, size: 20),
-                            SizedBox(width: 10),
-                            Text(
-                              'Proceed to Payment',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                child: Material(
+                  borderRadius: BorderRadius.circular(16),
+                  elevation: 8,
+                  shadowColor: Colors.teal.withOpacity(0.4),
+                  child: InkWell(
+                    onTap: isSubmitting ? null : _createRegistration,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isSubmitting
+                              ? [Colors.grey.shade400, Colors.grey.shade500]
+                              : [Colors.teal.shade600, Colors.teal.shade700],
                         ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (isSubmitting)
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white.withOpacity(0.8),
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          else
+                            const Icon(
+                              Icons.payment_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          const SizedBox(width: 12),
+                          Text(
+                            isSubmitting
+                                ? 'Processing...'
+                                : 'Proceed to Payment',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
+
               const SizedBox(height: 20),
             ],
           ),
@@ -711,14 +843,57 @@ class _TournamentRegistrationScreenState
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.grey.shade900,
-      ),
+  Widget _buildSectionHeader(String title, IconData icon, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: Colors.grey.shade900,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value, Color textColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: textColor.withOpacity(0.8),
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: textColor,
+            letterSpacing: -0.3,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 
@@ -733,29 +908,50 @@ class _TournamentRegistrationScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade800,
-          ),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: Colors.blue.shade600, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Icon(icon),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(color: Colors.grey.shade300, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.teal.shade700, width: 2),
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.blue.shade600, width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -777,19 +973,10 @@ class _TournamentRegistrationScreenState
         .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
         .join(' ');
   }
-
-  @override
-  void dispose() {
-    _fullNameController.dispose();
-    _phoneController.dispose();
-    _participantController.dispose();
-    _razorpay.clear();
-    super.dispose();
-  }
 }
 
-// Booking Confirmation Dialog
-class BookingConfirmationDialog extends StatelessWidget {
+// Modern Booking Confirmation Dialog
+class BookingConfirmationDialog extends StatefulWidget {
   final String tournamentName;
   final String category;
   final String fullName;
@@ -814,39 +1001,80 @@ class BookingConfirmationDialog extends StatelessWidget {
   });
 
   @override
+  State<BookingConfirmationDialog> createState() =>
+      _BookingConfirmationDialogState();
+}
+
+class _BookingConfirmationDialogState extends State<BookingConfirmationDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 16,
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Success Header
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.green.shade600, Colors.green.shade800],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
               ),
               child: Column(
                 children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(40),
+                  ScaleTransition(
+                    scale: Tween<double>(begin: 0, end: 1).animate(
+                      CurvedAnimation(
+                        parent: _animationController,
+                        curve: Curves.elasticOut,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.check_circle,
-                      size: 50,
-                      color: Colors.green.shade600,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(40),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.shade600.withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.check_circle_rounded,
+                        size: 50,
+                        color: Colors.green.shade600,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -856,44 +1084,52 @@ class BookingConfirmationDialog extends StatelessWidget {
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
+                      letterSpacing: -0.3,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Your spot is confirmed',
-                    style: TextStyle(fontSize: 14, color: Colors.white70),
+                  Text(
+                    'Your registration is confirmed',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.85),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
             ),
 
-            // Content
             Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tournament Details
-                  _buildDetailCard(
-                    title: 'Tournament Details',
-                    children: [
-                      _buildDetailRow('Tournament', tournamentName),
+                  _buildDetailSection(
+                    'Tournament Details',
+                    Icons.emoji_events_rounded,
+                    Colors.teal,
+                    [
+                      _buildDetailRow('Tournament', widget.tournamentName),
                       const SizedBox(height: 12),
-                      _buildDetailRow('Category', category),
+                      _buildDetailRow('Category', widget.category),
                       const SizedBox(height: 12),
-                      _buildDetailRow('Organizer', fullName),
+                      _buildDetailRow('Organizer', widget.fullName),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  // Participants
-                  _buildDetailCard(
-                    title: 'Participants',
-                    children: [
-                      ...participants.asMap().entries.map((entry) {
+                  _buildDetailSection(
+                    'Participants',
+                    Icons.group_rounded,
+                    Colors.purple,
+                    [
+                      ...widget.participants.asMap().entries.map((entry) {
                         return Padding(
                           padding: EdgeInsets.only(
-                            bottom: entry.key < participants.length - 1 ? 8 : 0,
+                            bottom: entry.key < widget.participants.length - 1
+                                ? 10
+                                : 0,
                           ),
                           child: Row(
                             children: [
@@ -901,16 +1137,21 @@ class BookingConfirmationDialog extends StatelessWidget {
                                 width: 24,
                                 height: 24,
                                 decoration: BoxDecoration(
-                                  color: Colors.teal.shade100,
-                                  borderRadius: BorderRadius.circular(4),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.purple.shade600,
+                                      Colors.purple.shade500,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Center(
                                   child: Text(
                                     '${entry.key + 1}',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.teal.shade700,
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ),
@@ -918,9 +1159,10 @@ class BookingConfirmationDialog extends StatelessWidget {
                               const SizedBox(width: 10),
                               Text(
                                 entry.value,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade800,
                                 ),
                               ),
                             ],
@@ -931,88 +1173,73 @@ class BookingConfirmationDialog extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Payment Details
-                  _buildDetailCard(
-                    title: 'Payment Details',
-                    children: [
+                  _buildDetailSection(
+                    'Payment Details',
+                    Icons.payment_rounded,
+                    Colors.orange,
+                    [
                       _buildDetailRow(
                         'Booking Fee Paid',
-                        '₹${bookingFee.toStringAsFixed(2)}',
+                        '₹${widget.bookingFee.toStringAsFixed(2)}',
                       ),
                       const SizedBox(height: 12),
                       _buildDetailRow(
                         'Pending at Venue',
-                        '₹${entryFee.toStringAsFixed(0)}',
+                        '₹${widget.entryFee.toStringAsFixed(0)}',
                       ),
                       const SizedBox(height: 12),
                       _buildDetailRow(
-                        'Payment ID',
-                        paymentId,
-                        isMonospace: true,
+                        'Total',
+                        '₹${(widget.bookingFee + widget.entryFee).toStringAsFixed(0)}',
+                        isBold: true,
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  // Registration ID
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.shade300),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Registration ID',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blue.shade700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          registrationId,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Courier',
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
+                  _buildIdBox(
+                    'Registration ID',
+                    widget.registrationId,
+                    Colors.blue,
                   ),
+                  const SizedBox(height: 12),
+                  _buildIdBox('Payment ID', widget.paymentId, Colors.teal),
                 ],
               ),
             ),
 
-            // Divider
             Divider(height: 1, color: Colors.grey.shade300),
 
-            // Action Button
             Padding(
               padding: const EdgeInsets.all(16),
               child: SizedBox(
                 width: double.infinity,
                 height: 48,
-                child: ElevatedButton(
-                  onPressed: onConfirm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal.shade700,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Done',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                child: Material(
+                  borderRadius: BorderRadius.circular(14),
+                  elevation: 4,
+                  shadowColor: Colors.teal.withOpacity(0.3),
+                  child: InkWell(
+                    onTap: widget.onConfirm,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.teal.shade600, Colors.teal.shade700],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Done',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1024,28 +1251,44 @@ class BookingConfirmationDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailCard({
-    required String title,
-    required List<Widget> children,
-  }) {
+  Widget _buildDetailSection(
+    String title,
+    IconData icon,
+    Color color,
+    List<Widget> children,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey,
-          ),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade600,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1056,17 +1299,17 @@ class BookingConfirmationDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(
-    String label,
-    String value, {
-    bool isMonospace = false,
-  }) {
+  Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey.shade700,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+          ),
         ),
         Expanded(
           child: Text(
@@ -1074,13 +1317,48 @@ class BookingConfirmationDialog extends StatelessWidget {
             textAlign: TextAlign.end,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w600,
-              fontFamily: isMonospace ? 'Courier' : null,
-              letterSpacing: isMonospace ? 0.3 : 0,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+              color: isBold ? Colors.teal.shade700 : Colors.grey.shade900,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildIdBox(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color.withOpacity(0.8),
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace',
+              color: color,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

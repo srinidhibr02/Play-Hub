@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:play_hub/screens/clubTournament/explore_tournament_screen.dart';
+import 'package:play_hub/screens/clubTournament/host_tournament_screen.dart';
 import 'package:play_hub/screens/clubTournament/my_tournament_screen.dart';
+import 'package:play_hub/service/auth_service.dart';
 
 class TournamentScreen extends StatefulWidget {
   const TournamentScreen({super.key});
@@ -17,6 +19,7 @@ class _TournamentScreenState extends State<TournamentScreen>
   bool _isInitializing = true;
   Position? _userLocation;
   bool _hasLocationPermission = false;
+  final String _userEmail = AuthService().currentUserEmailId ?? '';
 
   @override
   void initState() {
@@ -377,6 +380,33 @@ class _TournamentScreenState extends State<TournamentScreen>
           // My Tournaments Tab (to be designed later)
           MyTournamentsWidget(onRequestLocation: _requestLocationPermission),
         ],
+      ),
+      floatingActionButton: _buildCreateTournamentFAB(),
+    );
+  }
+
+  Widget _buildCreateTournamentFAB() {
+    return FloatingActionButton.extended(
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => HostTournamentScreen(userEmail: _userEmail),
+          ),
+        );
+      },
+      backgroundColor: Colors.orangeAccent.shade400,
+      foregroundColor: Colors.white,
+      elevation: 8,
+      highlightElevation: 12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      icon: const Icon(Icons.add_rounded, size: 24),
+      label: const Text(
+        'Host Tournament',
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.3,
+        ),
       ),
     );
   }
