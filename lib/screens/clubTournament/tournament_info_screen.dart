@@ -21,41 +21,39 @@ class TournamentInfoScreen extends StatefulWidget {
 class _TournamentInfoScreenState extends State<TournamentInfoScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  late AnimationController _scaleController;
+  late AnimationController _pageAnimationController;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final Map<String, Color> categoryColors = {
-    'Male Singles': Colors.blue,
-    'Male Doubles': Colors.orange,
-    'Female Singles': Colors.pink,
-    'Female Doubles': Colors.purple,
-    'Mixed Doubles': Colors.green,
+    'Male Singles': const Color(0xFF3B82F6),
+    'Male Doubles': const Color(0xFFF97316),
+    'Female Singles': const Color(0xFFEC4899),
+    'Female Doubles': const Color(0xFFA855F7),
+    'Mixed Doubles': const Color(0xFF10B981),
   };
 
   final Map<String, IconData> categoryIcons = {
-    'Male Singles': Icons.person,
-    'Male Doubles': Icons.people,
-    'Female Singles': Icons.person,
-    'Female Doubles': Icons.people,
-    'Mixed Doubles': Icons.groups,
+    'Male Singles': Icons.person_rounded,
+    'Male Doubles': Icons.people_rounded,
+    'Female Singles': Icons.person_rounded,
+    'Female Doubles': Icons.people_rounded,
+    'Mixed Doubles': Icons.groups_rounded,
   };
 
   @override
   void initState() {
     super.initState();
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+    _pageAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 700),
       vsync: this,
     )..forward();
   }
 
   @override
   void dispose() {
-    if (mounted) {
-      _tabController.dispose();
-      _scaleController.dispose();
-    }
+    _tabController.dispose();
+    _pageAnimationController.dispose();
     super.dispose();
   }
 
@@ -85,12 +83,11 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
           'fullName': fullName,
           'participants': participants,
           'status': status,
-          'bookingAmount': data['bookingAmount'] ?? 0,
+          'bookingAmount': data['booking'] ?? 0,
           'registeredAt': data['registeredAt'],
         });
       }
 
-      // Sort participants within each category
       grouped.forEach((category, registrations) {
         registrations.sort(
           (a, b) =>
@@ -127,7 +124,6 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
             return _buildEmptyState();
           }
 
-          // Initialize TabController
           _tabController = TabController(
             length: groupedData.length,
             vsync: this,
@@ -136,7 +132,6 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
           return _buildTabbedRegistrations(groupedData);
         },
       ),
-      bottomNavigationBar: _buildStatusButton(),
     );
   }
 
@@ -146,8 +141,9 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_rounded, color: Colors.black),
+        icon: Icon(Icons.arrow_back_rounded, color: Colors.grey.shade900),
         onPressed: () => Navigator.pop(context),
+        splashRadius: 28,
       ),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,9 +160,10 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
           Text(
             widget.tournamentName,
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
               color: Colors.grey.shade500,
+              letterSpacing: 0.2,
             ),
           ),
         ],
@@ -180,37 +177,45 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ScaleTransition(
-            scale: Tween<double>(begin: 0.5, end: 1.0).animate(
+            scale: Tween<double>(begin: 0.6, end: 1.0).animate(
               CurvedAnimation(
-                parent: _scaleController,
+                parent: _pageAnimationController,
                 curve: Curves.elasticOut,
               ),
             ),
             child: Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Colors.orange.shade100,
+                gradient: LinearGradient(
+                  colors: [Colors.teal.shade100, Colors.cyan.shade100],
+                ),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.sports_rounded,
-                size: 48,
-                color: Colors.orange.shade600,
+                Icons.sports_volleyball_rounded,
+                size: 56,
+                color: Colors.teal.shade600,
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
           Text(
             'Loading participants...',
             style: TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade800,
+              letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 16),
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(Colors.orange.shade600),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(Colors.teal.shade600),
+              strokeWidth: 3.5,
+            ),
           ),
         ],
       ),
@@ -223,31 +228,40 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
               color: Colors.red.shade100,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.error_outline_rounded,
-              size: 48,
+              size: 56,
               color: Colors.red.shade600,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Text(
-            'Error loading participants',
+            'Error Loading Participants',
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
               color: Colors.red.shade700,
+              letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            error,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            textAlign: TextAlign.center,
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              error,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
@@ -260,30 +274,38 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: Colors.orange.shade50,
+              gradient: LinearGradient(
+                colors: [Colors.teal.shade50, Colors.cyan.shade50],
+              ),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.group_add_rounded,
-              size: 56,
-              color: Colors.orange.shade300,
+              size: 64,
+              color: Colors.teal.shade300,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           Text(
             'No Registrations Yet',
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade800,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Colors.grey.shade900,
+              letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             'Waiting for participants to register',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -302,44 +324,12 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
     return Column(
       children: [
         // Tournament Info Card
-        _buildTournamentInfoCard(totalParticipants),
+        _buildTournamentInfoCard(totalParticipants, groupedData),
 
-        // Tab Bar with categories
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.only(bottom: 0),
-          child: TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            labelPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 16,
-            ),
-            unselectedLabelColor: Colors.grey.shade600,
-            indicator: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.transparent,
-            ),
-            indicatorSize: TabBarIndicatorSize.label,
-            dividerColor: Colors.grey.shade200,
-            splashBorderRadius: BorderRadius.circular(12),
-            tabs: categories.asMap().entries.map((entry) {
-              final category = entry.value;
-              final count = groupedData[category]!.length;
-              final color = categoryColors[category] ?? Colors.grey;
-              final icon = categoryIcons[category] ?? Icons.person;
+        // Category Tabs
+        _buildCategoryTabBar(categories, groupedData),
 
-              return _buildCategoryTab(
-                category: category,
-                count: count,
-                color: color,
-                icon: icon,
-              );
-            }).toList(),
-          ),
-        ),
-
-        // TabBarView - Content for each category
+        // Content
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -359,144 +349,249 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
     );
   }
 
-  Widget _buildTournamentInfoCard(int totalParticipants) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.orange.shade50, Colors.amber.shade50],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.orange.shade200, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withAlpha((255 * 0.08).toInt()),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade100,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.calendar_today_rounded,
-              color: Colors.orange.shade600,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Tournament Date',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  DateFormat(
-                    'EEEE, MMMM d, yyyy',
-                  ).format(widget.startDate.toDate()),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            children: [
-              Text(
-                'Total',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.orange.shade700,
-                  fontWeight: FontWeight.w600,
-                ),
+  Widget _buildTournamentInfoCard(
+    int totalParticipants,
+    Map<String, List<Map<String, dynamic>>> groupedData,
+  ) {
+    final startDate = widget.startDate.toDate();
+    final daysUntilTournament = startDate.difference(DateTime.now()).inDays;
+    final formattedDate = DateFormat('EEEE, MMM d').format(startDate);
+
+    return FadeTransition(
+      opacity: _pageAnimationController,
+      child: SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, -0.2), end: Offset.zero)
+            .animate(
+              CurvedAnimation(
+                parent: _pageAnimationController,
+                curve: Curves.easeOut,
               ),
-              const SizedBox(height: 2),
-              Text(
-                totalParticipants.toString(),
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade700,
-                ),
+            ),
+        child: Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.teal.shade600, Colors.cyan.shade600],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.teal.withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
             ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date Section
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.calendar_month_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tournament Date',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.8),
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          formattedDate,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // Stats Row
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatItem(
+                      icon: Icons.people_rounded,
+                      label: 'Total Registrations',
+                      value: totalParticipants.toString(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatItem(
+                      icon: Icons.category_rounded,
+                      label: 'Categories',
+                      value: groupedData.length.toString(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatItem(
+                      icon: daysUntilTournament <= 0
+                          ? Icons.check_circle_rounded
+                          : Icons.schedule_rounded,
+                      label: daysUntilTournament <= 0 ? 'Started' : 'Days Left',
+                      value: daysUntilTournament <= 0
+                          ? 'Now'
+                          : daysUntilTournament.toString(),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.white.withOpacity(0.7),
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryTab({
-    required String category,
-    required int count,
-    required Color color,
-    required IconData icon,
-  }) {
+  Widget _buildCategoryTabBar(
+    List<String> categories,
+    Map<String, List<Map<String, dynamic>>> groupedData,
+  ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withAlpha((255 * 0.85).toInt()), color],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: color.withAlpha((255 * 0.3).toInt()),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: Colors.white),
-          const SizedBox(width: 6),
-          Text(
-            category,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha((255 * 0.25).toInt()),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              count.toString(),
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+      color: Colors.white,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: categories.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final category = entry.value;
+            final count = groupedData[category]!.length;
+            final color = categoryColors[category] ?? Colors.grey;
+            final icon = categoryIcons[category] ?? Icons.person;
+
+            return GestureDetector(
+              onTap: () => _tabController.animateTo(idx),
+              child: Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color.withOpacity(0.9), color],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 16, color: Colors.white),
+                    const SizedBox(width: 6),
+                    Text(
+                      category,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        count.toString(),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        ],
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -510,62 +605,10 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
       padding: const EdgeInsets.all(16),
       children: [
         // Category Header
-        Container(
-          padding: const EdgeInsets.all(14),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                color.withAlpha((255 * 0.08).toInt()),
-                color.withAlpha((255 * 0.05).toInt()),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: color.withAlpha((255 * 0.2).toInt()),
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withAlpha((255 * 0.15).toInt()),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(categoryIcons[category], color: color, size: 18),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      category,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${registrations.length} participant${registrations.length > 1 ? 's' : ''}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        _buildCategoryHeader(category, registrations.length, color),
+        const SizedBox(height: 20),
 
-        // Participants List
+        // Participants List with Staggered Animation
         ...registrations.asMap().entries.map((entry) {
           final index = entry.key;
           final registration = entry.value;
@@ -575,256 +618,252 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
           );
           final status = registration['status'] as String;
 
-          return _buildParticipantTile(
-            fullName: fullName,
-            participants: participants,
-            color: color,
-            participantIndex: index,
-            totalParticipants: registrations.length,
-            status: status,
+          return SlideTransition(
+            position:
+                Tween<Offset>(
+                  begin: const Offset(0.3, 0),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: _pageAnimationController,
+                    curve: Interval(
+                      0.2 + (index * 0.05),
+                      1.0,
+                      curve: Curves.easeOut,
+                    ),
+                  ),
+                ),
+            child: _buildParticipantCard(
+              fullName: fullName,
+              participants: participants,
+              color: color,
+              index: index,
+              total: registrations.length,
+              status: status,
+            ),
           );
         }).toList(),
+
+        const SizedBox(height: 20),
       ],
     );
   }
 
-  Widget _buildStatusButton() {
-    final now = DateTime.now();
-    final hasStarted =
-        now.isAfter(widget.startDate.toDate()) ||
-        now.day == widget.startDate.toDate().day;
-    final statusColor = hasStarted ? Colors.green : Colors.grey;
-    final statusIcon = hasStarted
-        ? Icons.check_circle_rounded
-        : Icons.schedule_rounded;
-    final statusText = hasStarted
-        ? 'Tournament Has Started'
-        : 'Not yet Started';
-
+  Widget _buildCategoryHeader(String category, int count, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((255 * 0.1).toInt()),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [statusColor.withAlpha((255 * 0.9).toInt()), statusColor],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: statusColor.withAlpha((255 * 0.3).toInt()),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(statusIcon, color: Colors.white, size: 20),
-                        const SizedBox(width: 12),
-                        Text(
-                          statusText,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    backgroundColor: statusColor,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    margin: const EdgeInsets.all(16),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(14),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(statusIcon, color: Colors.white, size: 24),
-                    const SizedBox(width: 12),
-                    Text(
-                      statusText,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        gradient: LinearGradient(
+          colors: [color.withOpacity(0.08), color.withOpacity(0.04)],
         ),
-      ),
-    );
-  }
-
-  Widget _buildParticipantTile({
-    required String fullName,
-    required List<String> participants,
-    required Color color,
-    required int participantIndex,
-    required int totalParticipants,
-    required String status,
-  }) {
-    final isConfirmed = status == 'confirmed';
-    final statusColor = isConfirmed ? Colors.green : Colors.amber;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withAlpha((255 * 0.2).toInt()),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((255 * 0.04).toInt()),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.2), width: 1.5),
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color.withAlpha((255 * 0.7).toInt()), color],
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: color.withAlpha((255 * 0.3).toInt()),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Center(
-              child: Text(
-                fullName[0].toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
+            child: Icon(categoryIcons[category], color: color, size: 20),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  fullName,
+                  category,
                   style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade900,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                    letterSpacing: -0.3,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 3),
-                if (participants.length > 1)
-                  Text(
-                    participants.join(', '),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  )
-                else
-                  Text(
-                    'Solo registration',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  '$count participant${count > 1 ? 's' : ''}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParticipantCard({
+    required String fullName,
+    required List<String> participants,
+    required Color color,
+    required int index,
+    required int total,
+    required String status,
+  }) {
+    final isConfirmed = status == 'confirmed';
+    final statusIcon = isConfirmed
+        ? Icons.check_circle_rounded
+        : Icons.access_time_rounded;
+    final statusColor = isConfirmed ? Colors.green : Colors.amber;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
             children: [
+              // Avatar
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: statusColor.withAlpha((255 * 0.12).toInt()),
-                  borderRadius: BorderRadius.circular(5),
-                  border: Border.all(
-                    color: statusColor.withAlpha((255 * 0.3).toInt()),
+                  gradient: LinearGradient(
+                    colors: [color.withOpacity(0.8), color],
                   ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  isConfirmed ? '✓' : '⏳',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
+                child: Center(
+                  child: Text(
+                    fullName[0].toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(5),
+
+              const SizedBox(width: 14),
+
+              // Name and Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fullName,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.grey.shade900,
+                        letterSpacing: -0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    if (participants.length > 1)
+                      Text(
+                        participants.join(', '),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else
+                      Text(
+                        'Solo Entry',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                  ],
                 ),
-                child: Text(
-                  '${participantIndex + 1}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade700,
+              ),
+
+              const SizedBox(width: 10),
+
+              // Status and Number
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: statusColor.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, size: 12, color: statusColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          isConfirmed ? 'Confirmed' : 'Pending',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: color.withOpacity(0.2)),
+                    ),
+                    child: Text(
+                      '#${(index + 1).toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

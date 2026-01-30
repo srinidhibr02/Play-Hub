@@ -576,7 +576,7 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.visibility, size: 18),
                       label: const Text(
-                        'View Tournament',
+                        'Tournament Info',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/screens/clubTournament/tournament_registration_screen.dart';
+import 'package:play_hub/service/initialise_sample_data.dart';
 
 class TournamentDetailsScreen extends StatefulWidget {
   final String tournamentId;
@@ -43,6 +44,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
     String finalCategory,
     num entryFee,
   ) {
+    // initializeSampleData();
     Navigator.push(
       context,
       MaterialPageRoute(
