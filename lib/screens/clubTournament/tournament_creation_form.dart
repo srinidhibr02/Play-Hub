@@ -42,9 +42,18 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
   bool _includeDoubles = false;
   Map<String, TextEditingController> _entryFeeControllers = {};
 
+  // Prize Options
+  String _prizeOption = 'both'; // 'trophy', 'prizePool', 'both'
+  late TextEditingController _trophyDescController;
+
   // Step 3
   DateTime? _tournamentDate;
+  TimeOfDay? _tournamentTime;
   DateTime? _registrationDeadline;
+  TimeOfDay? _deadlineTime;
+
+  // Tournament Format
+  String _tournamentFormat = 'round_robin'; // 'round_robin', 'knockout'
 
   final List<String> _predefinedRules = [
     'Bring Aadhar Card',
@@ -93,6 +102,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
 
     _maxParticipantsController = TextEditingController();
     _prizePoolController = TextEditingController();
+    _trophyDescController = TextEditingController();
 
     _customRuleController = TextEditingController();
   }
@@ -113,6 +123,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
     _clubSearchController.dispose();
     _maxParticipantsController.dispose();
     _prizePoolController.dispose();
+    _trophyDescController.dispose();
     _customRuleController.dispose();
 
     for (var controller in _entryFeeControllers.values) {
@@ -150,7 +161,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
             clubs.add(clubData);
           }
         } catch (e) {
-          print('Error processing club: $e');
+          debugPrint('Error processing club: $e');
         }
       }
 
@@ -161,7 +172,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
         });
       }
     } catch (e) {
-      print('Error searching clubs: $e');
+      debugPrint('Error searching clubs: $e');
     }
   }
 
@@ -185,6 +196,11 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
 
     if (!_includeSingles && !_includeDoubles) {
       _showError('Please select at least Singles or Doubles');
+      return;
+    }
+
+    if (_prizeOption != 'trophy' && _prizePoolController.text.isEmpty) {
+      _showError('Please enter prize pool amount');
       return;
     }
 
@@ -257,7 +273,13 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
         backgroundColor: Colors.red.shade600,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
@@ -266,22 +288,17 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
   }
 
   Future<void> _createTournament() async {
-    print('\n═══════════════════════════════════════════');
-    print('START: Tournament Creation');
-    print('═══════════════════════════════════════════\n');
-
     if (!_step3FormKey.currentState!.validate()) {
-      print('❌ Form validation failed');
       return;
     }
 
-    if (_tournamentDate == null) {
-      _showError('Please select tournament date');
+    if (_tournamentDate == null || _tournamentTime == null) {
+      _showError('Please select tournament date and time');
       return;
     }
 
-    if (_registrationDeadline == null) {
-      _showError('Please select registration deadline');
+    if (_registrationDeadline == null || _deadlineTime == null) {
+      _showError('Please select registration deadline and time');
       return;
     }
 
@@ -293,6 +310,23 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
     setState(() => _isLoading = true);
 
     try {
+      // Combine date and time
+      final tournamentDateTime = DateTime(
+        _tournamentDate!.year,
+        _tournamentDate!.month,
+        _tournamentDate!.day,
+        _tournamentTime!.hour,
+        _tournamentTime!.minute,
+      );
+
+      final deadlineDateTime = DateTime(
+        _registrationDeadline!.year,
+        _registrationDeadline!.month,
+        _registrationDeadline!.day,
+        _deadlineTime!.hour,
+        _deadlineTime!.minute,
+      );
+
       // Build entry fees
       final Map<String, dynamic> entryFees = {};
 
@@ -324,6 +358,19 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
         );
       }
 
+      // Build prize details
+      final Map<String, dynamic> prizeDetails = {};
+      if (_prizeOption == 'trophy' || _prizeOption == 'both') {
+        prizeDetails['hasTrophy'] = true;
+        prizeDetails['trophyDescription'] = _trophyDescController.text.trim();
+      }
+      if (_prizeOption == 'prizePool' || _prizeOption == 'both') {
+        prizeDetails['hasPrizePool'] = true;
+        prizeDetails['prizePoolAmount'] = double.parse(
+          _prizePoolController.text,
+        );
+      }
+
       final tournamentData = {
         'clubId': _selectedClub!['clubId'],
         'clubName': _selectedClub!['name'],
@@ -335,11 +382,12 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
         'imageUrl': _imageUrlController.text,
         'maxParticipants': int.parse(_maxParticipantsController.text),
         'currentParticipants': 0,
-        'prizePool': double.parse(_prizePoolController.text),
+        'prizeDetails': prizeDetails,
         'entryFee': entryFees,
         'tournamentType': _buildTournamentTypeString(),
-        'date': Timestamp.fromDate(_tournamentDate!),
-        'registrationDeadline': Timestamp.fromDate(_registrationDeadline!),
+        'tournamentFormat': _tournamentFormat,
+        'date': Timestamp.fromDate(tournamentDateTime),
+        'registrationDeadline': Timestamp.fromDate(deadlineDateTime),
         'rules': _finalRules,
         'status': 'open',
         'participants': [],
@@ -359,7 +407,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
         widget.onTournamentCreated();
       }
     } catch (e) {
-      print('Error: $e');
+      debugPrint('Error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         _showError('Error: $e');
@@ -404,15 +452,10 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
                   _buildHeader(),
                   const SizedBox(height: 24),
-
-                  // Progress Bar
                   _buildProgressBar(),
                   const SizedBox(height: 32),
-
-                  // Step Content
                   if (_currentStep == 0) ...[
                     Form(key: _step1FormKey, child: _buildStep1Content()),
                   ] else if (_currentStep == 1) ...[
@@ -438,7 +481,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
             children: [
               Text(
                 _currentStep == 0
-                    ? '🎯 Create Your Tournament'
+                    ? '🎯 Create Tournament'
                     : _currentStep == 1
                     ? '⚙️ Configure Details'
                     : '📋 Set Rules & Dates',
@@ -453,7 +496,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                 _currentStep == 0
                     ? 'Add basic tournament information'
                     : _currentStep == 1
-                    ? 'Define tournament format and fees'
+                    ? 'Define format and fees'
                     : 'Finalize tournament details',
                 style: TextStyle(
                   fontSize: 14,
@@ -533,14 +576,14 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
       children: [
         _buildInfoCard(
           'Tournament Name',
-          'e.g., "City Level Badminton Championship 2026"',
+          'e.g., "City Level Badminton Championship"',
           Icons.emoji_events_rounded,
           _nameController,
         ),
         const SizedBox(height: 20),
         _buildInfoCard(
           'Description',
-          'Describe the tournament goals and details',
+          'Describe tournament goals and details',
           Icons.description_rounded,
           _descriptionController,
           maxLines: 3,
@@ -589,14 +632,8 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
           _maxParticipantsController,
           keyboard: TextInputType.number,
         ),
-        const SizedBox(height: 20),
-        _buildInfoCard(
-          'Prize Pool',
-          'Total prize money in ₹',
-          Icons.card_giftcard_rounded,
-          _prizePoolController,
-          keyboard: TextInputType.number,
-        ),
+        const SizedBox(height: 24),
+        _buildPrizeOptionsCard(),
         const SizedBox(height: 24),
         if (_includeSingles || _includeDoubles) ...[
           _buildEntryFeesCard(),
@@ -614,7 +651,9 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
   Widget _buildStep3Content() {
     return Column(
       children: [
-        _buildDatePickerCard(),
+        _buildTournamentFormatCard(),
+        const SizedBox(height: 24),
+        _buildDateTimePickerCard(),
         const SizedBox(height: 24),
         _buildRulesCard(),
         const SizedBox(height: 32),
@@ -959,7 +998,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
             ),
             const SizedBox(width: 12),
             const Text(
-              'Tournament Format',
+              'Tournament Type',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ],
@@ -1017,6 +1056,134 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
           onChanged: onChanged,
           activeColor: Colors.purple.shade600,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPrizeOptionsCard() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.card_giftcard_rounded,
+                color: Colors.amber.shade600,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Prize Options',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.amber.shade50,
+            border: Border.all(color: Colors.amber.shade200),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            children: [
+              _buildRadioTile(
+                'Trophy Only',
+                'Award winning team with trophy',
+                'trophy',
+                _prizeOption,
+                (value) {
+                  setState(() => _prizeOption = value!);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildRadioTile(
+                'Prize Pool Only',
+                'Distribute cash prize pool to winners',
+                'prizePool',
+                _prizeOption,
+                (value) {
+                  setState(() => _prizeOption = value!);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildRadioTile(
+                'Trophy & Prize Pool',
+                'Award both trophy and cash prizes',
+                'both',
+                _prizeOption,
+                (value) {
+                  setState(() => _prizeOption = value!);
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (_prizeOption != 'trophy') ...[
+          _buildInfoCard(
+            'Prize Pool Amount',
+            'Total prize money in ₹',
+            Icons.attach_money_rounded,
+            _prizePoolController,
+            keyboard: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (_prizeOption == 'trophy' || _prizeOption == 'both') ...[
+          _buildInfoCard(
+            'Trophy Description',
+            'e.g., "Winners Trophy for Badminton Champions"',
+            Icons.emoji_events_rounded,
+            _trophyDescController,
+            maxLines: 2,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildRadioTile(
+    String title,
+    String subtitle,
+    String value,
+    String groupValue,
+    Function(String?) onChanged,
+  ) {
+    return Row(
+      children: [
+        Radio<String>(
+          value: value,
+          groupValue: groupValue,
+          onChanged: onChanged,
+          activeColor: Colors.amber.shade600,
         ),
         Expanded(
           child: Column(
@@ -1152,30 +1319,104 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
     );
   }
 
-  Widget _buildDatePickerCard() {
+  Widget _buildTournamentFormatCard() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.indigo.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.schema_rounded,
+                color: Colors.indigo.shade600,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Tournament Format',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.indigo.shade50,
+            border: Border.all(color: Colors.indigo.shade200),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            children: [
+              _buildRadioTile(
+                'Round Robin',
+                'Every team plays against every other team',
+                'round_robin',
+                _tournamentFormat,
+                (value) {
+                  setState(() => _tournamentFormat = value!);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildRadioTile(
+                'Knockout',
+                'Elimination format - loser is out',
+                'knockout',
+                _tournamentFormat,
+                (value) {
+                  setState(() => _tournamentFormat = value!);
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateTimePickerCard() {
     return Column(
       children: [
-        _buildDateField(
-          'Tournament Date',
+        _buildDateTimeField(
+          'Tournament Date & Time',
           _tournamentDate,
-          (date) => setState(() => _tournamentDate = date),
+          _tournamentTime,
+          (date, time) {
+            setState(() {
+              _tournamentDate = date;
+              _tournamentTime = time;
+            });
+          },
           Icons.calendar_month_rounded,
         ),
         const SizedBox(height: 20),
-        _buildDateField(
+        _buildDateTimeField(
           'Registration Deadline',
           _registrationDeadline,
-          (date) => setState(() => _registrationDeadline = date),
+          _deadlineTime,
+          (date, time) {
+            setState(() {
+              _registrationDeadline = date;
+              _deadlineTime = time;
+            });
+          },
           Icons.schedule_rounded,
         ),
       ],
     );
   }
 
-  Widget _buildDateField(
+  Widget _buildDateTimeField(
     String label,
     DateTime? selectedDate,
-    Function(DateTime) onDateSelected,
+    TimeOfDay? selectedTime,
+    Function(DateTime?, TimeOfDay?) onDateTimeSelected,
     IconData icon,
   ) {
     return Column(
@@ -1199,59 +1440,128 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
           ],
         ),
         const SizedBox(height: 12),
-        InkWell(
-          onTap: () async {
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: selectedDate ?? DateTime.now(),
-              firstDate: DateTime.now(),
-              lastDate: DateTime.now().add(const Duration(days: 365)),
-              builder: (context, child) {
-                return Theme(
-                  data: Theme.of(context).copyWith(
-                    colorScheme: ColorScheme.light(
-                      primary: Colors.red.shade600,
-                    ),
+        Row(
+          children: [
+            // Date Picker
+            Expanded(
+              child: InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate ?? DateTime.now(),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: ColorScheme.light(
+                            primary: Colors.red.shade600,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
+                  if (picked != null) {
+                    onDateTimeSelected(picked, selectedTime);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
                   ),
-                  child: child!,
-                );
-              },
-            );
-            if (picked != null) {
-              onDateSelected(picked);
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              border: Border.all(color: Colors.grey.shade200),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    selectedDate != null
-                        ? DateFormat('MMM d, yyyy').format(selectedDate)
-                        : 'Select date',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: selectedDate != null
-                          ? Colors.black87
-                          : Colors.grey.shade500,
-                    ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border.all(color: Colors.grey.shade200),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          selectedDate != null
+                              ? DateFormat('MMM d, yyyy').format(selectedDate)
+                              : 'Select date',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: selectedDate != null
+                                ? Colors.black87
+                                : Colors.grey.shade500,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        size: 18,
+                        color: Colors.grey.shade400,
+                      ),
+                    ],
                   ),
                 ),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: Colors.grey.shade400,
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            // Time Picker
+            Expanded(
+              child: InkWell(
+                onTap: () async {
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: selectedTime ?? TimeOfDay.now(),
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: ColorScheme.light(
+                            primary: Colors.red.shade600,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
+                  if (picked != null) {
+                    onDateTimeSelected(selectedDate, picked);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border.all(color: Colors.grey.shade200),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          selectedTime != null
+                              ? selectedTime.format(context)
+                              : 'Select time',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: selectedTime != null
+                                ? Colors.black87
+                                : Colors.grey.shade500,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 18,
+                        color: Colors.grey.shade400,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1266,12 +1576,12 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.indigo.shade50,
+                color: Colors.deepPurple.shade50,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 Icons.rule_rounded,
-                color: Colors.indigo.shade600,
+                color: Colors.deepPurple.shade600,
                 size: 20,
               ),
             ),
@@ -1286,8 +1596,8 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.indigo.shade50,
-            border: Border.all(color: Colors.indigo.shade200),
+            color: Colors.deepPurple.shade50,
+            border: Border.all(color: Colors.deepPurple.shade200),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Wrap(
@@ -1300,17 +1610,17 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                 selected: _selectedRulesIndices.contains(index),
                 onSelected: (_) => _addRuleFromPredefined(index),
                 backgroundColor: Colors.white,
-                selectedColor: Colors.indigo.shade100,
+                selectedColor: Colors.deepPurple.shade100,
                 side: BorderSide(
                   color: _selectedRulesIndices.contains(index)
-                      ? Colors.indigo.shade600
-                      : Colors.indigo.shade300,
+                      ? Colors.deepPurple.shade600
+                      : Colors.deepPurple.shade300,
                 ),
                 labelStyle: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: _selectedRulesIndices.contains(index)
-                      ? Colors.indigo.shade700
+                      ? Colors.deepPurple.shade700
                       : Colors.grey.shade700,
                 ),
               ),
@@ -1347,7 +1657,10 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.indigo.shade600, Colors.indigo.shade500],
+                  colors: [
+                    Colors.deepPurple.shade600,
+                    Colors.deepPurple.shade500,
+                  ],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),

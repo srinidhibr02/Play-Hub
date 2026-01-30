@@ -102,36 +102,69 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
     }
   }
 
+  Future<String> _getTournamentStatus() async {
+    try {
+      final doc = await _firestore
+          .collection('tournaments')
+          .doc(widget.tournamentId)
+          .get();
+
+      if (doc.exists) {
+        return doc.data()?['status'] ?? 'open';
+      }
+      return 'open';
+    } catch (e) {
+      debugPrint('Error fetching tournament status: $e');
+      return 'open';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: _buildAppBar(),
-      body: FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
-        future: _getGroupedRegistrations(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingState();
-          }
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _firestore
+          .collection('tournaments')
+          .doc(widget.tournamentId)
+          .snapshots(),
+      builder: (context, tournamentSnapshot) {
+        // Get tournament status
+        String tournamentStatus = 'open';
+        if (tournamentSnapshot.hasData && tournamentSnapshot.data!.exists) {
+          tournamentStatus =
+              tournamentSnapshot.data!['status'] as String? ?? 'open';
+        }
 
-          if (snapshot.hasError) {
-            return _buildErrorState(snapshot.error.toString());
-          }
+        return Scaffold(
+          backgroundColor: Colors.grey.shade50,
+          appBar: _buildAppBar(),
+          body: FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
+            future: _getGroupedRegistrations(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return _buildLoadingState();
+              }
 
-          final groupedData = snapshot.data ?? {};
+              if (snapshot.hasError) {
+                return _buildErrorState(snapshot.error.toString());
+              }
 
-          if (groupedData.isEmpty) {
-            return _buildEmptyState();
-          }
+              final groupedData = snapshot.data ?? {};
 
-          _tabController = TabController(
-            length: groupedData.length,
-            vsync: this,
-          );
+              if (groupedData.isEmpty) {
+                return _buildEmptyState();
+              }
 
-          return _buildTabbedRegistrations(groupedData);
-        },
-      ),
+              _tabController = TabController(
+                length: groupedData.length,
+                vsync: this,
+              );
+
+              return _buildTabbedRegistrations(groupedData);
+            },
+          ),
+          bottomNavigationBar: _buildBottomButton(tournamentStatus),
+        );
+      },
     );
   }
 
@@ -321,31 +354,37 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
       (sum_, list) => sum_ + list.length,
     );
 
-    return Column(
-      children: [
-        // Tournament Info Card
-        _buildTournamentInfoCard(totalParticipants, groupedData),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Tournament Info Card
+          _buildTournamentInfoCard(totalParticipants, groupedData),
 
-        // Category Tabs
-        _buildCategoryTabBar(categories, groupedData),
+          // Category Tabs
+          _buildCategoryTabBar(categories, groupedData),
 
-        // Content
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: categories.map((category) {
-              final registrations = groupedData[category]!;
-              final color = categoryColors[category] ?? Colors.grey;
+          // Content with TabBarView inside scrollable area
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: TabBarView(
+              controller: _tabController,
+              children: categories.map((category) {
+                final registrations = groupedData[category]!;
+                final color = categoryColors[category] ?? Colors.grey;
 
-              return _buildCategoryContent(
-                category: category,
-                registrations: registrations,
-                color: color,
-              );
-            }).toList(),
+                return _buildCategoryContent(
+                  category: category,
+                  registrations: registrations,
+                  color: color,
+                );
+              }).toList(),
+            ),
           ),
-        ),
-      ],
+
+          // Extra bottom padding for fixed button
+          const SizedBox(height: 100),
+        ],
+      ),
     );
   }
 
@@ -862,6 +901,100 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomButton(String status) {
+    final isStarted = status == 'started';
+    final buttonColor = isStarted ? Colors.orange : Colors.grey;
+    final buttonIcon = isStarted
+        ? Icons.schedule_rounded
+        : Icons.schedule_rounded;
+    final buttonText = isStarted ? 'View Schedule' : 'Not yet Started';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [buttonColor.shade700, buttonColor.shade500],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: buttonColor.withOpacity(0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        Icon(buttonIcon, color: Colors.white, size: 20),
+                        const SizedBox(width: 12),
+                        Text(
+                          buttonText,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: buttonColor.shade600,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(buttonIcon, color: Colors.white, size: 22),
+                    const SizedBox(width: 12),
+                    Text(
+                      buttonText,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

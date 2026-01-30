@@ -44,7 +44,6 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
     String finalCategory,
     num entryFee,
   ) {
-    // initializeSampleData();
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -109,6 +108,10 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
         final name = tournament['name'] as String;
         final organizer = tournament['organizer'] as String;
         final description = tournament['description'] as String;
+        final tournamentFormat =
+            tournament['tournamentFormat'] as String? ?? 'round_robin';
+        final prizeDetails =
+            tournament['prizeDetails'] as Map<String, dynamic>? ?? {};
 
         // Parse entry fees
         final entryFeeMap =
@@ -140,7 +143,6 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
               : _selectedCategory;
         }
 
-        final prizePool = tournament['prizePool'] as num;
         final currentParticipants = tournament['currentParticipants'] as num;
         final maxParticipants = tournament['maxParticipants'] as num;
         final imageUrl = tournament['imageUrl'] as String;
@@ -149,6 +151,13 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
         final registrationDeadline =
             (tournament['registrationDeadline'] as Timestamp).toDate();
         final tournamentDate = (tournament['date'] as Timestamp).toDate();
+
+        // Extract prize details
+        final hasTrophy = prizeDetails['hasTrophy'] as bool? ?? false;
+        final hasPrizePool = prizeDetails['hasPrizePool'] as bool? ?? false;
+        final prizePoolAmount = prizeDetails['prizePoolAmount'] as num? ?? 0;
+        final trophyDescription =
+            prizeDetails['trophyDescription'] as String? ?? 'Trophy';
 
         // Calculate states
         final isRegistrationOpen =
@@ -193,16 +202,16 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                   margin: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.15), // Glass tint
+                    color: Colors.white.withOpacity(0.15),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.25), // Strong shadow
+                        color: Colors.black.withOpacity(0.25),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                         spreadRadius: 0,
                       ),
                       BoxShadow(
-                        color: Colors.white.withOpacity(0.1), // Inner glow
+                        color: Colors.white.withOpacity(0.1),
                         blurRadius: 8,
                         offset: const Offset(0, -2),
                       ),
@@ -211,10 +220,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: 5,
-                        sigmaY: 5,
-                      ), // Frosted glass blur
+                      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                       child: IconButton(
                         icon: const Icon(
                           Icons.arrow_back_rounded,
@@ -232,12 +238,10 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                     ),
                   ),
                 ),
-
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      // Image with parallax
                       Image.network(
                         imageUrl,
                         fit: BoxFit.cover,
@@ -250,7 +254,6 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                           ),
                         ),
                       ),
-                      // Gradient overlay
                       Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -263,7 +266,6 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                           ),
                         ),
                       ),
-                      // Status badges overlay
                       Positioned(
                         top: 12,
                         right: 12,
@@ -296,7 +298,6 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Title
                           FadeTransition(
                             opacity: _animationController,
                             child: Text(
@@ -309,8 +310,6 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                             ),
                           ),
                           const SizedBox(height: 8),
-
-                          // Organizer Info
                           FadeTransition(
                             opacity: _animationController,
                             child: Row(
@@ -356,7 +355,62 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                     ),
 
                     const SizedBox(height: 24),
-                    // Category Selector - Enhanced
+
+                    // Tournament Format Badge
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.indigo.shade100,
+                              Colors.indigo.shade50,
+                            ],
+                          ),
+                          border: Border.all(
+                            color: Colors.indigo.shade300,
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.schema_rounded,
+                              color: Colors.indigo.shade600,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Tournament Format: ',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            Text(
+                              tournamentFormat == 'round_robin'
+                                  ? 'Round Robin'
+                                  : 'Knockout',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.indigo.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Category Selector
                     if (categoryFees.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -455,7 +509,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                         ),
                       ),
 
-                    // Event Type Selector - Enhanced
+                    // Event Type Selector
                     if (_selectedCategory.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -600,8 +654,12 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                               const SizedBox(width: 12),
                               Expanded(
                                 child: _buildStatCard(
-                                  '₹${(prizePool / 1000).toStringAsFixed(0)}K',
-                                  'Prize Pool',
+                                  hasPrizePool
+                                      ? '₹${(prizePoolAmount / 1000).toStringAsFixed(0)}K'
+                                      : hasTrophy
+                                      ? 'Trophy'
+                                      : 'N/A',
+                                  'Prize',
                                   Colors.purple,
                                   Icons.emoji_events_rounded,
                                 ),
@@ -685,7 +743,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
 
                     const SizedBox(height: 28),
 
-                    // Important Dates Card
+                    // Important Dates Card - Updated with DateTime
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(
@@ -723,7 +781,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Tournament Date',
+                                        'Tournament Date & Time',
                                         style: TextStyle(
                                           fontSize: 11,
                                           color: Colors.red.shade600,
@@ -732,7 +790,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                                       ),
                                       Text(
                                         DateFormat(
-                                          'MMM dd, yyyy',
+                                          'MMM dd, yyyy • hh:mm a',
                                         ).format(tournamentDate),
                                         style: const TextStyle(
                                           fontSize: 14,
@@ -794,6 +852,123 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
 
                     const SizedBox(height: 28),
 
+                    // Prize Details Card - New
+                    if (hasTrophy || hasPrizePool)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.amber.shade50,
+                                Colors.yellow.shade50,
+                              ],
+                            ),
+                            border: Border.all(
+                              color: Colors.amber.shade200,
+                              width: 1.5,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            children: [
+                              if (hasTrophy) ...[
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.shade100,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        Icons.emoji_events_rounded,
+                                        color: Colors.amber.shade600,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Trophy Prize',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.amber.shade600,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            trophyDescription,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (hasPrizePool)
+                                  Divider(
+                                    color: Colors.amber.shade200,
+                                    height: 16,
+                                  ),
+                              ],
+                              if (hasPrizePool) ...[
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade100,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        Icons.attach_money_rounded,
+                                        color: Colors.green.shade600,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Prize Pool',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.green.shade600,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            '₹${prizePoolAmount.toStringAsFixed(0)}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 28),
+
                     // Description Section
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -836,7 +1011,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
 
                     const SizedBox(height: 28),
 
-                    // Rules Section - Enhanced
+                    // Rules Section
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Column(
@@ -932,7 +1107,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
 
                     const SizedBox(height: 20),
 
-                    // Contact Info - Enhanced
+                    // Contact Info
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(

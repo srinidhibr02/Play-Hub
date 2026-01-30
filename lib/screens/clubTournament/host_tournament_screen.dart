@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/screens/clubTournament/edit_tournament_dialog.dart';
 import 'package:play_hub/screens/clubTournament/tournament_creation_form.dart';
+import 'package:play_hub/screens/clubTournament/tournament_info_screen.dart';
 
 class HostTournamentScreen extends StatefulWidget {
   final String userEmail;
@@ -612,7 +613,16 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
               color: Colors.white,
               child: InkWell(
                 onTap: () {
-                  debugPrint('Viewing tournament: $tournamentId');
+                  // debugPrint('Viewing tournament: $tournamentId');
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => TournamentInfoScreen(
+                        tournamentId: tournamentId,
+                        tournamentName: name,
+                        startDate: date,
+                      ),
+                    ),
+                  );
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1248,5 +1258,3 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
     );
   }
 }
-
-// Edit Tournament Dialog

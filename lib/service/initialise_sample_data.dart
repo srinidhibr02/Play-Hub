@@ -5,7 +5,7 @@ Future<void> initializeSampleData() async {
   final firestore = FirebaseFirestore.instance;
 
   // Tournament ID where registrations will be added
-  const String tournamentId = '8tyieLvyTtzW4x70IhFZ';
+  const String tournamentId = 'aWgBcZG62P5E0ab6v8Jx';
 
   await _addSampleRegistrations(firestore, tournamentId);
 }
@@ -58,6 +58,28 @@ Future<void> _addSampleRegistrations(
       'registeredAt': Timestamp.now(),
       'status': 'confirmed',
       'userId': 'srinidhibr02@gmail.com',
+    },
+    {
+      'bookingAmount': 25,
+      'category': 'Male Doubles',
+      'fullName': 'Badminton Folks',
+      'participants': ['Arjun', 'Nandish'],
+      'paymentId': 'jkl1OOYSnuSBl',
+      'phoneNumber': '+91 9123456780',
+      'registeredAt': Timestamp.now(),
+      'status': 'confirmed',
+      'userId': 'nandishng999@gmail.com',
+    },
+    {
+      'bookingAmount': 25,
+      'category': 'Male Doubles',
+      'fullName': 'Sanjay N K',
+      'participants': ['Sanjay', 'Bharat'],
+      'paymentId': 'tuv1OOYSnuSBl',
+      'phoneNumber': '+91 7892750858',
+      'registeredAt': Timestamp.now(),
+      'status': 'confirmed',
+      'userId': 'jarwasanju@gmail.com',
     },
   ];
 
