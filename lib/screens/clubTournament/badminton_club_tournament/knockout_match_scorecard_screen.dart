@@ -34,6 +34,7 @@ class _AdvancedMatchScorecardScreenState
   late int currentSet; // 1, 2, or 3
   late List<Map<String, int>> setScores; // History of set scores
   bool isLoading = false;
+  bool resultSaved = false; // ✅ NEW: Track if result is saved
 
   final _service = ClubTournamentService();
   final _progressionService = TournamentProgressionService();
@@ -53,6 +54,7 @@ class _AdvancedMatchScorecardScreenState
     // If match is already completed, load the previous results
     if (status == 'Completed') {
       _loadCompletedMatchData();
+      resultSaved = true; // ✅ Mark as saved
     }
   }
 
@@ -125,6 +127,8 @@ class _AdvancedMatchScorecardScreenState
 
   /// Move to next set
   void _nextSet() {
+    if (resultSaved) return; // ✅ Don't allow if saved
+
     final setWinner = _checkSetWinner();
     if (setWinner != null) {
       setState(() {
@@ -169,9 +173,16 @@ class _AdvancedMatchScorecardScreenState
     }
   }
 
-  /// Increment score for team (only if match not completed)
+  /// Increment score for team (only if match not completed and not saved)
   void _incrementScore(bool isTeam1) {
-    if (_isMatchCompleted()) return;
+    if (_isMatchCompleted() || resultSaved) return;
+
+    // ✅ Check if set is completed
+    final setWinner = _checkSetWinner();
+    if (setWinner != null) {
+      _showSetCompletedDialog(isTeam1, true);
+      return;
+    }
 
     setState(() {
       if (isTeam1) {
@@ -182,9 +193,16 @@ class _AdvancedMatchScorecardScreenState
     });
   }
 
-  /// Decrement score for team (only if match not completed)
+  /// Decrement score for team (only if match not completed and not saved)
   void _decrementScore(bool isTeam1) {
-    if (_isMatchCompleted()) return;
+    if (_isMatchCompleted() || resultSaved) return;
+
+    // ✅ Check if set is completed
+    final setWinner = _checkSetWinner();
+    if (setWinner != null) {
+      _showSetCompletedDialog(isTeam1, false);
+      return;
+    }
 
     setState(() {
       if (isTeam1) {
@@ -193,6 +211,200 @@ class _AdvancedMatchScorecardScreenState
         if (score2 > 0) score2--;
       }
     });
+  }
+
+  /// ✅ NEW: Show alert when set is completed
+  void _showSetCompletedDialog(bool isTeam1, bool isIncrement) {
+    final setWinner = _checkSetWinner();
+    final winnerTeam = setWinner!['winner'] == 1 ? 'Team 1' : 'Team 2';
+    final action = isIncrement ? 'increase' : 'decrease';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Icon(
+              Icons.check_circle_rounded,
+              color: Colors.green.shade600,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Set Completed',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.grey.shade900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.emoji_events_rounded,
+                    color: Colors.green.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Set won by $winnerTeam',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'This set has been completed. The score is fixed.',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade300, width: 1),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_rounded,
+                    color: Colors.amber.shade700,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Click "Next Set" to continue to the next round',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.amber.shade900,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            child: Text(
+              'Close',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Allow temporary override if user confirms
+              _overrideScoreChange(isTeam1, isIncrement);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange.shade600,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Override',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ✅ NEW: Allow score override after confirmation
+  void _overrideScoreChange(bool isTeam1, bool isIncrement) {
+    setState(() {
+      if (isIncrement) {
+        if (isTeam1) {
+          score1++;
+        } else {
+          score2++;
+        }
+      } else {
+        if (isTeam1) {
+          if (score1 > 0) score1--;
+        } else {
+          if (score2 > 0) score2--;
+        }
+      }
+    });
+
+    // Show override message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Score override applied. Please verify before saving.',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.orange.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   /// Get match winner (for best of 3)
@@ -370,10 +582,18 @@ class _AdvancedMatchScorecardScreenState
         ),
       );
 
-      // Update UI to show completed state
+      // ✅ Mark result as saved and lock scorecard
       setState(() {
         status = 'Completed';
+        resultSaved = true; // Lock the scorecard
+        isLoading = false;
       });
+
+      // Delay navigation to show success message
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
 
@@ -456,16 +676,17 @@ class _AdvancedMatchScorecardScreenState
               if (widget.isBestOf3) const SizedBox(height: 20),
 
               // Match Status Banner (when completed)
-              if (_isMatchCompleted()) _buildCompletedBanner(),
-              if (_isMatchCompleted()) const SizedBox(height: 20),
+              if (_isMatchCompleted() || resultSaved) _buildCompletedBanner(),
+              if (_isMatchCompleted() || resultSaved)
+                const SizedBox(height: 20),
 
               // Current Set Display
               _buildSetDisplay(team1, team2),
 
               const SizedBox(height: 24),
 
-              // Score Control (only if not completed)
-              if (!_isMatchCompleted())
+              // Score Control (only if not completed and not saved)
+              if (!_isMatchCompleted() && !resultSaved)
                 Column(
                   children: [
                     _buildScoreControl(team1, team2),
@@ -489,7 +710,7 @@ class _AdvancedMatchScorecardScreenState
     );
   }
 
-  /// ✅ NEW: Build completed match banner
+  /// ✅ Build completed match banner
   Widget _buildCompletedBanner() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -641,17 +862,19 @@ class _AdvancedMatchScorecardScreenState
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _isMatchCompleted()
+                  color: (resultSaved || _isMatchCompleted())
                       ? Colors.green.shade100
                       : Colors.orange.shade100,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  _isMatchCompleted() ? 'Completed' : 'In Progress',
+                  (resultSaved || _isMatchCompleted())
+                      ? 'Completed'
+                      : 'In Progress',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: _isMatchCompleted()
+                    color: (resultSaved || _isMatchCompleted())
                         ? Colors.green.shade700
                         : Colors.orange.shade700,
                   ),
@@ -687,7 +910,9 @@ class _AdvancedMatchScorecardScreenState
               ),
               const SizedBox(height: 4),
               Text(
-                _isMatchCompleted() ? 'Final' : '$currentSet/3',
+                (resultSaved || _isMatchCompleted())
+                    ? 'Final'
+                    : '$currentSet/3',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -729,11 +954,13 @@ class _AdvancedMatchScorecardScreenState
               ),
               const SizedBox(height: 4),
               Text(
-                _isMatchCompleted() ? 'Complete' : 'In Progress',
+                (resultSaved || _isMatchCompleted())
+                    ? 'Complete'
+                    : 'In Progress',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: _isMatchCompleted()
+                  color: (resultSaved || _isMatchCompleted())
                       ? Colors.green.shade700
                       : Colors.orange.shade700,
                 ),
@@ -752,7 +979,7 @@ class _AdvancedMatchScorecardScreenState
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: _isMatchCompleted()
+          colors: (resultSaved || _isMatchCompleted())
               ? [Colors.green.shade600, Colors.teal.shade600]
               : [Colors.teal.shade600, Colors.cyan.shade600],
           begin: Alignment.topLeft,
@@ -761,7 +988,7 @@ class _AdvancedMatchScorecardScreenState
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: _isMatchCompleted()
+            color: (resultSaved || _isMatchCompleted())
                 ? Colors.green.withOpacity(0.3)
                 : Colors.teal.withOpacity(0.3),
             blurRadius: 20,
@@ -826,7 +1053,8 @@ class _AdvancedMatchScorecardScreenState
                       ),
                       child: Center(
                         child: Text(
-                          (widget.isBestOf3 && _isMatchCompleted())
+                          (widget.isBestOf3 &&
+                                  (resultSaved || _isMatchCompleted()))
                               ? setWins1.toString()
                               : score1.toString(),
                           style: const TextStyle(
@@ -852,7 +1080,7 @@ class _AdvancedMatchScorecardScreenState
                     ),
                   ),
                   const SizedBox(height: 8),
-                  if (!_isMatchCompleted())
+                  if (!resultSaved && !_isMatchCompleted())
                     Text(
                       'Set $currentSet',
                       style: TextStyle(
@@ -899,7 +1127,8 @@ class _AdvancedMatchScorecardScreenState
                       ),
                       child: Center(
                         child: Text(
-                          (widget.isBestOf3 && _isMatchCompleted())
+                          (widget.isBestOf3 &&
+                                  (resultSaved || _isMatchCompleted()))
                               ? setWins2.toString()
                               : score2.toString(),
                           style: const TextStyle(
@@ -919,7 +1148,7 @@ class _AdvancedMatchScorecardScreenState
           const SizedBox(height: 16),
 
           // Set Winner Info (only show if not completed and set is won)
-          if (!_isMatchCompleted() && _checkSetWinner() != null)
+          if (!resultSaved && !_isMatchCompleted() && _checkSetWinner() != null)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -995,7 +1224,7 @@ class _AdvancedMatchScorecardScreenState
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _isMatchWon() ? null : _nextSet,
+              onPressed: (_isMatchWon() || resultSaved) ? null : _nextSet,
               icon: const Icon(
                 Icons.arrow_forward_rounded,
                 color: Colors.white,
@@ -1010,7 +1239,7 @@ class _AdvancedMatchScorecardScreenState
               ),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                backgroundColor: _isMatchWon()
+                backgroundColor: (_isMatchWon() || resultSaved)
                     ? Colors.grey.shade400
                     : Colors.blue.shade600,
                 shape: RoundedRectangleBorder(
@@ -1029,7 +1258,7 @@ class _AdvancedMatchScorecardScreenState
     bool isTeam1,
     Color color,
   ) {
-    final isLocked = _isMatchCompleted();
+    final isLocked = _isMatchCompleted() || resultSaved; // ✅ Check resultSaved
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1324,6 +1553,7 @@ class _AdvancedMatchScorecardScreenState
 
   Widget _buildBottomButtons() {
     final isMatchComplete =
+        resultSaved ||
         _isMatchCompleted() ||
         (!widget.isBestOf3 && _checkSetWinner() != null) ||
         (widget.isBestOf3 && _isMatchWon());
@@ -1367,108 +1597,72 @@ class _AdvancedMatchScorecardScreenState
 
             const SizedBox(width: 12),
 
-            // Save Result Button (only if not already completed)
-            if (!_isMatchCompleted())
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isMatchComplete
-                          ? [Colors.green.shade600, Colors.green.shade700]
-                          : [Colors.grey.shade400, Colors.grey.shade500],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: isMatchComplete
-                        ? [
-                            BoxShadow(
-                              color: Colors.green.withOpacity(0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
-                        : [],
+            // ✅ Save Result Button (disabled if already saved)
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: (isMatchComplete && !resultSaved)
+                        ? [Colors.green.shade600, Colors.green.shade700]
+                        : [Colors.grey.shade400, Colors.grey.shade500],
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: isMatchComplete ? _saveMatchResult : null,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        child: isLoading
-                            ? SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation(
-                                    Colors.green.shade200,
-                                  ),
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.check_circle_rounded,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Save Result',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: (isMatchComplete && !resultSaved)
+                      ? [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : [],
                 ),
-              )
-            else
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green.shade600, Colors.green.shade700],
-                    ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: (isMatchComplete && !resultSaved)
+                        ? _saveMatchResult
+                        : null,
                     borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.check_circle_rounded,
-                              color: Colors.green.shade100,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Saved ✓',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.green.shade100,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: isLoading
+                          ? SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation(
+                                  Colors.green.shade200,
+                                ),
+                                strokeWidth: 2,
                               ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  resultSaved
+                                      ? Icons.check_circle_rounded
+                                      : Icons.check_circle_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  resultSaved ? 'Saved' : 'Save Result',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
                     ),
                   ),
                 ),
               ),
+            ),
           ],
         ),
       ),
