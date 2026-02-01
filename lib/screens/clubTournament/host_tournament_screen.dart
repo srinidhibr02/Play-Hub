@@ -3,6 +3,10 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:play_hub/screens/clubTournament/badminton_club_tournament/club_tournament_schedule_screen.dart';
+import 'package:play_hub/screens/clubTournament/badminton_club_tournament/knockout_schedule_screen.dart';
+import 'package:play_hub/screens/clubTournament/club_service/club_tournament_service.dart';
+import 'package:play_hub/screens/clubTournament/club_service/knockout_match_service.dart';
 import 'package:play_hub/screens/clubTournament/edit_tournament_dialog.dart';
 import 'package:play_hub/screens/clubTournament/tournament_creation_form.dart';
 import 'package:play_hub/screens/clubTournament/tournament_info_screen.dart';
@@ -50,7 +54,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
   }
 
   PreferredSizeWidget get _buildAppBar => PreferredSize(
-    preferredSize: const Size.fromHeight(140), // Taller for premium feel
+    preferredSize: const Size.fromHeight(140),
     child: Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -74,12 +78,10 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
       child: SafeArea(
         child: Column(
           children: [
-            // 1. Premium Header Section
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 5, 16, 12),
               child: Row(
                 children: [
-                  // Glassmorphic Back Button
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
@@ -106,10 +108,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
-                  // Title with Gradient Text Effect
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,9 +142,8 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                       ],
                     ),
                   ),
-
                   Container(
-                    padding: const EdgeInsets.all(4), // Slightly larger padding
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
                       shape: BoxShape.circle,
@@ -155,17 +153,13 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                       ),
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(28), // Perfect circle
+                      borderRadius: BorderRadius.circular(28),
                       child: BackdropFilter(
-                        filter: ImageFilter.blur(
-                          sigmaX: 12,
-                          sigmaY: 12,
-                        ), // ✅ Glass blur!
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                         child: Material(
                           color: Colors.deepOrange.shade600.withOpacity(0.15),
                           child: InkWell(
-                            onTap: () =>
-                                _showTournamentCreationForm(), // ✅ Fixed callback
+                            onTap: () => _showTournamentCreationForm(),
                             borderRadius: BorderRadius.circular(24),
                             splashColor: Colors.deepOrange.shade400.withOpacity(
                               0.3,
@@ -187,8 +181,6 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                 ],
               ),
             ),
-
-            // 2. Glassmorphic TabBar
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
@@ -206,18 +198,14 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
               child: TabBar(
                 controller: _tabController,
                 dividerColor: Colors.transparent,
-                indicatorWeight: 6, // No underline
+                indicatorWeight: 6,
                 indicator: UnderlineTabIndicator(
-                  borderSide: BorderSide(
-                    width: 3, // Hide default
-                  ),
+                  borderSide: BorderSide(width: 3),
                   insets: EdgeInsets.zero,
                 ),
                 labelColor: Colors.teal.shade900,
                 unselectedLabelColor: Colors.grey.shade600,
-                labelPadding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                ), // ✅ Wider padding
+                labelPadding: const EdgeInsets.symmetric(horizontal: 24),
                 tabs: [
                   Tab(
                     height: 48,
@@ -320,7 +308,6 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
               return _buildEmptyState('No tournaments yet');
             }
 
-            // Separate tournaments into active and completed
             final activeTournaments = tournaments
                 .where((t) => t['status'] != 'completed')
                 .toList();
@@ -331,9 +318,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
             return TabBarView(
               controller: _tabController,
               children: [
-                // Active Tournaments Tab
                 _buildTournamentsList(activeTournaments, 'Active'),
-                // Completed Tournaments Tab
                 _buildTournamentsList(completedTournaments, 'Completed'),
               ],
             );
@@ -613,7 +598,6 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
               color: Colors.white,
               child: InkWell(
                 onTap: () {
-                  // debugPrint('Viewing tournament: $tournamentId');
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => TournamentInfoScreen(
@@ -627,7 +611,6 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Image Section
                     if (imageUrl.isNotEmpty)
                       Stack(
                         children: [
@@ -642,7 +625,6 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                               ),
                             ),
                           ),
-                          // Gradient Overlay
                           Container(
                             width: double.infinity,
                             height: 200,
@@ -657,13 +639,11 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                               ),
                             ),
                           ),
-                          // Status Badge
                           Positioned(
                             top: 12,
                             right: 12,
                             child: _buildStatusBadge(status),
                           ),
-                          // Club Badge
                           Positioned(
                             top: 12,
                             left: 12,
@@ -709,14 +689,11 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                           ),
                         ],
                       ),
-
-                    // Content Section
                     Padding(
                       padding: const EdgeInsets.all(18),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Tournament Name
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -776,10 +753,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 16),
-
-                          // Info Row
                           Row(
                             children: [
                               Expanded(
@@ -802,10 +776,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                                 ),
                             ],
                           ),
-
                           const SizedBox(height: 16),
-
-                          // Participants Progress
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -871,10 +842,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 18),
-
-                          // Action Buttons
                           Row(
                             children: [
                               Expanded(
@@ -944,6 +912,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                                           ? () => _startTournament(
                                               tournamentId,
                                               name,
+                                              tournament,
                                             )
                                           : null,
                                       borderRadius: BorderRadius.circular(12),
@@ -1000,9 +969,8 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
   }
 
   Widget _buildStatusBadge(String status) {
-    final isOpen = status == 'open';
-    final isStarted = status == 'started';
     final isCompleted = status == 'completed';
+    final isStarted = status == 'started';
 
     Color bgColor;
     String text;
@@ -1098,7 +1066,12 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
     );
   }
 
-  Future<void> _startTournament(String tournamentId, String name) async {
+  /// ✅ FIXED: Read categories from registration subcollection
+  Future<void> _startTournament(
+    String tournamentId,
+    String name,
+    Map<String, dynamic> tournamentData,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1129,7 +1102,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Registration will be closed and tournament will begin.',
+                      'Schedules will be generated for all categories.',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.blue.shade700,
@@ -1163,7 +1136,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
               ),
             ),
             child: const Text(
-              'Start Tournament',
+              'Start',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -1177,10 +1150,219 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
     if (confirmed != true) return;
 
     try {
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        useRootNavigator: true,
+        builder: (context) => WillPopScope(
+          onWillPop: () async => false,
+          child: AlertDialog(
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF14B8A6),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Text(
+                    'Generating schedules...',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Update tournament status
       await _firestore.collection('tournaments').doc(tournamentId).update({
         'status': 'started',
         'startedAt': FieldValue.serverTimestamp(),
       });
+
+      debugPrint('✅ Tournament status updated');
+
+      // Get tournament data
+      final startDate = tournamentData['date'] as Timestamp?;
+      final startTimeStr = tournamentData['startTime'] as String? ?? '09:00';
+      final matchDuration = tournamentData['matchDuration'] as int? ?? 30;
+      final breakDuration = tournamentData['breakDuration'] as int? ?? 10;
+      final tournamentFormat =
+          tournamentData['tournamentFormat'] as String? ?? 'round_robin';
+      final isBestOf3 = tournamentData['isBestOf3'] as bool? ?? false;
+
+      // Parse start time
+      final timeParts = startTimeStr.split(':');
+      final startTime = TimeOfDay(
+        hour: int.parse(timeParts[0]),
+        minute: timeParts.length > 1 ? int.parse(timeParts[1]) : 0,
+      );
+
+      debugPrint(
+        '📋 Tournament Format: $tournamentFormat, Best of 3: $isBestOf3',
+      );
+
+      // ✅ FIXED: Get categories from registration subcollection
+      final registrationsSnapshot = await _firestore
+          .collection('tournaments')
+          .doc(tournamentId)
+          .collection('registrations')
+          .get();
+
+      if (registrationsSnapshot.docs.isEmpty) {
+        throw Exception('No registrations found for this tournament');
+      }
+
+      // Extract unique categories from registrations
+      final categoriesSet = <String>{};
+      for (var doc in registrationsSnapshot.docs) {
+        final category = doc['category'] as String?;
+        if (category != null && category.isNotEmpty) {
+          categoriesSet.add(category);
+        }
+      }
+
+      final categories = categoriesSet.toList();
+
+      debugPrint('📂 Found ${categories.length} categories: $categories');
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
+
+      // ROUTING: Knockout vs Round-Robin
+      if (tournamentFormat == 'knockout') {
+        await _handleKnockoutStart(
+          tournamentId,
+          name,
+          categories,
+          registrationsSnapshot,
+          startDate,
+          startTime,
+          matchDuration,
+          breakDuration,
+          isBestOf3,
+        );
+      } else {
+        await _handleRoundRobinStart(
+          tournamentId,
+          name,
+          startDate,
+          startTime,
+          matchDuration,
+          breakDuration,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      try {
+        Navigator.of(context, rootNavigator: true).pop();
+      } catch (e) {
+        debugPrint('Error closing dialog: $e');
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error: ${e.toString()}',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      debugPrint('❌ Error: $e');
+    }
+  }
+
+  /// Handle Knockout Tournament Start
+  Future<void> _handleKnockoutStart(
+    String tournamentId,
+    String name,
+    List<String> categories,
+    QuerySnapshot registrationsSnapshot,
+    Timestamp? startDate,
+    TimeOfDay startTime,
+    int matchDuration,
+    int breakDuration,
+    bool isBestOf3,
+  ) async {
+    try {
+      final knockoutService = KnockoutTournamentService();
+
+      // For each category, generate knockout matches
+      for (var category in categories) {
+        // Get all registrations for this category
+        final categoryRegistrations = registrationsSnapshot.docs
+            .where((doc) => doc['category'] == category)
+            .toList();
+
+        debugPrint(
+          '📊 Category: $category, Registrations: ${categoryRegistrations.length}',
+        );
+
+        // Convert registrations to team list
+        final teamList = <Map<String, dynamic>>[];
+        for (int i = 0; i < categoryRegistrations.length; i++) {
+          final regDoc = categoryRegistrations[i];
+          final regData = regDoc.data() as Map<String, dynamic>;
+
+          // Create team from registration
+          final participants = regData['participants'] as List<dynamic>? ?? [];
+          final teamName = regData['fullName'] as String? ?? 'Team ${i + 1}';
+
+          teamList.add({
+            'id': regDoc.id,
+            'name': teamName,
+            'players': participants.cast<String>(),
+          });
+        }
+
+        if (teamList.isEmpty) {
+          debugPrint('⚠️ No registrations in category $category, skipping');
+          continue;
+        }
+
+        // Generate knockout matches for this category
+        await knockoutService.generateKnockoutMatches(
+          tournamentId,
+          category,
+          teamList,
+          startDate?.toDate() ?? DateTime.now(),
+          startTime,
+          matchDuration,
+          breakDuration,
+          isBestOf3,
+        );
+
+        debugPrint('✅ Knockout matches generated for $category');
+      }
 
       if (!mounted) return;
 
@@ -1190,7 +1372,12 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
             children: [
               const Icon(Icons.check_circle_rounded, color: Colors.white),
               const SizedBox(width: 12),
-              Expanded(child: Text('Tournament "$name" started successfully!')),
+              Expanded(
+                child: Text(
+                  'Tournament "$name" started! (Knockout)',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
             ],
           ),
           backgroundColor: Colors.green.shade600,
@@ -1199,28 +1386,105 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
             borderRadius: BorderRadius.circular(12),
           ),
           margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 2),
         ),
       );
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => KnockoutScheduleScreen(
+            tournamentId: tournamentId,
+            tournamentName: name,
+            startDate: startDate?.toDate() ?? DateTime.now(),
+            startTime: startTime,
+            matchDuration: matchDuration,
+            breakDuration: breakDuration,
+          ),
+        ),
+      );
+
+      debugPrint('✅ Navigated to KnockoutScheduleScreen');
     } catch (e) {
+      debugPrint('❌ Error in knockout start: $e');
+      rethrow;
+    }
+  }
+
+  /// Handle Round-Robin Tournament Start
+  Future<void> _handleRoundRobinStart(
+    String tournamentId,
+    String name,
+    Timestamp? startDate,
+    TimeOfDay startTime,
+    int matchDuration,
+    int breakDuration,
+  ) async {
+    try {
+      final service = ClubTournamentService();
+
+      if (startDate != null) {
+        await service.generateCategoryTournaments(
+          tournamentId,
+          startDate.toDate(),
+          startTime,
+          matchDuration,
+          breakDuration,
+          'round_robin',
+        );
+
+        debugPrint('✅ Round-robin schedules generated');
+      }
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.error_outline, color: Colors.white),
+              const Icon(Icons.check_circle_rounded, color: Colors.white),
               const SizedBox(width: 12),
-              Expanded(child: Text('Error starting tournament: $e')),
+              Expanded(
+                child: Text(
+                  'Tournament "$name" started! (Round-Robin)',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
             ],
           ),
-          backgroundColor: Colors.red.shade600,
+          backgroundColor: Colors.green.shade600,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 2),
         ),
       );
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ClubTournamentScheduleScreen(
+            tournamentId: tournamentId,
+            tournamentName: name,
+            startDate: startDate!.toDate(),
+            startTime: startTime,
+            matchDuration: matchDuration,
+            breakDuration: breakDuration,
+            tournamentFormat: 'round_robin',
+          ),
+        ),
+      );
+
+      debugPrint('✅ Navigated to ClubTournamentScheduleScreen');
+    } catch (e) {
+      debugPrint('❌ Error in round-robin start: $e');
+      rethrow;
     }
   }
 
@@ -1242,7 +1506,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                 children: [
                   const Icon(Icons.check_circle_rounded, color: Colors.white),
                   const SizedBox(width: 12),
-                  const Text('Tournament created successfully!'),
+                  const Text('Tournament created!'),
                 ],
               ),
               backgroundColor: Colors.green.shade600,

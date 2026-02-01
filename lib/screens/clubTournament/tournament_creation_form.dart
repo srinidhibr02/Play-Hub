@@ -18,7 +18,7 @@ class TournamentCreationForm extends StatefulWidget {
 
 class _TournamentCreationFormState extends State<TournamentCreationForm> {
   final _firestore = FirebaseFirestore.instance;
-  int _currentStep = 0;
+  int _currentStep = 2;
   bool _isLoading = false;
 
   // Step 1
@@ -1360,6 +1360,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                 'round_robin',
                 _tournamentFormat,
                 (value) {
+                  print(value);
                   setState(() => _tournamentFormat = value!);
                 },
               ),
@@ -1370,6 +1371,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                 'knockout',
                 _tournamentFormat,
                 (value) {
+                  print(value);
                   setState(() => _tournamentFormat = value!);
                 },
               ),
