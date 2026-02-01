@@ -50,6 +50,7 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
 
       final tournamentSnapshot = await _firestore
           .collection('tournaments')
+          .where('status', isEqualTo: 'open')
           .get();
 
       if (!mounted) return;

@@ -990,7 +990,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
 
   /// ✅ UPDATED: Bottom button now routes to schedule screen when tournament is started
   Widget _buildBottomButton(String status) {
-    final isStarted = status == 'started';
+    final isStarted = status == 'started' || status == 'completed';
     final buttonColor = isStarted ? Colors.teal : Colors.grey;
     final buttonIcon = isStarted
         ? Icons.schedule_rounded

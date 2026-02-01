@@ -310,7 +310,55 @@ class TournamentProgressionService {
     }
   }
 
-  /// ✅ MAIN: Handle knockout tournament progression with currentRound updates
+  Future<void> checkAndUpdateTournamentCompletion(String tournamentId) async {
+    try {
+      debugPrint('🔍 Checking tournament completion status...');
+
+      // Get all category tournaments
+      final categoryToursSnapshot = await _firestore
+          .collection('tournaments')
+          .doc(tournamentId)
+          .collection('categoryTournaments')
+          .get();
+
+      if (categoryToursSnapshot.docs.isEmpty) {
+        debugPrint('⚠️ No category tournaments found');
+        return;
+      }
+
+      debugPrint('📋 Total categories: ${categoryToursSnapshot.docs.length}');
+
+      // Check status of each category
+      final completedCount = categoryToursSnapshot.docs
+          .where((doc) => doc['status'] == 'completed')
+          .length;
+
+      final totalCount = categoryToursSnapshot.docs.length;
+
+      debugPrint('📊 Category Status: $completedCount/$totalCount completed');
+
+      // If all categories are completed, update tournament status
+      if (completedCount == totalCount && totalCount > 0) {
+        await _firestore.collection('tournaments').doc(tournamentId).update({
+          'status': 'completed',
+          'completedAt': FieldValue.serverTimestamp(),
+        });
+
+        debugPrint('✅ Tournament status updated to: completed');
+        debugPrint('🏆🏆🏆 ALL CATEGORIES COMPLETED - TOURNAMENT FINISHED!');
+
+        return;
+      }
+
+      debugPrint(
+        '⏳ Tournament still in progress ($completedCount/$totalCount categories completed)',
+      );
+    } catch (e) {
+      debugPrint('❌ Error checking tournament completion: $e');
+      rethrow;
+    }
+  }
+
   /// This method checks all matches in current round, creates next round, and updates currentRound
   Future<void> progressKnockoutRound(
     String tournamentId,
@@ -495,9 +543,9 @@ class TournamentProgressionService {
 
       // Handle odd number of teams (bye logic)
       List<Map<String, dynamic>> teamsForMatching = List.from(winners);
-
+      teamsForMatching.shuffle();
       if (winners.length % 2 != 0) {
-        final byeTeam = teamsForMatching.removeLast();
+        final byeTeam = teamsForMatching.removeAt(2);
 
         debugPrint('🎫 BYE given to: ${byeTeam['name']}');
 

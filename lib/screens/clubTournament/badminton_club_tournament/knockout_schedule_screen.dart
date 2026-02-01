@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:play_hub/screens/clubTournament/badminton_club_tournament/knockout_match_scorecard_screen.dart';
 import 'package:play_hub/screens/clubTournament/club_service/club_tournament_service.dart';
 import 'package:play_hub/screens/clubTournament/club_service/knockout_match_service.dart';
+import 'package:play_hub/screens/clubTournament/club_service/tournament_progression_service.dart';
 
 class KnockoutScheduleScreen extends StatefulWidget {
   final String tournamentId;
@@ -445,7 +446,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: Colors.white, size: 28),
+                  child: Icon(icon, color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -455,7 +456,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                       Text(
                         categoryName,
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
                         ),
@@ -591,6 +592,10 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     String winnerId,
   ) async {
     try {
+      await TournamentProgressionService().checkAndUpdateTournamentCompletion(
+        tournamentId,
+      );
+
       final winnerTeamDoc = await _firestore
           .collection('tournaments')
           .doc(tournamentId)

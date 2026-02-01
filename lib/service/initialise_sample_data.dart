@@ -5,7 +5,7 @@ Future<void> initializeSampleData() async {
   final firestore = FirebaseFirestore.instance;
 
   // Tournament ID where registrations will be added
-  const String tournamentId = 'aWgBcZG62P5E0ab6v8Jx';
+  const String tournamentId = 'Rmi6yzdNfOEAk5HTB3E9';
 
   await _addSampleRegistrations(firestore, tournamentId);
 }
@@ -15,6 +15,7 @@ Future<void> _addSampleRegistrations(
   String tournamentId,
 ) async {
   final registrations = [
+    //Male Doubles
     {
       'bookingAmount': 25,
       'category': 'Male Doubles',
@@ -75,6 +76,97 @@ Future<void> _addSampleRegistrations(
       'category': 'Male Doubles',
       'fullName': 'Sanjay N K',
       'participants': ['Sanjay', 'Bharat'],
+      'paymentId': 'tuv1OOYSnuSBl',
+      'phoneNumber': '+91 7892750858',
+      'registeredAt': Timestamp.now(),
+      'status': 'confirmed',
+      'userId': 'jarwasanju@gmail.com',
+    },
+
+    //Male Singles
+    {
+      'bookingAmount': 17.5,
+      'category': 'Male Singles',
+      'fullName': 'Dev B R',
+      'participants': ['Abhishek'],
+      'paymentId': 'Xyz1OOYSnuSBl',
+      'phoneNumber': '+91 8050820700',
+      'registeredAt': Timestamp.now(),
+      'status': 'confirmed',
+      'userId': 'devbr1998@gmail.com',
+    },
+    {
+      'bookingAmount': 17.5,
+      'category': 'Male Singles',
+      'fullName': 'Sample User',
+      'participants': ['Pratap'],
+      'paymentId': 'Bbc1OOYSnuUBl',
+      'phoneNumber': '+91 9113083983',
+      'registeredAt': Timestamp.now(),
+      'status': 'confirmed',
+      'userId': 'arjunbhandiwad02@gmail.com',
+    },
+    {
+      'bookingAmount': 17.5,
+      'category': 'Male Singles',
+      'fullName': 'Badminton Folks',
+      'participants': ['Vinay'],
+      'paymentId': 'Uvw1OOYSnuSBl',
+      'phoneNumber': '+91 9123456780',
+      'registeredAt': Timestamp.now(),
+      'status': 'confirmed',
+      'userId': 'b.folks.2022@gmail.com',
+    },
+    {
+      'bookingAmount': 17.5,
+      'category': 'Male Singles',
+      'fullName': 'Srinidhi B R',
+      'participants': ['Vinod'],
+      'paymentId': 'Abc1OOYSnuSBl',
+      'phoneNumber': '+91 7892750858',
+      'registeredAt': Timestamp.now(),
+      'status': 'confirmed',
+      'userId': 'srinidhibr02@gmail.com',
+    },
+    {
+      'bookingAmount': 17.5,
+      'category': 'Male Singles',
+      'fullName': 'Badminton Folks',
+      'participants': ['Nandish'],
+      'paymentId': 'jkl1OOYSnuSBl',
+      'phoneNumber': '+91 9123456780',
+      'registeredAt': Timestamp.now(),
+      'status': 'confirmed',
+      'userId': 'nandishng999@gmail.com',
+    },
+    {
+      'bookingAmount': 17.5,
+      'category': 'Male Singles',
+      'fullName': 'Sanjay N K',
+      'participants': ['Sanjay'],
+      'paymentId': 'tuv1OOYSnuSBl',
+      'phoneNumber': '+91 7892750858',
+      'registeredAt': Timestamp.now(),
+      'status': 'confirmed',
+      'userId': 'jarwasanju@gmail.com',
+    },
+    //Female Doubles
+    {
+      'bookingAmount': 17.5,
+      'category': 'Female Doubles',
+      'fullName': 'Badminton Folks',
+      'participants': ['Anusha', 'Priya'],
+      'paymentId': 'jkl1OOYSnuSBl',
+      'phoneNumber': '+91 9123456780',
+      'registeredAt': Timestamp.now(),
+      'status': 'confirmed',
+      'userId': 'nandishng999@gmail.com',
+    },
+    {
+      'bookingAmount': 17.5,
+      'category': 'Female Doubles',
+      'fullName': 'Sanjay N K',
+      'participants': ['Saraswathi', 'Anitha'],
       'paymentId': 'tuv1OOYSnuSBl',
       'phoneNumber': '+91 7892750858',
       'registeredAt': Timestamp.now(),
