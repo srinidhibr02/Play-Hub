@@ -1406,6 +1406,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
           ),
         ),
       );
+
       debugPrint('✅ Navigated to KnockoutScheduleScreen');
     } catch (e) {
       debugPrint('❌ Error in knockout start: $e');

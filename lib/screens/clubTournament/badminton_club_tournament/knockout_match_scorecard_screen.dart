@@ -44,11 +44,37 @@ class _AdvancedMatchScorecardScreenState
     super.initState();
     score1 = 0;
     score2 = 0;
-    status = 'Scheduled';
+    status = widget.match['status'] ?? 'Scheduled';
     setWins1 = 0;
     setWins2 = 0;
     currentSet = 1;
     setScores = [];
+
+    // If match is already completed, load the previous results
+    if (status == 'Completed') {
+      _loadCompletedMatchData();
+    }
+  }
+
+  /// Load completed match data from Firestore
+  void _loadCompletedMatchData() {
+    if (widget.isBestOf3) {
+      setWins1 = widget.match['score1'] as int? ?? 0;
+      setWins2 = widget.match['score2'] as int? ?? 0;
+      setScores = List<Map<String, int>>.from(
+        (widget.match['setScores'] as List<dynamic>? ?? []).map(
+          (score) => Map<String, int>.from(score as Map<dynamic, dynamic>),
+        ),
+      );
+    } else {
+      score1 = widget.match['score1'] as int? ?? 0;
+      score2 = widget.match['score2'] as int? ?? 0;
+    }
+  }
+
+  /// Check if match is completed
+  bool _isMatchCompleted() {
+    return status == 'Completed';
   }
 
   /// Check if current set is won
@@ -143,8 +169,10 @@ class _AdvancedMatchScorecardScreenState
     }
   }
 
-  /// Increment score for team
+  /// Increment score for team (only if match not completed)
   void _incrementScore(bool isTeam1) {
+    if (_isMatchCompleted()) return;
+
     setState(() {
       if (isTeam1) {
         score1++;
@@ -154,8 +182,10 @@ class _AdvancedMatchScorecardScreenState
     });
   }
 
-  /// Decrement score for team
+  /// Decrement score for team (only if match not completed)
   void _decrementScore(bool isTeam1) {
+    if (_isMatchCompleted()) return;
+
     setState(() {
       if (isTeam1) {
         if (score1 > 0) score1--;
@@ -175,6 +205,18 @@ class _AdvancedMatchScorecardScreenState
     return null;
   }
 
+  /// Get winning team name
+  String _getWinningTeamName() {
+    final winnerId = widget.match['winner'] as String?;
+    if (winnerId == null) return 'Unknown';
+
+    if (winnerId == widget.match['team1']['id']) {
+      return widget.match['team1']['name'] as String;
+    } else {
+      return widget.match['team2']['name'] as String;
+    }
+  }
+
   /// Save match result
   Future<void> _saveMatchResult() async {
     try {
@@ -183,7 +225,7 @@ class _AdvancedMatchScorecardScreenState
       final team1Id = widget.match['team1']['id'] as String;
       final team2Id = widget.match['team2']['id'] as String;
       final winner = _getMatchWinner();
-      print('$team1Id & $team2Id & $winner');
+
       if (widget.isBestOf3) {
         // Best of 3: Winner is who wins 2 sets
         if (!_isMatchWon()) {
@@ -328,7 +370,10 @@ class _AdvancedMatchScorecardScreenState
         ),
       );
 
-      Navigator.pop(context, true);
+      // Update UI to show completed state
+      setState(() {
+        status = 'Completed';
+      });
     } catch (e) {
       if (!mounted) return;
 
@@ -410,15 +455,23 @@ class _AdvancedMatchScorecardScreenState
               if (widget.isBestOf3) _buildSeriesInfo(),
               if (widget.isBestOf3) const SizedBox(height: 20),
 
+              // Match Status Banner (when completed)
+              if (_isMatchCompleted()) _buildCompletedBanner(),
+              if (_isMatchCompleted()) const SizedBox(height: 20),
+
               // Current Set Display
               _buildSetDisplay(team1, team2),
 
               const SizedBox(height: 24),
 
-              // Score Control
-              _buildScoreControl(team1, team2),
-
-              const SizedBox(height: 24),
+              // Score Control (only if not completed)
+              if (!_isMatchCompleted())
+                Column(
+                  children: [
+                    _buildScoreControl(team1, team2),
+                    const SizedBox(height: 24),
+                  ],
+                ),
 
               // Set History
               if (setScores.isNotEmpty) _buildSetHistory(),
@@ -433,6 +486,90 @@ class _AdvancedMatchScorecardScreenState
         ),
       ),
       bottomNavigationBar: _buildBottomButtons(),
+    );
+  }
+
+  /// ✅ NEW: Build completed match banner
+  Widget _buildCompletedBanner() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green.shade400, Colors.green.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Match Completed',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Winner: ${_getWinningTeamName()}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Text(
+              '🔒 Scoring is locked - Match results are final',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -490,6 +627,38 @@ class _AdvancedMatchScorecardScreenState
                 ),
               ],
             ),
+          Column(
+            children: [
+              Text(
+                'Status',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.blue.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _isMatchCompleted()
+                      ? Colors.green.shade100
+                      : Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  _isMatchCompleted() ? 'Completed' : 'In Progress',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: _isMatchCompleted()
+                        ? Colors.green.shade700
+                        : Colors.orange.shade700,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -518,7 +687,7 @@ class _AdvancedMatchScorecardScreenState
               ),
               const SizedBox(height: 4),
               Text(
-                '$currentSet/3',
+                _isMatchCompleted() ? 'Final' : '$currentSet/3',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -560,11 +729,11 @@ class _AdvancedMatchScorecardScreenState
               ),
               const SizedBox(height: 4),
               Text(
-                _isMatchWon() ? 'Complete' : 'In Progress',
+                _isMatchCompleted() ? 'Complete' : 'In Progress',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: _isMatchWon()
+                  color: _isMatchCompleted()
                       ? Colors.green.shade700
                       : Colors.orange.shade700,
                 ),
@@ -583,14 +752,18 @@ class _AdvancedMatchScorecardScreenState
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.teal.shade600, Colors.cyan.shade600],
+          colors: _isMatchCompleted()
+              ? [Colors.green.shade600, Colors.teal.shade600]
+              : [Colors.teal.shade600, Colors.cyan.shade600],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.teal.withOpacity(0.3),
+            color: _isMatchCompleted()
+                ? Colors.green.withOpacity(0.3)
+                : Colors.teal.withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -653,7 +826,9 @@ class _AdvancedMatchScorecardScreenState
                       ),
                       child: Center(
                         child: Text(
-                          score1.toString(),
+                          (widget.isBestOf3 && _isMatchCompleted())
+                              ? setWins1.toString()
+                              : score1.toString(),
                           style: const TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.w900,
@@ -677,14 +852,35 @@ class _AdvancedMatchScorecardScreenState
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Set $currentSet',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white.withOpacity(0.7),
+                  if (!_isMatchCompleted())
+                    Text(
+                      'Set $currentSet',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'FINAL',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 1,
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ),
               Expanded(
@@ -703,7 +899,9 @@ class _AdvancedMatchScorecardScreenState
                       ),
                       child: Center(
                         child: Text(
-                          score2.toString(),
+                          (widget.isBestOf3 && _isMatchCompleted())
+                              ? setWins2.toString()
+                              : score2.toString(),
                           style: const TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.w900,
@@ -720,8 +918,8 @@ class _AdvancedMatchScorecardScreenState
 
           const SizedBox(height: 16),
 
-          // Set Winner Info
-          if (_checkSetWinner() != null)
+          // Set Winner Info (only show if not completed and set is won)
+          if (!_isMatchCompleted() && _checkSetWinner() != null)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -742,7 +940,7 @@ class _AdvancedMatchScorecardScreenState
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Set ${_checkSetWinner()!['winner'] == 1 ? 'Won by ' + (widget.match['team1']['name'] as String) : 'Won by ' + (widget.match['team2']['name'] as String)}',
+                    'Set ${_checkSetWinner()!['winner'] == 1 ? 'Won by ${widget.match['team1']['members'].join(', ') as String}' : 'Won by ${widget.match['team2']['members'].join(', ') as String}'}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -831,15 +1029,20 @@ class _AdvancedMatchScorecardScreenState
     bool isTeam1,
     Color color,
   ) {
+    final isLocked = _isMatchCompleted();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isLocked ? Colors.grey.shade100 : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200, width: 1.5),
+        border: Border.all(
+          color: isLocked ? Colors.grey.shade300 : Colors.grey.shade200,
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(isLocked ? 0.03 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -847,34 +1050,77 @@ class _AdvancedMatchScorecardScreenState
       ),
       child: Column(
         children: [
-          Text(
-            teamName,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey.shade900,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                teamName,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade900,
+                ),
+              ),
+              if (isLocked)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lock_rounded,
+                        size: 12,
+                        color: Colors.orange.shade700,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Locked',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.orange.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () => _decrementScore(isTeam1),
+                onTap: isLocked ? null : () => _decrementScore(isTeam1),
                 child: Container(
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [color.withOpacity(0.2), color.withOpacity(0.1)],
+                      colors: isLocked
+                          ? [Colors.grey.shade200, Colors.grey.shade100]
+                          : [color.withOpacity(0.2), color.withOpacity(0.1)],
                     ),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: color.withOpacity(0.3),
+                      color: isLocked
+                          ? Colors.grey.shade300
+                          : color.withOpacity(0.3),
                       width: 1.5,
                     ),
                   ),
-                  child: Icon(Icons.remove_rounded, color: color, size: 28),
+                  child: Icon(
+                    Icons.remove_rounded,
+                    color: isLocked ? Colors.grey.shade400 : color,
+                    size: 28,
+                  ),
                 ),
               ),
 
@@ -885,10 +1131,17 @@ class _AdvancedMatchScorecardScreenState
                 height: 56,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
+                    colors: isLocked
+                        ? [Colors.grey.shade200, Colors.grey.shade100]
+                        : [color.withOpacity(0.15), color.withOpacity(0.05)],
                   ),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+                  border: Border.all(
+                    color: isLocked
+                        ? Colors.grey.shade300
+                        : color.withOpacity(0.3),
+                    width: 1.5,
+                  ),
                 ),
                 child: Center(
                   child: Text(
@@ -896,7 +1149,7 @@ class _AdvancedMatchScorecardScreenState
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
-                      color: color,
+                      color: isLocked ? Colors.grey.shade500 : color,
                     ),
                   ),
                 ),
@@ -905,21 +1158,29 @@ class _AdvancedMatchScorecardScreenState
               const SizedBox(width: 20),
 
               GestureDetector(
-                onTap: () => _incrementScore(isTeam1),
+                onTap: isLocked ? null : () => _incrementScore(isTeam1),
                 child: Container(
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [color.withOpacity(0.2), color.withOpacity(0.1)],
+                      colors: isLocked
+                          ? [Colors.grey.shade200, Colors.grey.shade100]
+                          : [color.withOpacity(0.2), color.withOpacity(0.1)],
                     ),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: color.withOpacity(0.3),
+                      color: isLocked
+                          ? Colors.grey.shade300
+                          : color.withOpacity(0.3),
                       width: 1.5,
                     ),
                   ),
-                  child: Icon(Icons.add_rounded, color: color, size: 28),
+                  child: Icon(
+                    Icons.add_rounded,
+                    color: isLocked ? Colors.grey.shade400 : color,
+                    size: 28,
+                  ),
                 ),
               ),
             ],
@@ -1062,6 +1323,11 @@ class _AdvancedMatchScorecardScreenState
   }
 
   Widget _buildBottomButtons() {
+    final isMatchComplete =
+        _isMatchCompleted() ||
+        (!widget.isBestOf3 && _checkSetWinner() != null) ||
+        (widget.isBestOf3 && _isMatchWon());
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1089,7 +1355,7 @@ class _AdvancedMatchScorecardScreenState
                   ),
                 ),
                 child: Text(
-                  'Cancel',
+                  'Close',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -1101,69 +1367,108 @@ class _AdvancedMatchScorecardScreenState
 
             const SizedBox(width: 12),
 
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: Colors.green.shade600 != Colors.grey.shade400
-                        ? [Colors.green.shade600, Colors.green.shade700]
-                        : [Colors.grey.shade400, Colors.grey.shade500],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.green.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+            // Save Result Button (only if not already completed)
+            if (!_isMatchCompleted())
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isMatchComplete
+                          ? [Colors.green.shade600, Colors.green.shade700]
+                          : [Colors.grey.shade400, Colors.grey.shade500],
                     ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap:
-                        (widget.isBestOf3 && !_isMatchWon()) ||
-                            (!widget.isBestOf3 && _checkSetWinner() == null)
-                        ? null
-                        : (_saveMatchResult),
                     borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      child: isLoading
-                          ? SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation(
-                                  Colors.green.shade200,
-                                ),
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.check_circle_rounded,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Save Result',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
+                    boxShadow: isMatchComplete
+                        ? [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
+                          ]
+                        : [],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: isMatchComplete ? _saveMatchResult : null,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: isLoading
+                            ? SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Colors.green.shade200,
+                                  ),
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Save Result',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade600, Colors.green.shade700],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              color: Colors.green.shade100,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Saved ✓',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.green.shade100,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),

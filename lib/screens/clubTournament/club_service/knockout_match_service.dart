@@ -1,9 +1,58 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-/// Fixed Knockout tournament match generation service with teams collection
+/// Dynamic Knockout tournament with proper round progression
 class KnockoutTournamentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// ✅ FIXED: Determine round name based on team count
+  String _getRoundName(int teamCount) {
+    if (teamCount > 16) {
+      return 'Round of ${teamCount}'; // 32, 64, etc.
+    } else if (teamCount == 16) {
+      return 'Round of 16';
+    } else if (teamCount > 8 && teamCount <= 15) {
+      return 'Round of ${teamCount}'; // 9-15 teams
+    } else if (teamCount == 8) {
+      return 'Quarter-Finals';
+    } else if (teamCount > 4 && teamCount < 8) {
+      return 'Quarter-Finals'; // 5, 6, 7 teams
+    } else if (teamCount == 4) {
+      return 'Semi-Finals';
+    } else if (teamCount == 3) {
+      return 'Semi-Finals'; // 3 teams still go to semis
+    } else if (teamCount == 2) {
+      return 'Finals';
+    } else if (teamCount == 1) {
+      return 'Champion';
+    }
+    return 'Finals';
+  }
+
+  /// ✅ FIXED: Get all rounds from current team count to finals
+  List<String> _getAllRounds(int teamCount) {
+    List<String> rounds = [];
+    int currentCount = teamCount;
+
+    debugPrint('🔄 Calculating rounds for $teamCount teams:');
+
+    // Keep dividing until we reach 1 team (champion)
+    while (currentCount >= 2) {
+      final roundName = _getRoundName(currentCount);
+
+      // Only add if not already in the list (avoid duplicates)
+      if (!rounds.contains(roundName)) {
+        rounds.add(roundName);
+        debugPrint('  → $currentCount teams = $roundName');
+      }
+
+      // Divide teams by 2 for next round
+      currentCount = (currentCount / 2).ceil();
+    }
+
+    debugPrint('📋 Final rounds list: $rounds');
+    return rounds;
+  }
 
   /// Generate initial knockout matches for a tournament
   Future<void> generateKnockoutMatches(
@@ -18,25 +67,32 @@ class KnockoutTournamentService {
   ) async {
     try {
       debugPrint('🏆 Starting knockout match generation for: $categoryId');
+      debugPrint('👥 Total teams: ${participants.length}');
 
-      // ✅ STEP 1: Create categoryTournament document first
-      await _createCategoryTournament(tournamentId, categoryId, isBestOf3);
+      final initialRound = _getRoundName(participants.length);
+      final allRounds = _getAllRounds(participants.length);
 
-      debugPrint('✅ Category tournament created: $categoryId');
+      debugPrint('🎯 Initial Round: $initialRound');
+      debugPrint('📋 All Tournament Rounds: $allRounds');
 
-      // ✅ STEP 2: Create teams collection and documents
-      await _createTeams(tournamentId, categoryId, participants);
+      // ✅ Create categoryTournament document AND teams collection
+      await _createCategoryTournamentWithTeams(
+        tournamentId,
+        categoryId,
+        participants,
+        isBestOf3,
+        initialRound,
+        allRounds,
+      );
 
-      debugPrint('✅ Teams created for: $categoryId');
+      debugPrint('✅ Category tournament and teams created: $categoryId');
 
-      final roundName = _getInitialRoundName(participants.length);
-
-      // ✅ STEP 3: Create matches under the category tournament
+      // ✅ Create initial round matches
       await _createRoundMatches(
         tournamentId,
         categoryId,
         participants,
-        roundName,
+        initialRound,
         startDate,
         startTime,
         matchDuration,
@@ -45,7 +101,7 @@ class KnockoutTournamentService {
       );
 
       debugPrint(
-        '✅ Knockout matches generated for $categoryId: $roundName with ${participants.length ~/ 2} matches',
+        '✅ Knockout matches generated for $categoryId: $initialRound with ${(participants.length / 2).ceil()} matches',
       );
     } catch (e) {
       debugPrint('❌ Error generating knockout matches: $e');
@@ -53,11 +109,14 @@ class KnockoutTournamentService {
     }
   }
 
-  /// ✅ NEW: Create category tournament document
-  Future<void> _createCategoryTournament(
+  /// ✅ Create category tournament document AND teams collection with all rounds
+  Future<void> _createCategoryTournamentWithTeams(
     String tournamentId,
     String categoryId,
+    List<Map<String, dynamic>> teams,
     bool isBestOf3,
+    String initialRound,
+    List<String> allRounds,
   ) async {
     try {
       final categoryTourRef = _firestore
@@ -66,54 +125,37 @@ class KnockoutTournamentService {
           .collection('categoryTournaments')
           .doc(categoryId);
 
-      // Check if already exists
+      // Step 1: Create the categoryTournament document
       final docSnapshot = await categoryTourRef.get();
 
       if (!docSnapshot.exists) {
-        // Create the document with initial data
         await categoryTourRef.set({
           'id': categoryId,
           'category': categoryId,
           'tournamentId': tournamentId,
-          'stage': 'Quarter-Finals',
-          'currentRound': 'Quarter-Finals',
+          'stage': initialRound,
+          'currentRound': initialRound,
           'isBestOf3': isBestOf3,
           'status': 'active',
+          'totalTeams': teams.length,
+          'allRounds': allRounds,
           'createdAt': FieldValue.serverTimestamp(),
         });
 
         debugPrint('📁 Created categoryTournament document: $categoryId');
-      } else {
-        debugPrint('✓ Category tournament already exists: $categoryId');
+        debugPrint('📋 Registered rounds: $allRounds');
       }
-    } catch (e) {
-      debugPrint('❌ Error creating category tournament: $e');
-      rethrow;
-    }
-  }
 
-  /// ✅ NEW: Create teams collection with all participants as teams
-  Future<void> _createTeams(
-    String tournamentId,
-    String categoryId,
-    List<Map<String, dynamic>> participants,
-  ) async {
-    try {
-      final teamsRef = _firestore
-          .collection('tournaments')
-          .doc(tournamentId)
-          .collection('categoryTournaments')
-          .doc(categoryId)
-          .collection('teams');
+      // Step 2: Create teams collection and add all teams
+      final teamsRef = categoryTourRef.collection('teams');
 
-      debugPrint('👥 Creating ${participants.length} teams for $categoryId');
+      debugPrint('👥 Creating ${teams.length} teams for category: $categoryId');
 
-      for (var participant in participants) {
-        final teamId = participant['id'] as String;
-        final teamName = participant['name'] as String;
-        final players = participant['players'] as List<dynamic>? ?? [];
+      for (var team in teams) {
+        final teamId = team['id'] as String;
+        final teamName = team['name'] as String;
+        final players = team['players'] as List<dynamic>? ?? [];
 
-        // Create team document
         await teamsRef.doc(teamId).set({
           'id': teamId,
           'name': teamName,
@@ -124,9 +166,11 @@ class KnockoutTournamentService {
             'matchesPlayed': 0,
             'won': 0,
             'lost': 0,
+            'draw': 0,
             'points': 0,
             'netResult': 0,
             'pointsFor': 0,
+            'pointsAgainst': 0,
           },
           'createdAt': FieldValue.serverTimestamp(),
         });
@@ -134,25 +178,16 @@ class KnockoutTournamentService {
         debugPrint('✅ Team created: $teamName (ID: $teamId)');
       }
 
-      debugPrint('✅ All ${participants.length} teams created for $categoryId');
+      debugPrint(
+        '✅ All ${teams.length} teams added to collection: $categoryId',
+      );
     } catch (e) {
-      debugPrint('❌ Error creating teams: $e');
+      debugPrint('❌ Error creating category tournament with teams: $e');
       rethrow;
     }
   }
 
-  /// Get initial round name based on participant count
-  String _getInitialRoundName(int participantCount) {
-    if (participantCount >= 8) {
-      return 'Quarter-Finals';
-    } else if (participantCount >= 4) {
-      return 'Semi-Finals';
-    } else {
-      return 'Finals';
-    }
-  }
-
-  /// Create matches for a specific round
+  /// Create matches for a specific round with bye handling
   Future<void> _createRoundMatches(
     String tournamentId,
     String categoryId,
@@ -167,8 +202,9 @@ class KnockoutTournamentService {
     try {
       var currentDateTime = _combineDateTime(startDate, startTime);
       int matchCounter = 1;
+      List<Map<String, dynamic>> byeTeams = [];
 
-      // ✅ Reference to matches collection under categoryTournament
+      // Reference to matches collection under categoryTournament
       final matchesRef = _firestore
           .collection('tournaments')
           .doc(tournamentId)
@@ -179,11 +215,49 @@ class KnockoutTournamentService {
       debugPrint('📊 Creating matches for round: $roundName');
       debugPrint('👥 Total teams: ${teams.length}');
 
-      // Pair teams for matches
-      for (int i = 0; i < teams.length; i += 2) {
-        if (i + 1 < teams.length) {
-          final team1 = teams[i];
-          final team2 = teams[i + 1];
+      // Handle odd number of teams (bye logic)
+      List<Map<String, dynamic>> teamsForMatching = List.from(teams);
+
+      if (teams.length % 2 != 0) {
+        // Odd number of teams - give bye to last team
+        final byeTeam = teamsForMatching.removeLast();
+        byeTeams.add(byeTeam);
+
+        debugPrint('🎫 BYE given to: ${byeTeam['name']}');
+
+        // Create bye "match" (team automatically advances)
+        final byeMatchId = '${categoryId}_${roundName}_BYE_${byeTeams.length}';
+
+        await matchesRef.doc(byeMatchId).set({
+          'id': byeMatchId,
+          'team1': {
+            'id': byeTeam['id'],
+            'name': byeTeam['name'],
+            'members': byeTeam['players'] ?? [],
+          },
+          'team2': null, // No opponent
+          'date': currentDateTime,
+          'time': _formatTime(currentDateTime),
+          'status': 'Completed',
+          'score1': 0,
+          'score2': 0,
+          'stage': roundName,
+          'round': roundName,
+          'isBestOf3': isBestOf3,
+          'winner': byeTeam['id'], // Auto-winner
+          'isBye': true, // Mark as bye match
+          'setScores': [],
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        debugPrint('🎫 BYE Match created: $byeMatchId');
+      }
+
+      // Pair remaining teams for matches
+      for (int i = 0; i < teamsForMatching.length; i += 2) {
+        if (i + 1 < teamsForMatching.length) {
+          final team1 = teamsForMatching[i];
+          final team2 = teamsForMatching[i + 1];
 
           final matchId = '${categoryId}_${roundName}_M$matchCounter';
 
@@ -210,6 +284,7 @@ class KnockoutTournamentService {
             'round': roundName,
             'isBestOf3': isBestOf3,
             'winner': null,
+            'isBye': false, // Regular match
             'setScores': [],
             'createdAt': FieldValue.serverTimestamp(),
           });
@@ -223,22 +298,15 @@ class KnockoutTournamentService {
         }
       }
 
-      debugPrint('✅ Created ${matchCounter - 1} matches for $roundName');
+      final totalMatches = matchCounter - 1;
+      final byeCount = byeTeams.length;
+
+      debugPrint(
+        '✅ Created $totalMatches matches + $byeCount bye matches for $roundName',
+      );
     } catch (e) {
       debugPrint('❌ Error creating round matches: $e');
       rethrow;
-    }
-  }
-
-  /// Get next round name based on current round
-  String _getNextRoundName(String currentRound) {
-    switch (currentRound) {
-      case 'Quarter-Finals':
-        return 'Semi-Finals';
-      case 'Semi-Finals':
-        return 'Finals';
-      default:
-        return 'Finals';
     }
   }
 
@@ -287,25 +355,22 @@ class KnockoutTournamentService {
         return;
       }
 
-      // Check if tournament is finished (Finals completed)
-      if (currentRound == 'Finals') {
-        debugPrint('🏆 Tournament Finals completed - Tournament Finished');
-
-        await catTourRef.update({'stage': 'Completed'});
-
-        return;
-      }
-
-      // Get winners from current round
+      // Get winners from current round (including bye winners)
       final winners = <Map<String, dynamic>>[];
       for (final match in currentRoundMatches.docs) {
         final data = match.data();
         final winnerId = data['winner'] as String?;
 
         if (winnerId != null) {
-          final winnerTeam = data['team1']['id'] == winnerId
+          final isBye = data['isBye'] as bool? ?? false;
+
+          // For bye matches, team1 is the winner
+          final winnerTeam = isBye
               ? data['team1']
-              : data['team2'];
+              : (data['team1']['id'] == winnerId
+                    ? data['team1']
+                    : data['team2']);
+
           winners.add(winnerTeam as Map<String, dynamic>);
         }
       }
@@ -315,8 +380,24 @@ class KnockoutTournamentService {
         return;
       }
 
+      debugPrint('🏆 Winners from $currentRound: ${winners.length}');
+
+      // Check if tournament is finished (1 winner left)
+      if (winners.length == 1) {
+        debugPrint('🏆 TOURNAMENT WINNER: ${winners[0]['name']}');
+
+        await catTourRef.update({
+          'stage': 'Completed',
+          'status': 'completed',
+          'winner': winners[0]['id'],
+          'completedAt': FieldValue.serverTimestamp(),
+        });
+
+        return;
+      }
+
       // Create next round
-      final nextRound = _getNextRoundName(currentRound);
+      final nextRound = _getRoundName(winners.length);
       await _createRoundMatches(
         tournamentId,
         categoryId,
@@ -332,41 +413,48 @@ class KnockoutTournamentService {
       // Update current round
       await catTourRef.update({'currentRound': nextRound, 'stage': nextRound});
 
-      debugPrint('✅ Progressed to $nextRound with ${winners.length} winners');
+      debugPrint('✅ Progressed to $nextRound with ${winners.length} teams');
     } catch (e) {
       debugPrint('❌ Error progressing to next round: $e');
       rethrow;
     }
   }
 
-  /// Get tournament winner (when Finals is complete)
+  /// Get tournament winner
   Future<Map<String, dynamic>?> getTournamentWinner(
     String tournamentId,
     String categoryId,
   ) async {
     try {
-      final finalsMatches = await _firestore
+      final categoryTour = await _firestore
           .collection('tournaments')
           .doc(tournamentId)
           .collection('categoryTournaments')
           .doc(categoryId)
-          .collection('matches')
-          .where('stage', isEqualTo: 'Finals')
-          .limit(1)
           .get();
 
-      if (finalsMatches.docs.isEmpty) return null;
+      if (!categoryTour.exists) return null;
 
-      final finalMatch = finalsMatches.docs.first.data();
-      final winnerId = finalMatch['winner'] as String?;
-
+      final winnerId = categoryTour['winner'] as String?;
       if (winnerId == null) return null;
 
-      final winnerTeam = finalMatch['team1']['id'] == winnerId
-          ? finalMatch['team1']
-          : finalMatch['team2'];
+      final winnerTeam = await _firestore
+          .collection('tournaments')
+          .doc(tournamentId)
+          .collection('categoryTournaments')
+          .doc(categoryId)
+          .collection('teams')
+          .doc(winnerId)
+          .get();
 
-      return winnerTeam as Map<String, dynamic>;
+      if (winnerTeam.exists) {
+        return {
+          ...winnerTeam.data() as Map<String, dynamic>,
+          'id': winnerTeam.id,
+        };
+      }
+
+      return null;
     } catch (e) {
       debugPrint('Error getting tournament winner: $e');
       return null;
@@ -474,9 +562,11 @@ class KnockoutTournamentService {
     String teamId, {
     int? won,
     int? lost,
+    int? draw,
     int? points,
     int? netResult,
     int? pointsFor,
+    int? pointsAgainst,
   }) async {
     try {
       final teamRef = _firestore
@@ -495,6 +585,9 @@ class KnockoutTournamentService {
       if (lost != null) {
         updateData['stats.lost'] = FieldValue.increment(lost);
       }
+      if (draw != null) {
+        updateData['stats.draw'] = FieldValue.increment(draw);
+      }
       if (points != null) {
         updateData['stats.points'] = FieldValue.increment(points);
       }
@@ -504,8 +597,11 @@ class KnockoutTournamentService {
       if (pointsFor != null) {
         updateData['stats.pointsFor'] = FieldValue.increment(pointsFor);
       }
+      if (pointsAgainst != null) {
+        updateData['stats.pointsAgainst'] = FieldValue.increment(pointsAgainst);
+      }
 
-      // Also increment matchesPlayed
+      // Always increment matchesPlayed
       updateData['stats.matchesPlayed'] = FieldValue.increment(1);
 
       await teamRef.update(updateData);

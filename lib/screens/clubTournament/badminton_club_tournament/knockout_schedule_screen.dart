@@ -479,7 +479,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
           return Center(child: CircularProgressIndicator(color: categoryColor));
         }
 
-        // Fetch current round
+        // Fetch current round and all rounds
         return StreamBuilder<DocumentSnapshot>(
           stream: _firestore
               .collection('tournaments')
@@ -494,15 +494,30 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
               );
             }
 
+            final tournamentStatus =
+                roundSnapshot.data?.get('status') as String? ?? 'active';
             final currentRound =
-                roundSnapshot.data?.get('currentRound') as String? ??
-                'Quarter-Finals';
+                roundSnapshot.data?.get('currentRound') as String? ?? 'Finals';
+
+            // ✅ Get all rounds from Firestore
+            final allRounds = List<String>.from(
+              roundSnapshot.data?.get('allRounds') as List<dynamic>? ?? [],
+            );
+
             _selectedRound = _selectedRound ?? currentRound;
+
+            debugPrint('📋 All Rounds: $allRounds');
+            debugPrint('🎯 Current Round: $currentRound');
 
             return Column(
               children: [
-                // Round Selector
-                _buildRoundSelector(currentRound, categoryColor),
+                // Tournament Status Banner (if completed)
+                if (tournamentStatus == 'completed')
+                  _buildTournamentCompletedBanner(roundSnapshot.data),
+
+                // ✅ Dynamic Round Selector based on allRounds
+                if (allRounds.isNotEmpty)
+                  _buildDynamicRoundSelector(allRounds, categoryColor),
 
                 // Matches Tab
                 Expanded(
@@ -520,9 +535,72 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     );
   }
 
-  Widget _buildRoundSelector(String currentRound, Color categoryColor) {
-    final rounds = ['Quarter-Finals', 'Semi-Finals', 'Finals'];
+  /// ✅ NEW: Tournament Completed Banner
+  Widget _buildTournamentCompletedBanner(DocumentSnapshot? doc) {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green.shade400, Colors.green.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '🏆 Tournament Complete!',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'All rounds finished',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
+  /// ✅ NEW: Dynamic Round Selector - only shows registered rounds
+  Widget _buildDynamicRoundSelector(List<String> rounds, Color categoryColor) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(12),
@@ -623,10 +701,195 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
           itemCount: matches.length,
           itemBuilder: (context, index) {
             final match = matches[index];
-            return _buildMatchCard(match, index, categoryName, categoryColor);
+            final isBye = match['isBye'] as bool? ?? false;
+
+            if (isBye) {
+              return _buildByeCard(match, index, categoryColor);
+            } else {
+              return _buildMatchCard(match, index, categoryName, categoryColor);
+            }
           },
         );
       },
+    );
+  }
+
+  /// ✅ Bye Match Card
+  Widget _buildByeCard(
+    Map<String, dynamic> match,
+    int index,
+    Color categoryColor,
+  ) {
+    final team1 = match['team1'] as Map<String, dynamic>;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.amber.shade300, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.amber.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.amber.shade400,
+                            Colors.orange.shade500,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.card_travel_rounded,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'BYE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade100,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.green.shade300,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        'Completed',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade100,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Advances',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        team1['members'].join(', ') as String? ?? 'Team 1',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Automatic Advancement',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.amber.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade400, Colors.teal.shade500],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(
+                        Icons.emoji_events_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'TO NEXT',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
