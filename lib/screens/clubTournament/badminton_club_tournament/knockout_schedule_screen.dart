@@ -36,6 +36,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
 
   int _selectedCategoryIndex = 0;
   String? _selectedRound;
+  String? _selectedCategoryName = ''; // ✅ NEW: Track selected category name
 
   final Map<String, Color> categoryColors = {
     'Male Singles': const Color(0xFF3B82F6),
@@ -262,6 +263,10 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
 
     final selected = categories[_selectedCategoryIndex];
     final categoryName = selected['category'] as String? ?? 'Unknown';
+
+    // ✅ Store the category name for _getCategoryName()
+    _selectedCategoryName = categoryName;
+
     final categoryColor = _getCategoryColor(categoryName);
 
     return SingleChildScrollView(
@@ -579,7 +584,232 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     );
   }
 
+  /// ✅ Get winner team name with players
+  Future<Map<String, dynamic>> _getWinnerDetails(
+    String tournamentId,
+    String categoryId,
+    String winnerId,
+  ) async {
+    try {
+      final winnerTeamDoc = await _firestore
+          .collection('tournaments')
+          .doc(tournamentId)
+          .collection('categoryTournaments')
+          .doc(categoryId)
+          .collection('teams')
+          .doc(winnerId)
+          .get();
+
+      if (winnerTeamDoc.exists) {
+        final teamData = winnerTeamDoc.data() as Map<String, dynamic>;
+        final teamName = teamData['name'] as String? ?? 'Unknown Team';
+        final players = teamData['players'] as List<dynamic>? ?? [];
+        final playersString = players.cast<String>().join(', ');
+
+        return {'id': winnerId, 'name': teamName, 'players': playersString};
+      }
+
+      return {'id': winnerId, 'name': 'Unknown Team', 'players': ''};
+    } catch (e) {
+      debugPrint('Error getting winner details: $e');
+      return {'id': winnerId, 'name': 'Unknown Team', 'players': ''};
+    }
+  }
+
+  /// ✅ Enhanced: Tournament completed banner with winner details
   Widget _buildTournamentCompletedBanner(DocumentSnapshot? doc) {
+    final winnerId = doc?.get('winner') as String?;
+
+    if (winnerId == null) {
+      return _buildTournamentCompletedBannerSimple();
+    }
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _getWinnerDetails(
+        widget.tournamentId,
+        _getCategoryName(),
+        winnerId,
+      ),
+      builder: (context, snapshot) {
+        final winnerName = snapshot.data?['name'] as String? ?? 'Unknown Team';
+        final winnerPlayers = snapshot.data?['players'] as String? ?? '';
+
+        return Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green.shade500, Colors.yellow.shade700],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withOpacity(0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // ✅ Header Row
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.25),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.emoji_events_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '🏆 Tournament Complete!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'All rounds finished successfully',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withOpacity(0.95),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 14),
+
+              // ✅ Divider
+              Container(
+                height: 1.5,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withOpacity(0.1),
+                      Colors.white.withOpacity(0.3),
+                      Colors.white.withOpacity(0.1),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // ✅ Winner Section with Team Name and Players
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.25),
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Team Name
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.verified_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          Expanded(
+                            child: Text(
+                              winnerPlayers,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.3,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Players List
+                    if (winnerPlayers.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '$winnerName \n Registration id - $winnerId',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withOpacity(0.85),
+                                  letterSpacing: 0.2,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// ✅ Fallback simple banner when winner data not available
+  Widget _buildTournamentCompletedBannerSimple() {
     return Container(
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.all(14),
@@ -640,6 +870,15 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
         ],
       ),
     );
+  }
+
+  /// ✅ Get current selected category name
+  String _getCategoryName() {
+    // Get from FutureBuilder snapshot - we need to pass it
+    // For now, use _selectedCategoryIndex to get from the categories list
+
+    // This will be set when we build content with categories
+    return _selectedCategoryName ?? 'Unknown';
   }
 
   Widget _buildDynamicRoundSelector(List<String> rounds, Color categoryColor) {
