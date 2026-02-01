@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:play_hub/screens/clubTournament/badminton_club_tournament/club_tournament_schedule_screen.dart';
+import 'package:play_hub/screens/clubTournament/badminton_club_tournament/knockout_schedule_screen.dart';
 
 class TournamentInfoScreen extends StatefulWidget {
   final String tournamentId;
@@ -116,6 +118,86 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
     } catch (e) {
       debugPrint('Error fetching tournament status: $e');
       return 'open';
+    }
+  }
+
+  /// ✅ Navigate to ClubTournamentScheduleScreen
+  Future<void> _navigateToSchedule() async {
+    try {
+      // Get tournament data for schedule screen
+      final doc = await _firestore
+          .collection('tournaments')
+          .doc(widget.tournamentId)
+          .get();
+
+      if (!mounted) return;
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final startDate = data['date'] as Timestamp?;
+        final startTimeStr = data['startTime'] as String? ?? '09:00';
+        final matchDuration = data['matchDuration'] as int? ?? 30;
+        final breakDuration = data['breakDuration'] as int? ?? 5;
+        final tournamentFormat =
+            data['tournamentFormat'] as String? ?? 'round_robin';
+
+        // Parse time
+        final timeParts = startTimeStr.split(':');
+        final startTime = TimeOfDay(
+          hour: int.parse(timeParts[0]),
+          minute: timeParts.length > 1 ? int.parse(timeParts[1]) : 0,
+        );
+
+        if (!mounted) return;
+
+        // Navigate to schedule screen
+        if (tournamentFormat == 'knockout') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => KnockoutScheduleScreen(
+                tournamentId: widget.tournamentId,
+                tournamentName: widget.tournamentName,
+                startDate: startDate?.toDate() ?? DateTime.now(),
+                startTime: startTime,
+                matchDuration: matchDuration,
+                breakDuration: breakDuration,
+                isBestOf3: data['isBestOf3'] as bool? ?? false,
+              ),
+            ),
+          );
+          return;
+        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ClubTournamentScheduleScreen(
+              tournamentId: widget.tournamentId,
+              tournamentName: widget.tournamentName,
+              startDate: startDate?.toDate() ?? DateTime.now(),
+              startTime: startTime,
+              matchDuration: matchDuration,
+              breakDuration: breakDuration,
+              tournamentFormat: tournamentFormat,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error navigating to schedule: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
     }
   }
 
@@ -907,9 +989,10 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
     );
   }
 
+  /// ✅ UPDATED: Bottom button now routes to schedule screen when tournament is started
   Widget _buildBottomButton(String status) {
     final isStarted = status == 'started';
-    final buttonColor = isStarted ? Colors.orange : Colors.grey;
+    final buttonColor = isStarted ? Colors.teal : Colors.grey;
     final buttonIcon = isStarted
         ? Icons.schedule_rounded
         : Icons.schedule_rounded;
@@ -948,32 +1031,36 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(buttonIcon, color: Colors.white, size: 20),
-                        const SizedBox(width: 12),
-                        Text(
-                          buttonText,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+              onTap: isStarted
+                  ? () =>
+                        _navigateToSchedule() // ✅ Navigate to schedule
+                  : () {
+                      // Show snackbar if not started
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(buttonIcon, color: Colors.white, size: 20),
+                              const SizedBox(width: 12),
+                              Text(
+                                buttonText,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
+                          backgroundColor: buttonColor.shade600,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 2),
                         ),
-                      ],
-                    ),
-                    backgroundColor: buttonColor.shade600,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    margin: const EdgeInsets.all(16),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              },
+                      );
+                    },
               borderRadius: BorderRadius.circular(14),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
