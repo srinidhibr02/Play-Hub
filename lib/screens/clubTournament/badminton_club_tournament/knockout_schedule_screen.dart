@@ -11,7 +11,6 @@ class KnockoutScheduleScreen extends StatefulWidget {
   final TimeOfDay startTime;
   final int matchDuration;
   final int breakDuration;
-  final bool isBestOf3;
 
   const KnockoutScheduleScreen({
     super.key,
@@ -21,7 +20,6 @@ class KnockoutScheduleScreen extends StatefulWidget {
     required this.startTime,
     required this.matchDuration,
     required this.breakDuration,
-    required this.isBestOf3,
   });
 
   @override
@@ -34,6 +32,8 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
   late AnimationController _slideController;
   final _service = ClubTournamentService();
   final _knockoutService = KnockoutTournamentService();
+  final _firestore = FirebaseFirestore.instance;
+
   int _selectedCategoryIndex = 0;
   String? _selectedRound;
 
@@ -264,12 +264,75 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     final categoryName = selected['category'] as String? ?? 'Unknown';
     final categoryColor = _getCategoryColor(categoryName);
 
-    return Column(
-      children: [
-        _buildCategorySelector(categories),
-        _buildCategoryInfoCard(selected, categoryColor),
-        Expanded(child: _buildCategoryContent(categoryName, categoryColor)),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildCategorySelector(categories),
+          _buildCategoryInfoCard(selected, categoryColor),
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: _service.getTeams(widget.tournamentId, categoryName),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: CircularProgressIndicator(color: categoryColor),
+                );
+              }
+
+              return StreamBuilder<DocumentSnapshot>(
+                stream: _firestore
+                    .collection('tournaments')
+                    .doc(widget.tournamentId)
+                    .collection('categoryTournaments')
+                    .doc(categoryName)
+                    .snapshots(),
+                builder: (context, roundSnapshot) {
+                  if (!roundSnapshot.hasData) {
+                    return Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: CircularProgressIndicator(color: categoryColor),
+                    );
+                  }
+
+                  final tournamentStatus =
+                      roundSnapshot.data?.get('status') as String? ?? 'active';
+                  final currentRound =
+                      roundSnapshot.data?.get('currentRound') as String? ??
+                      'Finals';
+                  final isBestOf3 =
+                      roundSnapshot.data?.get('isBestOf3') as bool? ?? false;
+                  final allRounds = List<String>.from(
+                    roundSnapshot.data?.get('allRounds') as List<dynamic>? ??
+                        [],
+                  );
+
+                  _selectedRound = _selectedRound ?? currentRound;
+
+                  return Column(
+                    children: [
+                      if (tournamentStatus == 'completed')
+                        _buildTournamentCompletedBanner(roundSnapshot.data),
+                      if (allRounds.isNotEmpty)
+                        _buildDynamicRoundSelector(allRounds, categoryColor),
+                      _buildMatchFormatToggle(
+                        categoryColor,
+                        categoryName,
+                        isBestOf3,
+                      ),
+                      _buildMatchesListContent(
+                        categoryName,
+                        _selectedRound ?? currentRound,
+                        categoryColor,
+                        isBestOf3,
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -393,13 +456,37 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        widget.isBestOf3 ? 'Best of 3' : 'Single Match',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.white.withOpacity(0.8),
-                          fontWeight: FontWeight.w600,
-                        ),
+                      StreamBuilder<DocumentSnapshot>(
+                        stream: _firestore
+                            .collection('tournaments')
+                            .doc(widget.tournamentId)
+                            .collection('categoryTournaments')
+                            .doc(categoryName)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return Text(
+                              'Loading...',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withOpacity(0.8),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          }
+
+                          final isBestOf3 =
+                              snapshot.data?.get('isBestOf3') as bool? ?? false;
+
+                          return Text(
+                            isBestOf3 ? 'Best of 3' : 'Single Match',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white.withOpacity(0.8),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -418,10 +505,31 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildInfoStat(
-                    icon: Icons.sports_tennis_rounded,
-                    label: 'Type',
-                    value: widget.isBestOf3 ? 'Best of 3' : 'Single',
+                  child: StreamBuilder<DocumentSnapshot>(
+                    stream: _firestore
+                        .collection('tournaments')
+                        .doc(widget.tournamentId)
+                        .collection('categoryTournaments')
+                        .doc(categoryName)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return _buildInfoStat(
+                          icon: Icons.sports_tennis_rounded,
+                          label: 'Type',
+                          value: 'Loading...',
+                        );
+                      }
+
+                      final isBestOf3 =
+                          snapshot.data?.get('isBestOf3') as bool? ?? false;
+
+                      return _buildInfoStat(
+                        icon: Icons.sports_tennis_rounded,
+                        label: 'Type',
+                        value: isBestOf3 ? 'Best of 3' : 'Single',
+                      );
+                    },
                   ),
                 ),
               ],
@@ -471,71 +579,6 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     );
   }
 
-  Widget _buildCategoryContent(String categoryName, Color categoryColor) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _service.getTeams(widget.tournamentId, categoryName),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator(color: categoryColor));
-        }
-
-        // Fetch current round and all rounds
-        return StreamBuilder<DocumentSnapshot>(
-          stream: _firestore
-              .collection('tournaments')
-              .doc(widget.tournamentId)
-              .collection('categoryTournaments')
-              .doc(categoryName)
-              .snapshots(),
-          builder: (context, roundSnapshot) {
-            if (!roundSnapshot.hasData) {
-              return Center(
-                child: CircularProgressIndicator(color: categoryColor),
-              );
-            }
-
-            final tournamentStatus =
-                roundSnapshot.data?.get('status') as String? ?? 'active';
-            final currentRound =
-                roundSnapshot.data?.get('currentRound') as String? ?? 'Finals';
-
-            // ✅ Get all rounds from Firestore
-            final allRounds = List<String>.from(
-              roundSnapshot.data?.get('allRounds') as List<dynamic>? ?? [],
-            );
-
-            _selectedRound = _selectedRound ?? currentRound;
-
-            debugPrint('📋 All Rounds: $allRounds');
-            debugPrint('🎯 Current Round: $currentRound');
-
-            return Column(
-              children: [
-                // Tournament Status Banner (if completed)
-                if (tournamentStatus == 'completed')
-                  _buildTournamentCompletedBanner(roundSnapshot.data),
-
-                // ✅ Dynamic Round Selector based on allRounds
-                if (allRounds.isNotEmpty)
-                  _buildDynamicRoundSelector(allRounds, categoryColor),
-
-                // Matches Tab
-                Expanded(
-                  child: _buildMatchesTab(
-                    categoryName,
-                    _selectedRound ?? currentRound,
-                    categoryColor,
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  /// ✅ NEW: Tournament Completed Banner
   Widget _buildTournamentCompletedBanner(DocumentSnapshot? doc) {
     return Container(
       margin: const EdgeInsets.all(12),
@@ -599,7 +642,6 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     );
   }
 
-  /// ✅ NEW: Dynamic Round Selector - only shows registered rounds
   Widget _buildDynamicRoundSelector(List<String> rounds, Color categoryColor) {
     return Container(
       color: Colors.white,
@@ -652,12 +694,137 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     );
   }
 
-  final _firestore = FirebaseFirestore.instance;
+  Widget _buildMatchFormatToggle(
+    Color categoryColor,
+    String categoryName,
+    bool currentValue,
+  ) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.only(left: 40, right: 40),
+      child: Row(
+        children: [
+          Text(
+            'Format: ',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(width: 30),
+          GestureDetector(
+            onTap: () {
+              _firestore
+                  .collection('tournaments')
+                  .doc(widget.tournamentId)
+                  .collection('categoryTournaments')
+                  .doc(categoryName)
+                  .update({'isBestOf3': false});
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: !currentValue ? categoryColor : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: !currentValue ? categoryColor : Colors.grey.shade300,
+                  width: 1.5,
+                ),
+                boxShadow: !currentValue
+                    ? [
+                        BoxShadow(
+                          color: categoryColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.sports_tennis_rounded,
+                    size: 14,
+                    color: !currentValue ? Colors.white : Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Single',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: !currentValue
+                          ? Colors.white
+                          : Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () {
+              _firestore
+                  .collection('tournaments')
+                  .doc(widget.tournamentId)
+                  .collection('categoryTournaments')
+                  .doc(categoryName)
+                  .update({'isBestOf3': true});
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: currentValue ? categoryColor : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: currentValue ? categoryColor : Colors.grey.shade300,
+                  width: 1.5,
+                ),
+                boxShadow: currentValue
+                    ? [
+                        BoxShadow(
+                          color: categoryColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.confirmation_num_rounded,
+                    size: 14,
+                    color: currentValue ? Colors.white : Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Best of 3',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: currentValue ? Colors.white : Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildMatchesTab(
+  Widget _buildMatchesListContent(
     String categoryName,
     String roundName,
     Color categoryColor,
+    bool isBestOf3,
   ) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _knockoutService.getCurrentRoundMatches(
@@ -667,46 +834,62 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator(color: categoryColor));
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: CircularProgressIndicator(color: categoryColor),
+          );
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text('Error: ${snapshot.error}'),
+          );
         }
 
         final matches = snapshot.data ?? [];
 
         if (matches.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.emoji_events_rounded,
-                  size: 64,
-                  color: Colors.grey.shade300,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No matches in $roundName',
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                ),
-              ],
+          return Padding(
+            padding: const EdgeInsets.all(32),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.emoji_events_rounded,
+                    size: 64,
+                    color: Colors.grey.shade300,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No matches in $roundName',
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
             ),
           );
         }
 
         return ListView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
           padding: const EdgeInsets.all(16),
           itemCount: matches.length,
           itemBuilder: (context, index) {
             final match = matches[index];
-            final isBye = match['isBye'] as bool? ?? false;
+            final matchIsBye = match['isBye'] as bool? ?? false;
 
-            if (isBye) {
+            if (matchIsBye) {
               return _buildByeCard(match, index, categoryColor);
             } else {
-              return _buildMatchCard(match, index, categoryName, categoryColor);
+              return _buildMatchCard(
+                match,
+                index,
+                categoryName,
+                categoryColor,
+                isBestOf3,
+              );
             }
           },
         );
@@ -714,7 +897,20 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     );
   }
 
-  /// ✅ Bye Match Card
+  Widget _buildMatchesTab(
+    String categoryName,
+    String roundName,
+    Color categoryColor,
+    bool isBestOf3,
+  ) {
+    return _buildMatchesListContent(
+      categoryName,
+      roundName,
+      categoryColor,
+      isBestOf3,
+    );
+  }
+
   Widget _buildByeCard(
     Map<String, dynamic> match,
     int index,
@@ -898,17 +1094,17 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     int index,
     String categoryName,
     Color categoryColor,
+    bool isBestOf3,
   ) {
     final team1 = match['team1'] as Map<String, dynamic>;
     final team2 = match['team2'] as Map<String, dynamic>;
     final status = match['status'] as String? ?? 'Scheduled';
     final score1 = match['score1'] as int? ?? 0;
     final score2 = match['score2'] as int? ?? 0;
-    final isBestOf3 = match['isBestOf3'] as bool? ?? false;
     final isCompleted = status == 'Completed';
 
     return GestureDetector(
-      onTap: () => _openScorecard(match, categoryName),
+      onTap: () => _openScorecard(match, categoryName, isBestOf3),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
@@ -1050,7 +1246,11 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     );
   }
 
-  void _openScorecard(Map<String, dynamic> match, String categoryName) {
+  void _openScorecard(
+    Map<String, dynamic> match,
+    String categoryName,
+    bool isBestOf3,
+  ) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1059,7 +1259,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
           categoryId: categoryName,
           match: match,
           tournamentFormat: 'knockout',
-          isBestOf3: widget.isBestOf3,
+          isBestOf3: isBestOf3,
         ),
       ),
     ).then((result) {

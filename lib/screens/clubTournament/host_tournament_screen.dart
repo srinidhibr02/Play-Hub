@@ -1402,7 +1402,6 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
             startTime: startTime,
             matchDuration: matchDuration,
             breakDuration: breakDuration,
-            isBestOf3: isBestOf3,
           ),
         ),
       );

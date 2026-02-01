@@ -162,7 +162,6 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
                 startTime: startTime,
                 matchDuration: matchDuration,
                 breakDuration: breakDuration,
-                isBestOf3: data['isBestOf3'] as bool? ?? false,
               ),
             ),
           );

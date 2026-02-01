@@ -243,7 +243,7 @@ class KnockoutTournamentService {
           'score2': 0,
           'stage': roundName,
           'round': roundName,
-          'isBestOf3': isBestOf3,
+          // 'isBestOf3': isBestOf3,
           'winner': byeTeam['id'], // Auto-winner
           'isBye': true, // Mark as bye match
           'setScores': [],
@@ -282,7 +282,7 @@ class KnockoutTournamentService {
             'score2': 0,
             'stage': roundName,
             'round': roundName,
-            'isBestOf3': isBestOf3,
+            // 'isBestOf3': isBestOf3,
             'winner': null,
             'isBye': false, // Regular match
             'setScores': [],
