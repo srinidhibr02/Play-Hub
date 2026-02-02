@@ -1,5 +1,8 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:play_hub/screens/clubTournament/joined_tournaments.dart';
 import 'package:play_hub/screens/clubTournament/tournament_info_screen.dart';
 import 'package:play_hub/service/auth_service.dart';
 import 'package:play_hub/screens/clubTournament/tournament_details_screen.dart';
@@ -13,24 +16,42 @@ class MyTournamentsWidget extends StatefulWidget {
   State<MyTournamentsWidget> createState() => _MyTournamentsWidgetState();
 }
 
-class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
+class _MyTournamentsWidgetState extends State<MyTournamentsWidget>
+    with SingleTickerProviderStateMixin {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
 
   List<Map<String, dynamic>> _registeredTournaments = [];
-  bool _isLoading = false;
+  bool _isLoadingRegistered = false;
   String _filterStatus = 'all'; // all, upcoming, completed
+  late TabController _tabController;
+  int _currentTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {
+        _currentTabIndex = _tabController.index;
+      });
+      if (_currentTabIndex == 0) {
+        _fetchRegisteredTournaments();
+      }
+    });
     _fetchRegisteredTournaments();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchRegisteredTournaments() async {
     try {
       if (mounted) {
-        setState(() => _isLoading = true);
+        setState(() => _isLoadingRegistered = true);
       }
 
       final userId = _authService.currentUserEmailId;
@@ -46,7 +67,7 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
       if (!userDoc.exists) {
         debugPrint('⚠️ User document not found for: $userId');
         if (mounted) {
-          setState(() => _isLoading = false);
+          setState(() => _isLoadingRegistered = false);
         }
         return;
       }
@@ -129,14 +150,14 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
 
       setState(() {
         _registeredTournaments = tournaments;
-        _isLoading = false;
+        _isLoadingRegistered = false;
       });
 
       debugPrint('✅ Fetched ${tournaments.length} registered tournaments');
     } catch (e) {
       debugPrint('❌ Error fetching registered tournaments: $e');
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isLoadingRegistered = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -177,12 +198,14 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
   }
 
   List<Map<String, dynamic>> _getFilteredTournaments() {
+    final tournaments = _registeredTournaments;
+
     if (_filterStatus == 'all') {
-      return _registeredTournaments;
+      return tournaments;
     } else if (_filterStatus == 'upcoming') {
-      return _registeredTournaments.where((t) => _isUpcoming(t)).toList();
+      return tournaments.where((t) => _isUpcoming(t)).toList();
     } else {
-      return _registeredTournaments.where((t) => !_isUpcoming(t)).toList();
+      return tournaments.where((t) => !_isUpcoming(t)).toList();
     }
   }
 
@@ -282,7 +305,7 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({bool isJoinedTab = false}) {
     return SliverFillRemaining(
       child: Center(
         child: Column(
@@ -302,14 +325,16 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
                 ],
               ),
               child: Icon(
-                Icons.bookmark_border,
+                isJoinedTab ? Icons.group : Icons.bookmark_border,
                 size: 64,
                 color: Colors.grey.shade300,
               ),
             ),
             const SizedBox(height: 24),
             Text(
-              'No Tournaments Yet',
+              isJoinedTab
+                  ? 'No Joined Tournaments'
+                  : 'No Registered Tournaments',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -318,28 +343,31 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Your registered tournaments will appear here',
+              isJoinedTab
+                  ? 'Tournaments you have joined will appear here'
+                  : 'Your registered tournaments will appear here',
               style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
             ),
             const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () {
-                DefaultTabController.of(context)?.animateTo(0);
-              },
-              icon: const Icon(Icons.explore),
-              label: const Text('Explore Tournaments'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal.shade700,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+            if (!isJoinedTab)
+              ElevatedButton.icon(
+                onPressed: () {
+                  DefaultTabController.of(context)?.animateTo(0);
+                },
+                icon: const Icon(Icons.explore),
+                label: const Text('Explore Tournaments'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -652,9 +680,20 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildRegisteredTabContent() {
+    final isLoading = _isLoadingRegistered;
     final filteredTournaments = _getFilteredTournaments();
+
+    if (isLoading) {
+      return CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+            sliver: _buildLoadingShimmer(),
+          ),
+        ],
+      );
+    }
 
     return CustomScrollView(
       slivers: [
@@ -712,13 +751,8 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
           ),
         ),
         // Tournaments List
-        if (_isLoading)
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-            sliver: _buildLoadingShimmer(),
-          )
-        else if (filteredTournaments.isEmpty)
-          _buildEmptyState()
+        if (filteredTournaments.isEmpty)
+          _buildEmptyState(isJoinedTab: false)
         else
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
@@ -730,6 +764,103 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget> {
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Tab Bar
+        SizedBox(height: 12),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.teal.shade200, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: TabBar(
+            controller: _tabController,
+            dividerColor: Colors.transparent,
+            indicatorWeight: 6,
+            indicator: UnderlineTabIndicator(
+              borderSide: BorderSide(width: 3),
+              insets: EdgeInsets.zero,
+            ),
+            labelColor: Colors.teal.shade900,
+            unselectedLabelColor: Colors.grey.shade600,
+            labelPadding: const EdgeInsets.symmetric(horizontal: 24),
+            tabs: [
+              Tab(
+                height: 48,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.app_registration_rounded,
+                        size: 18,
+                        color: Colors.teal,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Registered',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+              Tab(
+                height: 48,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.join_left,
+                        size: 18,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Joined',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Tab Content
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [_buildRegisteredTabContent(), JoinedTournaments()],
+          ),
+        ),
       ],
     );
   }
