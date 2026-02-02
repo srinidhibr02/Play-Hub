@@ -18,7 +18,7 @@ class TournamentCreationForm extends StatefulWidget {
 
 class _TournamentCreationFormState extends State<TournamentCreationForm> {
   final _firestore = FirebaseFirestore.instance;
-  int _currentStep = 1;
+  int _currentStep = 0;
   bool _isLoading = false;
 
   // Step 1
@@ -74,11 +74,11 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
 
   final List<String> sports = [
     'Badminton',
-    'Cricket',
-    'Football',
-    'Tennis',
-    'Volleyball',
-    'Kabaddi',
+    // 'Cricket',
+    // 'Football',
+    // 'Tennis',
+    // 'Volleyball',
+    // 'Kabaddi',
   ];
 
   final GlobalKey<FormState> _step1FormKey = GlobalKey<FormState>();

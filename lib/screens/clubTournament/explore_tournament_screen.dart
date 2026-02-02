@@ -29,6 +29,31 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
   bool _isLoadingTournaments = false;
   bool _isSearching = false;
 
+  // ✅ NEW: Status filter state
+  String _selectedStatus = 'all'; // all, open, active, completed
+  final List<String> _statusOptions = ['all', 'open', 'active', 'completed'];
+
+  final Map<String, Color> _statusColors = {
+    'all': Colors.grey,
+    'open': Colors.blue,
+    'active': Colors.orange,
+    'completed': Colors.green,
+  };
+
+  final Map<String, IconData> _statusIcons = {
+    'all': Icons.list_rounded,
+    'open': Icons.event_available_rounded,
+    'active': Icons.play_circle_outline_rounded,
+    'completed': Icons.check_circle_outline_rounded,
+  };
+
+  final Map<String, String> _statusLabels = {
+    'all': 'All Tournaments',
+    'open': 'Open',
+    'active': 'Active',
+    'completed': 'Completed',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -48,9 +73,9 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
       }
       debugPrint('📥 Fetching tournaments from Firestore...');
 
+      // ✅ Fetch all tournaments without status filter initially
       final tournamentSnapshot = await _firestore
           .collection('tournaments')
-          .where('status', isEqualTo: 'open')
           .get();
 
       if (!mounted) return;
@@ -90,7 +115,7 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
 
           tournaments.add(merged);
           debugPrint(
-            '✅ Tournament: ${merged['name'] ?? 'Unknown'} - Club: ${clubData['name'] ?? 'Unknown'}',
+            '✅ Tournament: ${merged['name'] ?? 'Unknown'} - Club: ${clubData['name'] ?? 'Unknown'} - Status: ${merged['status'] ?? 'unknown'}',
           );
         } catch (e) {
           debugPrint('⚠️ Error processing tournament ${tournamentDoc.id}: $e');
@@ -101,7 +126,7 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
 
       setState(() {
         _allTournaments = tournaments;
-        _filteredTournaments = tournaments;
+        _applyFilters(); // ✅ Apply current filters
         _isLoadingTournaments = false;
       });
 
@@ -129,6 +154,45 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
         );
       }
     }
+  }
+
+  /// ✅ NEW: Apply both status and search filters
+  void _applyFilters() {
+    var filtered = List<Map<String, dynamic>>.from(_allTournaments);
+
+    // Apply status filter
+    if (_selectedStatus != 'all') {
+      filtered = filtered.where((t) {
+        final status = (t['status'] as String?)?.toLowerCase() ?? '';
+        return status == _selectedStatus.toLowerCase();
+      }).toList();
+      debugPrint(
+        '🔍 Filtered by status "$_selectedStatus": ${filtered.length} tournaments',
+      );
+    }
+
+    // Apply search filter
+    if (_searchController.text.isNotEmpty) {
+      final q = _searchController.text.toLowerCase().trim();
+      filtered = filtered.where((t) {
+        final tournamentName = (t['name'] ?? '').toString().toLowerCase();
+        final sport = (t['sport'] ?? '').toString().toLowerCase();
+        final club = t['club'] as Map<String, dynamic>? ?? {};
+        final clubName = (club['name'] ?? '').toString().toLowerCase();
+        final city = (club['city'] ?? '').toString().toLowerCase();
+        final date = (t['date'] ?? '').toString().toLowerCase();
+
+        return tournamentName.contains(q) ||
+            sport.contains(q) ||
+            clubName.contains(q) ||
+            city.contains(q) ||
+            date.contains(q);
+      }).toList();
+    }
+
+    setState(() {
+      _filteredTournaments = filtered;
+    });
   }
 
   double _calculateDistance(double lat, double lng) {
@@ -182,38 +246,78 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
     }
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted) return;
-      if (query.trim().isEmpty) {
-        setState(() {
-          _filteredTournaments = List.from(_allTournaments);
-          _isSearching = false;
-        });
-        if (widget.userLocation != null) _sortTournamentsByDistance();
-        return;
-      }
-
-      final q = query.toLowerCase().trim();
-      final filtered = _allTournaments.where((t) {
-        final tournamentName = (t['name'] ?? '').toString().toLowerCase();
-        final sport = (t['sport'] ?? '').toString().toLowerCase();
-        final club = t['club'] as Map<String, dynamic>? ?? {};
-        final clubName = (club['name'] ?? '').toString().toLowerCase();
-        final city = (club['city'] ?? '').toString().toLowerCase();
-        final date = (t['date'] ?? '').toString().toLowerCase();
-
-        return tournamentName.contains(q) ||
-            sport.contains(q) ||
-            clubName.contains(q) ||
-            city.contains(q) ||
-            date.contains(q);
-      }).toList();
-
-      if (!mounted) return;
-
-      setState(() {
-        _filteredTournaments = filtered;
-        _isSearching = false;
-      });
+      _applyFilters(); // ✅ Apply both filters
+      setState(() => _isSearching = false);
+      if (widget.userLocation != null) _sortTournamentsByDistance();
     });
+  }
+
+  /// ✅ NEW: Handle status filter change
+  void _onStatusFilterChanged(String status) {
+    setState(() {
+      _selectedStatus = status;
+      debugPrint('🔄 Status filter changed to: $status');
+    });
+    _applyFilters(); // ✅ Apply filters immediately
+    if (widget.userLocation != null) _sortTournamentsByDistance();
+  }
+
+  /// ✅ NEW: Build status filter pills
+  Widget _buildStatusFilterBar() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: _statusOptions.map((status) {
+          final isSelected = _selectedStatus == status;
+          final color = _statusColors[status] ?? Colors.grey;
+          final icon = _statusIcons[status] ?? Icons.list_rounded;
+          final label = _statusLabels[status] ?? status;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: GestureDetector(
+              onTap: () => _onStatusFilterChanged(status),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? color.withOpacity(0.2)
+                      : Colors.grey.shade100,
+                  border: Border.all(
+                    color: isSelected ? color : Colors.grey.shade300,
+                    width: isSelected ? 2 : 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 16,
+                      color: isSelected ? color : Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? color : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 
   Widget _buildShimmerBox({
@@ -259,7 +363,7 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
           const SizedBox(height: 24),
           Text(
             _searchController.text.isEmpty
-                ? 'No Tournaments Yet'
+                ? 'No Tournaments Found'
                 : 'No Results Found',
             style: TextStyle(
               fontSize: 20,
@@ -270,8 +374,8 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
           const SizedBox(height: 8),
           Text(
             _searchController.text.isEmpty
-                ? 'Tournaments will appear here soon'
-                : 'Try different keywords',
+                ? 'Try adjusting your filters'
+                : 'Try different keywords or filters',
             style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
           ),
           const SizedBox(height: 32),
@@ -295,6 +399,7 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
 
   Widget _buildTournamentCard(Map<String, dynamic> tournament) {
     final tournamentName = tournament['name'] as String? ?? 'Tournament';
+    final status = tournament['status'] as String? ?? 'unknown';
     final club = tournament['club'] as Map<String, dynamic>? ?? {};
     final clubName = club['name'] as String? ?? 'Unknown Club';
     final clubCity = club['city'] as String? ?? 'Unknown City';
@@ -311,6 +416,10 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
         : distance < 10000
         ? Colors.orange
         : Colors.red;
+
+    // ✅ Status badge styling
+    final statusColor = _statusColors[status] ?? Colors.grey;
+    final statusIcon = _statusIcons[status] ?? Icons.info_outline_rounded;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -367,31 +476,37 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
                           ],
                         ),
                       ),
-                      if (widget.userLocation != null && distance > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: distanceColor.withAlpha((255 * 0.1).toInt()),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: distanceColor.withAlpha(
-                                (255 * 0.4).toInt(),
-                              ),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Text(
-                            '$distanceInKm km',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: distanceColor,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      // ✅ Status badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withAlpha((255 * 0.15).toInt()),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: statusColor.withAlpha((255 * 0.4).toInt()),
+                            width: 1.5,
                           ),
                         ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(statusIcon, size: 16, color: statusColor),
+                            const SizedBox(width: 4),
+                            Text(
+                              status.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: statusColor,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -422,6 +537,31 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if (widget.userLocation != null && distance > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: distanceColor.withAlpha((255 * 0.1).toInt()),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: distanceColor.withAlpha(
+                                (255 * 0.4).toInt(),
+                              ),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            '$distanceInKm km',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: distanceColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -511,19 +651,7 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
                             _searchTournaments('');
                           },
                         )
-                      : IconButton(
-                          icon: Icon(
-                            Icons.tune_rounded,
-                            color: Colors.grey.shade500,
-                          ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Filters coming soon!'),
-                              ),
-                            );
-                          },
-                        ),
+                      : null,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
                     borderSide: BorderSide.none,
@@ -538,6 +666,10 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
               ),
             ),
           ),
+
+          // ✅ NEW: Status Filter Bar
+          _buildStatusFilterBar(),
+
           // Location Permission Banner
           if (!widget.hasLocationPermission)
             Padding(
@@ -601,6 +733,7 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
                 ),
               ),
             ),
+
           // Tournaments List
           _isLoadingTournaments
               ? _buildLoadingShimmer()

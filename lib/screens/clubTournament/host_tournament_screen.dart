@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:play_hub/screens/clubTournament/badminton_club_tournament/club_tournament_schedule_screen.dart';
+import 'package:play_hub/screens/clubTournament/badminton_club_tournament/round_robin_schedule_screen.dart';
 import 'package:play_hub/screens/clubTournament/badminton_club_tournament/knockout_schedule_screen.dart';
 import 'package:play_hub/screens/clubTournament/club_service/club_tournament_service.dart';
 import 'package:play_hub/screens/clubTournament/club_service/knockout_match_service.dart';
@@ -1193,12 +1193,15 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
 
       // Get tournament data
       final startDate = tournamentData['date'] as Timestamp?;
-      final startTimeStr = tournamentData['startTime'] as String? ?? '09:00';
-      final matchDuration = tournamentData['matchDuration'] as int? ?? 30;
+      final timestamp = tournamentData['date'] as Timestamp?;
+      final matchDuration = tournamentData['matchDuration'] as int? ?? 20;
       final breakDuration = tournamentData['breakDuration'] as int? ?? 10;
       final tournamentFormat =
           tournamentData['tournamentFormat'] as String? ?? 'round_robin';
       final isBestOf3 = tournamentData['isBestOf3'] as bool? ?? false;
+      final startTimeStr = timestamp != null
+          ? DateFormat('HH:mm').format(timestamp.toDate())
+          : '09:00';
 
       // Parse start time
       final timeParts = startTimeStr.split(':');
@@ -1469,7 +1472,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ClubTournamentScheduleScreen(
+          builder: (context) => RoundRobinScheduleScreen(
             tournamentId: tournamentId,
             tournamentName: name,
             startDate: startDate!.toDate(),
