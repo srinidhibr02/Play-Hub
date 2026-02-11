@@ -6,7 +6,9 @@ class BookingService {
 
   // Get all clubs
   Stream<List<Club>> getClubs({String? city, String? sport}) {
-    Query query = _firestore.collection('clubs');
+    Query query = _firestore
+        .collection('clubs')
+        .where('verified', isEqualTo: true);
 
     if (city != null && city.isNotEmpty) {
       query = query.where('city', isEqualTo: city);

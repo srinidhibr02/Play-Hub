@@ -40,6 +40,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
   late AnimationController _fabAnimationController;
   late AnimationController _listAnimationController;
   Set<String> _expandedTeams = {};
+  bool _isNavigating = false;
 
   final List<Color> teamColors = [
     Colors.blue,
@@ -132,10 +133,16 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
   }
 
   void _proceedToSchedule() {
+    // ✅ FIXED: Prevent double navigation
+    if (_isNavigating) {
+      debugPrint('🚫 Navigation already in progress');
+      return;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -214,7 +221,10 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                   children: [
                     Expanded(
                       child: TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          debugPrint('✋ Schedule cancelled');
+                          Navigator.pop(dialogContext);
+                        },
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -254,8 +264,9 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                         ),
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).pop();
+                            debugPrint('✅ Schedule confirmed, navigating...');
+                            // ✅ FIXED: Close dialog first, then navigate
+                            Navigator.pop(dialogContext);
                             _navigateToSchedule();
                           },
                           icon: const Icon(
@@ -310,28 +321,61 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
   }
 
   void _navigateToSchedule() {
-    Navigator.pop(context);
-    Navigator.pop(context);
-    Navigator.pop(context);
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => BadmintonMatchScheduleScreen(
-          teams: teams,
-          teamType: widget.teamType,
-          rematches: widget.rematches,
-          startDate: widget.startDate,
-          startTime: widget.startTime,
-          matchDuration: widget.matchDuration,
-          breakDuration: widget.breakDuration,
-          totalMatches: widget.totalMatches,
-          allowRematches: widget.allowRematches,
-          customTeamSize: widget.customTeamSize,
-          members: widget.members,
-          tournamentFormat: widget.tournamentFormat,
+    // ✅ FIXED: Add flag to prevent double navigation
+    if (_isNavigating) {
+      debugPrint('🚫 Already navigating, skipping');
+      return;
+    }
+
+    setState(() => _isNavigating = true);
+
+    try {
+      debugPrint('📱 Navigating to BadmintonMatchScheduleScreen');
+      debugPrint('📊 Teams count: ${teams.length}');
+      debugPrint('🏆 Tournament format: ${widget.tournamentFormat}');
+
+      // ✅ FIXED: Use pushReplacement instead of pop + push
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => BadmintonMatchScheduleScreen(
+            teams: teams,
+            teamType: widget.teamType,
+            rematches: widget.rematches,
+            startDate: widget.startDate,
+            startTime: widget.startTime,
+            matchDuration: widget.matchDuration,
+            breakDuration: widget.breakDuration,
+            totalMatches: widget.totalMatches,
+            allowRematches: widget.allowRematches,
+            customTeamSize: widget.customTeamSize,
+            members: widget.members,
+            tournamentFormat: widget.tournamentFormat,
+          ),
         ),
-      ),
-    );
+      );
+
+      debugPrint('✅ Navigation successful');
+    } catch (e) {
+      debugPrint('❌ Navigation error: $e');
+      setState(() => _isNavigating = false);
+
+      // Show error to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Error: ${e.toString()}')),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _swapPlayers(
@@ -1126,7 +1170,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
                   ],
                 ),
                 child: ElevatedButton.icon(
-                  onPressed: _proceedToSchedule,
+                  onPressed: _isNavigating ? null : _proceedToSchedule,
                   icon: const Icon(
                     Icons.calendar_month_rounded,
                     size: 18,

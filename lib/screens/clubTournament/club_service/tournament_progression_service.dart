@@ -47,270 +47,55 @@ class TournamentProgressionService {
     }
   }
 
-  /// ✅ Create semi-finals and finals for round-robin (Top 4)
-  Future<void> createRoundRobinPlayoffs(
-    String tournamentId,
-    String categoryId,
-    DateTime startDate,
-    TimeOfDay startTime,
-    int matchDuration,
-    int breakDuration,
-  ) async {
+  Future<void> checkAndUpdateTournamentCompletion(String tournamentId) async {
     try {
-      // Get top 4 teams from standings
-      final standings = await _firestore
+      debugPrint('🔍 Checking tournament completion status...');
+
+      // Get all category tournaments
+      final categoryToursSnapshot = await _firestore
           .collection('tournaments')
           .doc(tournamentId)
           .collection('categoryTournaments')
-          .doc(categoryId)
-          .collection('teams')
           .get();
 
-      final teams = standings.docs.map((doc) => doc.data()).toList();
-
-      // Sort by points and netResult
-      teams.sort((a, b) {
-        final statsA = a['stats'] as Map<String, dynamic>;
-        final statsB = b['stats'] as Map<String, dynamic>;
-
-        final pointsA = (statsA['points'] as int?) ?? 0;
-        final pointsB = (statsB['points'] as int?) ?? 0;
-
-        if (pointsA != pointsB) {
-          return pointsB.compareTo(pointsA);
-        }
-
-        final netA = (statsA['netResult'] as int?) ?? 0;
-        final netB = (statsB['netResult'] as int?) ?? 0;
-        return netB.compareTo(netA);
-      });
-
-      if (teams.length < 2) {
-        debugPrint('⚠️ Not enough teams for playoffs');
+      if (categoryToursSnapshot.docs.isEmpty) {
+        debugPrint('⚠️ No category tournaments found');
         return;
       }
 
-      final top4 = teams.take(4).toList();
+      debugPrint('📋 Total categories: ${categoryToursSnapshot.docs.length}');
 
-      // Create semi-finals: 1 vs 4, 2 vs 3
-      final batch = _firestore.batch();
-      var currentDateTime = _combineDateTime(startDate, startTime);
-      int matchCounter = 1;
+      // Check status of each category
+      final completedCount = categoryToursSnapshot.docs
+          .where((doc) => doc['status'] == 'completed')
+          .length;
 
-      final matchesRef = _firestore
-          .collection('tournaments')
-          .doc(tournamentId)
-          .collection('categoryTournaments')
-          .doc(categoryId)
-          .collection('matches');
+      final totalCount = categoryToursSnapshot.docs.length;
 
-      final catTourRef = _firestore
-          .collection('tournaments')
-          .doc(tournamentId)
-          .collection('categoryTournaments')
-          .doc(categoryId);
+      debugPrint('📊 Category Status: $completedCount/$totalCount completed');
 
-      // Semi-Final 1: 1 vs 4
-      batch.set(matchesRef.doc('${categoryId}_SF1'), {
-        'id': '${categoryId}_SF1',
-        'team1': {
-          'id': top4[0]['id'],
-          'name': top4[0]['name'],
-          'members': top4[0]['players'] ?? [],
-        },
-        'team2': {
-          'id': top4[3]['id'],
-          'name': top4[3]['name'],
-          'members': top4[3]['players'] ?? [],
-        },
-        'date': currentDateTime,
-        'time': _formatTime(currentDateTime),
-        'status': 'Scheduled',
-        'score1': 0,
-        'score2': 0,
-        'winner': null,
-        'stage': 'SemiFinals',
-        'round': 'SF1',
-      });
+      // If all categories are completed, update tournament status
+      if (completedCount == totalCount && totalCount > 0) {
+        await _firestore.collection('tournaments').doc(tournamentId).update({
+          'status': 'completed',
+          'completedAt': FieldValue.serverTimestamp(),
+        });
 
-      currentDateTime = currentDateTime.add(
-        Duration(minutes: matchDuration + breakDuration),
-      );
+        debugPrint('✅ Tournament status updated to: completed');
+        debugPrint('🏆🏆🏆 ALL CATEGORIES COMPLETED - TOURNAMENT FINISHED!');
 
-      // Semi-Final 2: 2 vs 3
-      batch.set(matchesRef.doc('${categoryId}_SF2'), {
-        'id': '${categoryId}_SF2',
-        'team1': {
-          'id': top4[1]['id'],
-          'name': top4[1]['name'],
-          'members': top4[1]['players'] ?? [],
-        },
-        'team2': {
-          'id': top4[2]['id'],
-          'name': top4[2]['name'],
-          'members': top4[2]['players'] ?? [],
-        },
-        'date': currentDateTime,
-        'time': _formatTime(currentDateTime),
-        'status': 'Scheduled',
-        'score1': 0,
-        'score2': 0,
-        'winner': null,
-        'stage': 'SemiFinals',
-        'round': 'SF2',
-      });
+        return;
+      }
 
-      // ✅ Update category tournament stage AND currentRound
-      batch.update(catTourRef, {
-        'stage': 'SemiFinals',
-        'currentRound': 'SemiFinals',
-      });
-
-      await batch.commit();
       debugPrint(
-        '✅ Round-robin playoffs created: Semi-Finals with Top 4 teams',
+        '⏳ Tournament still in progress ($completedCount/$totalCount categories completed)',
       );
     } catch (e) {
-      debugPrint('❌ Error creating round-robin playoffs: $e');
+      debugPrint('❌ Error checking tournament completion: $e');
       rethrow;
     }
   }
 
-  /// ✅ Check if semi-finals are complete and create finals with currentRound update
-  Future<void> checkAndCreateFinals(
-    String tournamentId,
-    String categoryId,
-    DateTime startDate,
-    TimeOfDay startTime,
-    int matchDuration,
-    int breakDuration,
-  ) async {
-    try {
-      debugPrint('🔄 Checking semi-finals completion...');
-
-      // Check if all semi-finals are completed
-      final semiMatches = await _firestore
-          .collection('tournaments')
-          .doc(tournamentId)
-          .collection('categoryTournaments')
-          .doc(categoryId)
-          .collection('matches')
-          .where('stage', isEqualTo: 'SemiFinals')
-          .get();
-
-      if (semiMatches.docs.isEmpty) {
-        debugPrint('⚠️ No semi-final matches found');
-        return;
-      }
-
-      final completedCount = semiMatches.docs
-          .where((m) => m['status'] == 'Completed')
-          .length;
-
-      debugPrint(
-        '📊 Semi-finals Status: $completedCount/${semiMatches.docs.length}',
-      );
-
-      if (completedCount == semiMatches.docs.length) {
-        debugPrint('✅ All semi-finals completed! Creating finals...');
-
-        // Get semi-finals winners
-        final winners = <Map<String, dynamic>>[];
-        for (final doc in semiMatches.docs) {
-          final match = doc.data();
-          final winnerId = match['winner'] as String?;
-          if (winnerId != null) {
-            final winnerTeam = match['team1']['id'] == winnerId
-                ? match['team1']
-                : match['team2'];
-            winners.add(winnerTeam as Map<String, dynamic>);
-          }
-        }
-
-        if (winners.length == 2) {
-          await _createFinal(
-            tournamentId,
-            categoryId,
-            winners[0],
-            winners[1],
-            startDate,
-            startTime,
-            matchDuration,
-            breakDuration,
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking semi-finals: $e');
-    }
-  }
-
-  /// ✅ Create final match with currentRound update
-  Future<void> _createFinal(
-    String tournamentId,
-    String categoryId,
-    Map<String, dynamic> team1,
-    Map<String, dynamic> team2,
-    DateTime startDate,
-    TimeOfDay startTime,
-    int matchDuration,
-    int breakDuration,
-  ) async {
-    try {
-      final currentDateTime = _combineDateTime(startDate, startTime);
-      final batch = _firestore.batch();
-
-      final matchesRef = _firestore
-          .collection('tournaments')
-          .doc(tournamentId)
-          .collection('categoryTournaments')
-          .doc(categoryId)
-          .collection('matches');
-
-      final catTourRef = _firestore
-          .collection('tournaments')
-          .doc(tournamentId)
-          .collection('categoryTournaments')
-          .doc(categoryId);
-
-      // Create final match
-      batch.set(matchesRef.doc('${categoryId}_Final'), {
-        'id': '${categoryId}_Final',
-        'team1': {
-          'id': team1['id'],
-          'name': team1['name'],
-          'members': team1['members'] ?? [],
-        },
-        'team2': {
-          'id': team2['id'],
-          'name': team2['name'],
-          'members': team2['members'] ?? [],
-        },
-        'date': currentDateTime.add(
-          Duration(minutes: matchDuration + breakDuration),
-        ),
-        'time': _formatTime(
-          currentDateTime.add(Duration(minutes: matchDuration + breakDuration)),
-        ),
-        'status': 'Scheduled',
-        'score1': 0,
-        'score2': 0,
-        'winner': null,
-        'stage': 'Finals',
-        'round': 'Final',
-      });
-
-      // ✅ Update stage AND currentRound to Finals
-      batch.update(catTourRef, {'stage': 'Finals', 'currentRound': 'Finals'});
-
-      await batch.commit();
-      debugPrint('✅ Final match created and currentRound updated to Finals');
-    } catch (e) {
-      debugPrint('Error creating final: $e');
-    }
-  }
-
-  /// ✅ MAIN: Handle knockout tournament progression with currentRound updates
   /// This method checks all matches in current round, creates next round, and updates currentRound
   Future<void> progressKnockoutRound(
     String tournamentId,
@@ -495,9 +280,9 @@ class TournamentProgressionService {
 
       // Handle odd number of teams (bye logic)
       List<Map<String, dynamic>> teamsForMatching = List.from(winners);
-
+      teamsForMatching.shuffle();
       if (winners.length % 2 != 0) {
-        final byeTeam = teamsForMatching.removeLast();
+        final byeTeam = teamsForMatching.removeAt(2);
 
         debugPrint('🎫 BYE given to: ${byeTeam['name']}');
 

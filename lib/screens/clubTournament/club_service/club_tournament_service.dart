@@ -171,39 +171,62 @@ class ClubTournamentService {
     var currentDateTime = _combineDateTime(startDate, startTime);
     int matchCounter = 1;
 
-    // Generate all possible pairings (round-robin)
-    for (int i = 0; i < teams.length; i++) {
-      for (int j = i + 1; j < teams.length; j++) {
-        final team1 = teams[i];
-        final team2 = teams[j];
+    // ✅ Generate FAIR round-robin rounds (no consecutive matches)
+    final numTeams = teams.length;
+    final numRounds = numTeams - 1; // Standard round-robin rounds
 
-        matches.add(
-          Match(
-            id: '${category}_M$matchCounter',
-            team1: team1,
-            team2: team2,
-            date: currentDateTime,
-            time: _formatTime(currentDateTime),
-            status: 'Scheduled',
-            score1: 0,
-            score2: 0,
-            winner: null,
-            round: 1,
-            roundName: 'League',
-            stage: 'League',
-            category: category,
-          ),
-        );
+    // Create team copy for rotation
+    List<Team> roundTeams = List.from(teams);
 
-        // Add time for next match (match duration + break)
-        currentDateTime = currentDateTime.add(
-          Duration(minutes: matchDuration + breakDuration),
-        );
-        matchCounter++;
+    for (int round = 0; round < numRounds; round++) {
+      // Generate matches for this round (max parallel matches)
+      final roundMatches = <Match>[];
+
+      // Pair teams: 0vs1, 2vs3, 4vs5... (fair distribution)
+      for (int i = 0; i < numTeams; i += 2) {
+        if (i + 1 < numTeams) {
+          final team1 = roundTeams[i];
+          final team2 = roundTeams[i + 1];
+
+          roundMatches.add(
+            Match(
+              id: '${category}_League_M${matchCounter}',
+              team1: team1,
+              team2: team2,
+              date: currentDateTime,
+              time: _formatTime(currentDateTime),
+              status: 'Scheduled',
+              score1: 0,
+              score2: 0,
+              winner: null,
+              round: round + 1,
+              roundName: 'Round ${round + 1}',
+              stage: 'League',
+              category: category,
+            ),
+          );
+          matchCounter++;
+        }
       }
+
+      matches.addAll(roundMatches);
+
+      // ✅ Rotate teams for next round (prevents consecutive matches)
+      _rotateTeams(roundTeams);
+
+      // Add break between rounds (longer rest)
+      currentDateTime = currentDateTime.add(
+        Duration(minutes: matchDuration * 2 + breakDuration * 2), // Extra rest
+      );
     }
 
     return matches;
+  }
+
+  // ✅ Team rotation algorithm (prevents consecutive matches)
+  void _rotateTeams(List<Team> teams) {
+    final lastTeam = teams.removeLast();
+    teams.insert(1, lastTeam);
   }
 
   /// Combine date and time into DateTime

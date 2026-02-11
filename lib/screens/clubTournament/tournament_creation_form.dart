@@ -18,7 +18,7 @@ class TournamentCreationForm extends StatefulWidget {
 
 class _TournamentCreationFormState extends State<TournamentCreationForm> {
   final _firestore = FirebaseFirestore.instance;
-  int _currentStep = 2;
+  int _currentStep = 0;
   bool _isLoading = false;
 
   // Step 1
@@ -74,11 +74,11 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
 
   final List<String> sports = [
     'Badminton',
-    'Cricket',
-    'Football',
-    'Tennis',
-    'Volleyball',
-    'Kabaddi',
+    // 'Cricket',
+    // 'Football',
+    // 'Tennis',
+    // 'Volleyball',
+    // 'Kabaddi',
   ];
 
   final GlobalKey<FormState> _step1FormKey = GlobalKey<FormState>();
@@ -1227,7 +1227,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
             ),
             const SizedBox(width: 12),
             const Text(
-              'Entry Fees',
+              'Registration Entry Fees',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ],
@@ -1259,7 +1259,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withOpacity(0.01),
         border: Border.all(color: color.withOpacity(0.2)),
         borderRadius: BorderRadius.circular(12),
       ),

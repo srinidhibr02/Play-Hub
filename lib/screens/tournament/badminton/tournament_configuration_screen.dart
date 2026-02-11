@@ -217,7 +217,6 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
     if (widget.teamType.toLowerCase() != 'custom') {
       totalMatches = _calculateTotalMatchesMaximum();
     }
-    debugPrint('total matches : $totalMatches');
     Navigator.push(
       context,
       MaterialPageRoute(

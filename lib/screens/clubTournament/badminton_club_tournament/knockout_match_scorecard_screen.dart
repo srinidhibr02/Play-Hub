@@ -38,7 +38,6 @@ class _AdvancedMatchScorecardScreenState
 
   final _service = ClubTournamentService();
   final _progressionService = TournamentProgressionService();
-  final _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -436,7 +435,11 @@ class _AdvancedMatchScorecardScreenState
 
       final team1Id = widget.match['team1']['id'] as String;
       final team2Id = widget.match['team2']['id'] as String;
-      final winner = _getMatchWinner();
+      final winner = widget.isBestOf3
+          ? _getMatchWinner()
+          : score1 > score2
+          ? team1Id
+          : team2Id;
 
       if (widget.isBestOf3) {
         // Best of 3: Winner is who wins 2 sets

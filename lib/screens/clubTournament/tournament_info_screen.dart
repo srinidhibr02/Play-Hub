@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:play_hub/screens/clubTournament/badminton_club_tournament/club_tournament_schedule_screen.dart';
+import 'package:play_hub/screens/clubTournament/badminton_club_tournament/round_robin_schedule_screen.dart';
 import 'package:play_hub/screens/clubTournament/badminton_club_tournament/knockout_schedule_screen.dart';
 
 class TournamentInfoScreen extends StatefulWidget {
@@ -170,7 +170,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ClubTournamentScheduleScreen(
+            builder: (context) => RoundRobinScheduleScreen(
               tournamentId: widget.tournamentId,
               tournamentName: widget.tournamentName,
               startDate: startDate?.toDate() ?? DateTime.now(),
@@ -990,7 +990,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
 
   /// ✅ UPDATED: Bottom button now routes to schedule screen when tournament is started
   Widget _buildBottomButton(String status) {
-    final isStarted = status == 'started';
+    final isStarted = status == 'started' || status == 'completed';
     final buttonColor = isStarted ? Colors.teal : Colors.grey;
     final buttonIcon = isStarted
         ? Icons.schedule_rounded

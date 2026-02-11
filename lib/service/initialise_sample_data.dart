@@ -5,7 +5,7 @@ Future<void> initializeSampleData() async {
   final firestore = FirebaseFirestore.instance;
 
   // Tournament ID where registrations will be added
-  const String tournamentId = 'aWgBcZG62P5E0ab6v8Jx';
+  const String tournamentId = 'JNA81DWpiD5LAMXD9sie';
 
   await _addSampleRegistrations(firestore, tournamentId);
 }
@@ -15,8 +15,9 @@ Future<void> _addSampleRegistrations(
   String tournamentId,
 ) async {
   final registrations = [
+    //Male Doubles
     {
-      'bookingAmount': 25,
+      'bookingAmount': 12.5,
       'category': 'Male Doubles',
       'fullName': 'Dev B R',
       'participants': ['Abhishek', 'Basheer'],
@@ -27,7 +28,7 @@ Future<void> _addSampleRegistrations(
       'userId': 'devbr1998@gmail.com',
     },
     {
-      'bookingAmount': 25,
+      'bookingAmount': 12.5,
       'category': 'Male Doubles',
       'fullName': 'Sample User',
       'participants': ['Pratap', 'Abhi'],
@@ -38,7 +39,7 @@ Future<void> _addSampleRegistrations(
       'userId': 'arjunbhandiwad02@gmail.com',
     },
     {
-      'bookingAmount': 25,
+      'bookingAmount': 12.5,
       'category': 'Male Doubles',
       'fullName': 'Badminton Folks',
       'participants': ['Vinay', 'Pramod'],
@@ -49,7 +50,7 @@ Future<void> _addSampleRegistrations(
       'userId': 'b.folks.2022@gmail.com',
     },
     {
-      'bookingAmount': 25,
+      'bookingAmount': 12.5,
       'category': 'Male Doubles',
       'fullName': 'Srinidhi B R',
       'participants': ['Vinod', 'Pavan'],
@@ -60,7 +61,7 @@ Future<void> _addSampleRegistrations(
       'userId': 'srinidhibr02@gmail.com',
     },
     {
-      'bookingAmount': 25,
+      'bookingAmount': 12.5,
       'category': 'Male Doubles',
       'fullName': 'Badminton Folks',
       'participants': ['Arjun', 'Nandish'],
@@ -71,7 +72,7 @@ Future<void> _addSampleRegistrations(
       'userId': 'nandishng999@gmail.com',
     },
     {
-      'bookingAmount': 25,
+      'bookingAmount': 12.5,
       'category': 'Male Doubles',
       'fullName': 'Sanjay N K',
       'participants': ['Sanjay', 'Bharat'],
