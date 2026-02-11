@@ -38,7 +38,6 @@ class _AdvancedMatchScorecardScreenState
 
   final _service = ClubTournamentService();
   final _progressionService = TournamentProgressionService();
-  final _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {

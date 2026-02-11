@@ -5,6 +5,7 @@ import 'package:play_hub/constants/constants.dart';
 import 'package:play_hub/screens/auth_screen.dart';
 import 'package:play_hub/screens/info/account_settings_screen.dart';
 import 'package:play_hub/screens/info/contact_support_screen.dart';
+import 'package:play_hub/screens/info/playhub_partnership.dart';
 import 'package:play_hub/service/auth_service.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -63,9 +64,10 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
-  void _navigateToEditProfile(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Partner Profile - Coming Soon')),
+  void _navigateToPartnershipProfile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PlayhubPartnership()),
     );
   }
 
@@ -244,7 +246,8 @@ class ProfileScreen extends StatelessWidget {
                               bottom: 0,
                               right: 0,
                               child: GestureDetector(
-                                onTap: () => _navigateToEditProfile(context),
+                                onTap: () =>
+                                    _navigateToPartnershipProfile(context),
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
@@ -387,7 +390,7 @@ class ProfileScreen extends StatelessWidget {
                             Icons.handshake_outlined,
                             'Play Hub Partnership',
                             'Own a club? Contact Us to get started',
-                            () => _navigateToEditProfile(context),
+                            () => _navigateToPartnershipProfile(context),
                           ),
                         ],
                       ),

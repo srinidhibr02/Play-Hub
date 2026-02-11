@@ -438,8 +438,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               child: Row(
                 children: [
                   Container(
-                    width: 72,
-                    height: 72,
+                    width: 45,
+                    height: 45,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Colors.teal.shade400, Colors.teal.shade600],
@@ -458,7 +458,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     child: const Icon(
                       Icons.account_circle_rounded,
                       color: Colors.white,
-                      size: 36,
+                      size: 30,
                     ),
                   ),
                   const SizedBox(width: 24),
@@ -469,7 +469,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         Text(
                           widget.user.displayName ?? 'User',
                           style: const TextStyle(
-                            fontSize: 22,
+                            fontSize: 20,
                             fontWeight: FontWeight.w900,
                             color: Colors.black87,
                           ),
@@ -478,7 +478,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         Text(
                           '${widget.user.email}',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 15,
                             color: Colors.grey.shade700,
                             fontWeight: FontWeight.w500,
                           ),
