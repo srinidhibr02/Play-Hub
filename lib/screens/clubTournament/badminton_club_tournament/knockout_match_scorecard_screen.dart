@@ -216,6 +216,7 @@ class _AdvancedMatchScorecardScreenState
   void _showSetCompletedDialog(bool isTeam1, bool isIncrement) {
     final setWinner = _checkSetWinner();
     final winnerTeam = setWinner!['winner'] == 1 ? 'Team 1' : 'Team 2';
+    // ignore: unused_local_variable
     final action = isIncrement ? 'increase' : 'decrease';
 
     showDialog(
@@ -726,7 +727,7 @@ class _AdvancedMatchScorecardScreenState
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.3),
+            color: Colors.green.withValues(alpha: 0.3),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -739,7 +740,7 @@ class _AdvancedMatchScorecardScreenState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -767,7 +768,7 @@ class _AdvancedMatchScorecardScreenState
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ],
@@ -779,7 +780,7 @@ class _AdvancedMatchScorecardScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Text(
@@ -992,8 +993,8 @@ class _AdvancedMatchScorecardScreenState
         boxShadow: [
           BoxShadow(
             color: (resultSaved || _isMatchCompleted())
-                ? Colors.green.withOpacity(0.3)
-                : Colors.teal.withOpacity(0.3),
+                ? Colors.green.withValues(alpha: 0.3)
+                : Colors.teal.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -1047,10 +1048,10 @@ class _AdvancedMatchScorecardScreenState
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           width: 2,
                         ),
                       ),
@@ -1078,7 +1079,7 @@ class _AdvancedMatchScorecardScreenState
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       letterSpacing: 1,
                     ),
                   ),
@@ -1089,7 +1090,7 @@ class _AdvancedMatchScorecardScreenState
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                       ),
                     )
                   else
@@ -1099,7 +1100,7 @@ class _AdvancedMatchScorecardScreenState
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -1121,10 +1122,10 @@ class _AdvancedMatchScorecardScreenState
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           width: 2,
                         ),
                       ),
@@ -1155,10 +1156,10 @@ class _AdvancedMatchScorecardScreenState
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.green.shade400.withOpacity(0.2),
+                color: Colors.green.shade400.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: Colors.green.shade400.withOpacity(0.5),
+                  color: Colors.green.shade400.withValues(alpha: 0.5),
                   width: 1.5,
                 ),
               ),
@@ -1274,7 +1275,7 @@ class _AdvancedMatchScorecardScreenState
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isLocked ? 0.03 : 0.05),
+            color: Colors.black.withValues(alpha: isLocked ? 0.03 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -1338,13 +1339,13 @@ class _AdvancedMatchScorecardScreenState
                     gradient: LinearGradient(
                       colors: isLocked
                           ? [Colors.grey.shade200, Colors.grey.shade100]
-                          : [color.withOpacity(0.2), color.withOpacity(0.1)],
+                          : [color.withValues(alpha: 0.2), color.withValues(alpha: 0.1)],
                     ),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isLocked
                           ? Colors.grey.shade300
-                          : color.withOpacity(0.3),
+                          : color.withValues(alpha: 0.3),
                       width: 1.5,
                     ),
                   ),
@@ -1365,13 +1366,13 @@ class _AdvancedMatchScorecardScreenState
                   gradient: LinearGradient(
                     colors: isLocked
                         ? [Colors.grey.shade200, Colors.grey.shade100]
-                        : [color.withOpacity(0.15), color.withOpacity(0.05)],
+                        : [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isLocked
                         ? Colors.grey.shade300
-                        : color.withOpacity(0.3),
+                        : color.withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                 ),
@@ -1398,13 +1399,13 @@ class _AdvancedMatchScorecardScreenState
                     gradient: LinearGradient(
                       colors: isLocked
                           ? [Colors.grey.shade200, Colors.grey.shade100]
-                          : [color.withOpacity(0.2), color.withOpacity(0.1)],
+                          : [color.withValues(alpha: 0.2), color.withValues(alpha: 0.1)],
                     ),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isLocked
                           ? Colors.grey.shade300
-                          : color.withOpacity(0.3),
+                          : color.withValues(alpha: 0.3),
                       width: 1.5,
                     ),
                   ),
@@ -1486,7 +1487,7 @@ class _AdvancedMatchScorecardScreenState
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -1567,7 +1568,7 @@ class _AdvancedMatchScorecardScreenState
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -1613,7 +1614,7 @@ class _AdvancedMatchScorecardScreenState
                   boxShadow: (isMatchComplete && !resultSaved)
                       ? [
                           BoxShadow(
-                            color: Colors.green.withOpacity(0.3),
+                            color: Colors.green.withValues(alpha: 0.3),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),

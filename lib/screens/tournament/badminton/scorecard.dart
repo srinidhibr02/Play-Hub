@@ -741,7 +741,8 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
             icon: const Icon(Icons.arrow_back, color: Colors.black45),
             onPressed: () async {
               final shouldPop = await _onWillPop();
-              if (shouldPop && mounted) {
+              if (!context.mounted) return;
+              if (shouldPop) {
                 Navigator.pop(context);
               }
             },

@@ -34,7 +34,7 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
   final _badmintonService = TournamentFirestoreService();
   bool _isGenerating = false;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  Map<String, bool> _matchBestOf3Mode = {}; // Track Best of 3 mode per match
+  final Map<String, bool> _matchBestOf3Mode = {}; // Track Best of 3 mode per match
 
   Stream<List<Match>> _getAllMatchesStream(
     String userEmail,
@@ -238,10 +238,12 @@ class _KnockoutMatchesWidgetState extends State<KnockoutMatchesWidget> {
             for (final roundMatches in matchesByRound.values) {
               roundMatches.sort((a, b) {
                 // Completed matches first
-                if (a.status == 'Completed' && b.status != 'Completed')
+                if (a.status == 'Completed' && b.status != 'Completed') {
                   return -1;
-                if (a.status != 'Completed' && b.status == 'Completed')
+                }
+                if (a.status != 'Completed' && b.status == 'Completed') {
                   return 1;
+                }
 
                 // Within same status, sort by date (newest first)
                 return b.date.compareTo(a.date);

@@ -1,0 +1,4 @@
+Analyzing play_hub...                                           
+
+   info • Use interpolation to compose strings and values • auto_ignore.dart:67:31 • prefer_interpolation_to_compose_strings
+

@@ -333,7 +333,7 @@ class _TournamentRegistrationScreenState
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.teal.withOpacity(0.3),
+                        color: Colors.teal.withValues(alpha: 0.3),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
@@ -347,7 +347,7 @@ class _TournamentRegistrationScreenState
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
@@ -513,7 +513,7 @@ class _TournamentRegistrationScreenState
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.purple.withOpacity(0.3),
+                          color: Colors.purple.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -649,7 +649,7 @@ class _TournamentRegistrationScreenState
                           ),
                         ),
                       );
-                    }).toList(),
+                    }),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -785,7 +785,7 @@ class _TournamentRegistrationScreenState
                 child: Material(
                   borderRadius: BorderRadius.circular(16),
                   elevation: 8,
-                  shadowColor: Colors.teal.withOpacity(0.4),
+                  shadowColor: Colors.teal.withValues(alpha: 0.4),
                   child: InkWell(
                     onTap: isSubmitting ? null : _createRegistration,
                     borderRadius: BorderRadius.circular(16),
@@ -806,7 +806,7 @@ class _TournamentRegistrationScreenState
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                color: Colors.white.withOpacity(0.8),
+                                color: Colors.white.withValues(alpha: 0.8),
                                 strokeWidth: 2.5,
                               ),
                             )
@@ -849,7 +849,7 @@ class _TournamentRegistrationScreenState
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: color, size: 20),
@@ -876,7 +876,7 @@ class _TournamentRegistrationScreenState
           label,
           style: TextStyle(
             fontSize: 11,
-            color: textColor.withOpacity(0.8),
+            color: textColor.withValues(alpha: 0.8),
             fontWeight: FontWeight.w600,
             letterSpacing: 0.3,
           ),
@@ -1064,7 +1064,7 @@ class _BookingConfirmationDialogState extends State<BookingConfirmationDialog>
                         borderRadius: BorderRadius.circular(40),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.green.shade600.withOpacity(0.3),
+                            color: Colors.green.shade600.withValues(alpha: 0.3),
                             blurRadius: 12,
                             offset: const Offset(0, 6),
                           ),
@@ -1092,7 +1092,7 @@ class _BookingConfirmationDialogState extends State<BookingConfirmationDialog>
                     'Your registration is confirmed',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.85),
+                      color: Colors.white.withValues(alpha: 0.85),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1168,7 +1168,7 @@ class _BookingConfirmationDialogState extends State<BookingConfirmationDialog>
                             ],
                           ),
                         );
-                      }).toList(),
+                      }),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -1218,7 +1218,7 @@ class _BookingConfirmationDialogState extends State<BookingConfirmationDialog>
                 child: Material(
                   borderRadius: BorderRadius.circular(14),
                   elevation: 4,
-                  shadowColor: Colors.teal.withOpacity(0.3),
+                  shadowColor: Colors.teal.withValues(alpha: 0.3),
                   child: InkWell(
                     onTap: widget.onConfirm,
                     borderRadius: BorderRadius.circular(14),
@@ -1265,7 +1265,7 @@ class _BookingConfirmationDialogState extends State<BookingConfirmationDialog>
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: color, size: 18),
@@ -1330,9 +1330,9 @@ class _BookingConfirmationDialogState extends State<BookingConfirmationDialog>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1342,7 +1342,7 @@ class _BookingConfirmationDialogState extends State<BookingConfirmationDialog>
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: color.withOpacity(0.8),
+              color: color.withValues(alpha: 0.8),
               letterSpacing: 0.3,
             ),
           ),

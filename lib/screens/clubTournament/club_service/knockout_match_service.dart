@@ -8,11 +8,11 @@ class KnockoutTournamentService {
   /// ✅ FIXED: Determine round name based on team count
   String _getRoundName(int teamCount) {
     if (teamCount > 16) {
-      return 'Round of ${teamCount}'; // 32, 64, etc.
+      return 'Round of $teamCount'; // 32, 64, etc.
     } else if (teamCount == 16) {
       return 'Round of 16';
     } else if (teamCount > 8 && teamCount <= 15) {
-      return 'Round of ${teamCount}'; // 9-15 teams
+      return 'Round of $teamCount'; // 9-15 teams
     } else if (teamCount == 8) {
       return 'Quarter-Finals';
     } else if (teamCount > 4 && teamCount < 8) {

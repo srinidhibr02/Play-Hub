@@ -367,14 +367,14 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isSelected
-                        ? [color.withOpacity(0.9), color]
+                        ? [color.withValues(alpha: 0.9), color]
                         : [Colors.grey.shade100, Colors.grey.shade200],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: color.withOpacity(0.3),
+                            color: color.withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -429,7 +429,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: categoryColor.withOpacity(0.3),
+              color: categoryColor.withValues(alpha: 0.3),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -443,7 +443,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: Colors.white, size: 20),
@@ -475,7 +475,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                               'Loading...',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.white.withOpacity(0.8),
+                                color: Colors.white.withValues(alpha: 0.8),
                                 fontWeight: FontWeight.w600,
                               ),
                             );
@@ -488,7 +488,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                             isBestOf3 ? 'Best of 3' : 'Single Match',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                               fontWeight: FontWeight.w600,
                             ),
                           );
@@ -554,9 +554,9 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
       ),
       child: Column(
         children: [
@@ -575,7 +575,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
             label,
             style: TextStyle(
               fontSize: 9,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
@@ -651,7 +651,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.green.withOpacity(0.4),
+                color: Colors.green.withValues(alpha: 0.4),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -665,7 +665,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
+                      color: Colors.white.withValues(alpha: 0.25),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -694,7 +694,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white.withOpacity(0.95),
+                            color: Colors.white.withValues(alpha: 0.95),
                             letterSpacing: 0.3,
                           ),
                         ),
@@ -712,9 +712,9 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Colors.white.withOpacity(0.1),
-                      Colors.white.withOpacity(0.3),
-                      Colors.white.withOpacity(0.1),
+                      Colors.white.withValues(alpha: 0.1),
+                      Colors.white.withValues(alpha: 0.3),
+                      Colors.white.withValues(alpha: 0.1),
                     ],
                   ),
                 ),
@@ -726,10 +726,10 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.25),
+                    color: Colors.white.withValues(alpha: 0.25),
                     width: 1.5,
                   ),
                 ),
@@ -743,10 +743,10 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.4),
+                          color: Colors.white.withValues(alpha: 0.4),
                           width: 1,
                         ),
                       ),
@@ -791,7 +791,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.white.withOpacity(0.85),
+                                  color: Colors.white.withValues(alpha: 0.85),
                                   letterSpacing: 0.2,
                                 ),
                                 textAlign: TextAlign.center,
@@ -827,7 +827,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.3),
+            color: Colors.green.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -838,7 +838,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -866,7 +866,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ),
               ],
@@ -931,7 +931,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                   ),
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -979,7 +979,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                 boxShadow: !currentValue
                     ? [
                         BoxShadow(
-                          color: categoryColor.withOpacity(0.3),
+                          color: categoryColor.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -1031,7 +1031,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                 boxShadow: currentValue
                     ? [
                         BoxShadow(
-                          color: categoryColor.withOpacity(0.3),
+                          color: categoryColor.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -1141,6 +1141,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildMatchesTab(
     String categoryName,
     String roundName,
@@ -1170,7 +1171,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
         border: Border.all(color: Colors.amber.shade300, width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.amber.withOpacity(0.1),
+            color: Colors.amber.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -1357,7 +1358,7 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
           border: Border.all(color: Colors.grey.shade200, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -1430,8 +1431,8 @@ class _KnockoutScheduleScreenState extends State<KnockoutScheduleScreen>
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          categoryColor.withOpacity(0.15),
-                          categoryColor.withOpacity(0.05),
+                          categoryColor.withValues(alpha: 0.15),
+                          categoryColor.withValues(alpha: 0.05),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(8),

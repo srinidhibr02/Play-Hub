@@ -39,7 +39,7 @@ class _TeamReviewScreenState extends State<TeamReviewScreen>
   late List<Team> teams;
   late AnimationController _fabAnimationController;
   late AnimationController _listAnimationController;
-  Set<String> _expandedTeams = {};
+  final Set<String> _expandedTeams = {};
   bool _isNavigating = false;
 
   final List<Color> teamColors = [

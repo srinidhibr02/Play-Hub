@@ -63,12 +63,12 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
           colors: [
             Colors.teal.shade50,
             Colors.white,
-            Colors.white.withOpacity(0.9),
+            Colors.white.withValues(alpha: 0.9),
           ],
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 8),
             spreadRadius: -2,
@@ -85,11 +85,11 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
@@ -102,7 +102,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                       ),
                       onPressed: () => Navigator.pop(context),
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.teal.shade600.withOpacity(0.1),
+                        backgroundColor: Colors.teal.shade600.withValues(alpha: 0.1),
                         foregroundColor: Colors.teal.shade800,
                         padding: const EdgeInsets.all(8),
                       ),
@@ -145,10 +145,10 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         width: 1.5,
                       ),
                     ),
@@ -157,14 +157,14 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                         child: Material(
-                          color: Colors.deepOrange.shade600.withOpacity(0.15),
+                          color: Colors.deepOrange.shade600.withValues(alpha: 0.15),
                           child: InkWell(
                             onTap: () => _showTournamentCreationForm(),
                             borderRadius: BorderRadius.circular(24),
-                            splashColor: Colors.deepOrange.shade400.withOpacity(
+                            splashColor: Colors.deepOrange.shade400.withValues(alpha: 
                               0.3,
                             ),
-                            highlightColor: Colors.deepOrange.withOpacity(0.1),
+                            highlightColor: Colors.deepOrange.withValues(alpha: 0.1),
                             child: Padding(
                               padding: const EdgeInsets.all(12),
                               child: Icon(
@@ -184,12 +184,12 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.teal.shade200, width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -634,7 +634,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                                 end: Alignment.bottomCenter,
                                 colors: [
                                   Colors.transparent,
-                                  Colors.black.withOpacity(0.4),
+                                  Colors.black.withValues(alpha: 0.4),
                                 ],
                               ),
                             ),
@@ -657,7 +657,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.teal.withOpacity(0.4),
+                                    color: Colors.teal.withValues(alpha: 0.4),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -896,7 +896,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                                     boxShadow: !isCompleted
                                         ? [
                                             BoxShadow(
-                                              color: Colors.green.withOpacity(
+                                              color: Colors.green.withValues(alpha: 
                                                 0.3,
                                               ),
                                               blurRadius: 8,
@@ -997,7 +997,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: bgColor.withOpacity(0.4),
+            color: bgColor.withValues(alpha: 0.4),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1026,9 +1026,9 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.2), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1156,6 +1156,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
         context: context,
         barrierDismissible: false,
         useRootNavigator: true,
+        // ignore: deprecated_member_use
         builder: (context) => WillPopScope(
           onWillPop: () async => false,
           child: AlertDialog(

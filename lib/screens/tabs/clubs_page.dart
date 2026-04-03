@@ -27,6 +27,7 @@ class _ClubsScreenState extends State<ClubsScreen>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
+  // ignore: constant_identifier_names
   static const int BATCH_SIZE = 5;
   DocumentSnapshot? _lastDocument;
   bool _hasMoreClubs = true;

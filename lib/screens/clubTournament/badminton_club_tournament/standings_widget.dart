@@ -101,8 +101,8 @@ class _StandingsWidgetState extends State<StandingsWidget>
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          widget.categoryColor.withOpacity(0.2),
-                          widget.categoryColor.withOpacity(0.05),
+                          widget.categoryColor.withValues(alpha: 0.2),
+                          widget.categoryColor.withValues(alpha: 0.05),
                         ],
                       ),
                       shape: BoxShape.circle,
@@ -175,8 +175,8 @@ class _StandingsWidgetState extends State<StandingsWidget>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        widget.categoryColor.withOpacity(0.1),
-                        widget.categoryColor.withOpacity(0.05),
+                        widget.categoryColor.withValues(alpha: 0.1),
+                        widget.categoryColor.withValues(alpha: 0.05),
                       ],
                     ),
                     shape: BoxShape.circle,
@@ -184,7 +184,7 @@ class _StandingsWidgetState extends State<StandingsWidget>
                   child: Icon(
                     Icons.leaderboard_rounded,
                     size: 64,
-                    color: widget.categoryColor.withOpacity(0.4),
+                    color: widget.categoryColor.withValues(alpha: 0.4),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -273,8 +273,8 @@ class _StandingsWidgetState extends State<StandingsWidget>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    widget.categoryColor.withOpacity(0.3),
-                    widget.categoryColor.withOpacity(0.1),
+                    widget.categoryColor.withValues(alpha: 0.3),
+                    widget.categoryColor.withValues(alpha: 0.1),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(14),
@@ -320,13 +320,13 @@ class _StandingsWidgetState extends State<StandingsWidget>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [widget.categoryColor.withOpacity(0.05), Colors.transparent],
+          colors: [widget.categoryColor.withValues(alpha: 0.05), Colors.transparent],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: widget.categoryColor.withOpacity(0.1),
+          color: widget.categoryColor.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -396,10 +396,10 @@ class _StandingsWidgetState extends State<StandingsWidget>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: podiumColors[position]!.withOpacity(0.1),
+              color: podiumColors[position]!.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: podiumColors[position]!.withOpacity(0.3),
+                color: podiumColors[position]!.withValues(alpha: 0.3),
                 width: 2,
               ),
             ),
@@ -431,7 +431,7 @@ class _StandingsWidgetState extends State<StandingsWidget>
               gradient: LinearGradient(
                 colors: [
                   podiumColors[position]!,
-                  podiumColors[position]!.withOpacity(0.7),
+                  podiumColors[position]!.withValues(alpha: 0.7),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -460,7 +460,7 @@ class _StandingsWidgetState extends State<StandingsWidget>
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
                 ],
@@ -480,6 +480,7 @@ class _StandingsWidgetState extends State<StandingsWidget>
     final topStats = topTeam['stats'] as Map<String, dynamic>;
 
     int totalMatches = 0;
+    // ignore: unused_local_variable
     int totalWins = 0;
 
     for (var team in standings) {
@@ -531,17 +532,17 @@ class _StandingsWidgetState extends State<StandingsWidget>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+          colors: [color.withValues(alpha: 0.1), color.withValues(alpha: 0.05)],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 20),
@@ -576,13 +577,13 @@ class _StandingsWidgetState extends State<StandingsWidget>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            widget.categoryColor.withOpacity(0.1),
-            widget.categoryColor.withOpacity(0.04),
+            widget.categoryColor.withValues(alpha: 0.1),
+            widget.categoryColor.withValues(alpha: 0.04),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: widget.categoryColor.withOpacity(0.15),
+          color: widget.categoryColor.withValues(alpha: 0.15),
           width: 1,
         ),
       ),
@@ -673,7 +674,7 @@ class _StandingsWidgetState extends State<StandingsWidget>
     } else if (position == 3) {
       positionColor = Colors.orange.shade700;
     } else {
-      positionColor = widget.categoryColor.withOpacity(0.4);
+      positionColor = widget.categoryColor.withValues(alpha: 0.4);
     }
 
     final isTopThree = position <= 3;
@@ -693,21 +694,21 @@ class _StandingsWidgetState extends State<StandingsWidget>
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isTopThree
-                ? widget.categoryColor.withOpacity(0.25)
+                ? widget.categoryColor.withValues(alpha: 0.25)
                 : Colors.grey.shade200,
             width: 1.5,
           ),
           boxShadow: isTopThree
               ? [
                   BoxShadow(
-                    color: widget.categoryColor.withOpacity(0.08),
+                    color: widget.categoryColor.withValues(alpha: 0.08),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
+                    color: Colors.black.withValues(alpha: 0.03),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -715,7 +716,7 @@ class _StandingsWidgetState extends State<StandingsWidget>
           gradient: isTopThree
               ? LinearGradient(
                   colors: [
-                    widget.categoryColor.withOpacity(0.03),
+                    widget.categoryColor.withValues(alpha: 0.03),
                     Colors.white,
                   ],
                 )
@@ -729,7 +730,7 @@ class _StandingsWidgetState extends State<StandingsWidget>
               height: 36,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [positionColor.withOpacity(0.8), positionColor],
+                  colors: [positionColor.withValues(alpha: 0.8), positionColor],
                 ),
                 shape: BoxShape.circle,
               ),
@@ -875,13 +876,13 @@ class _StandingsWidgetState extends State<StandingsWidget>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    widget.categoryColor.withOpacity(0.15),
-                    widget.categoryColor.withOpacity(0.08),
+                    widget.categoryColor.withValues(alpha: 0.15),
+                    widget.categoryColor.withValues(alpha: 0.08),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: widget.categoryColor.withOpacity(0.25),
+                  color: widget.categoryColor.withValues(alpha: 0.25),
                   width: 1,
                 ),
               ),
@@ -900,7 +901,7 @@ class _StandingsWidgetState extends State<StandingsWidget>
                     style: TextStyle(
                       fontSize: 8,
                       fontWeight: FontWeight.w700,
-                      color: widget.categoryColor.withOpacity(0.6),
+                      color: widget.categoryColor.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -919,13 +920,13 @@ class _StandingsWidgetState extends State<StandingsWidget>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            widget.categoryColor.withOpacity(0.08),
-            widget.categoryColor.withOpacity(0.02),
+            widget.categoryColor.withValues(alpha: 0.08),
+            widget.categoryColor.withValues(alpha: 0.02),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: widget.categoryColor.withOpacity(0.15),
+          color: widget.categoryColor.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),
@@ -1010,9 +1011,9 @@ class _StandingsWidgetState extends State<StandingsWidget>
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.3), width: 0.8),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 0.8),
         ),
         child: Column(
           children: [

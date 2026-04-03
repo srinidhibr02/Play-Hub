@@ -1,3 +1,5 @@
+// ignore: unnecessary_import
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -40,7 +42,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
 
   bool _includeSingles = false;
   bool _includeDoubles = false;
-  Map<String, TextEditingController> _entryFeeControllers = {};
+  final Map<String, TextEditingController> _entryFeeControllers = {};
 
   // Prize Options
   String _prizeOption = 'both'; // 'trophy', 'prizePool', 'both'
@@ -68,9 +70,9 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
     'Must have previous tournament experience',
   ];
 
-  Set<int> _selectedRulesIndices = {};
+  final Set<int> _selectedRulesIndices = {};
   late TextEditingController _customRuleController;
-  List<String> _finalRules = [];
+  final List<String> _finalRules = [];
 
   final List<String> sports = [
     'Badminton',
@@ -151,7 +153,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
 
       for (var doc in snapshot.docs) {
         try {
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           final name = (data['name'] ?? '').toString().toLowerCase();
           final city = (data['city'] ?? '').toString().toLowerCase();
 
@@ -439,7 +441,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
+                color: Colors.black.withValues(alpha: 0.15),
                 blurRadius: 30,
                 offset: const Offset(0, -5),
               ),
@@ -849,7 +851,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
               border: Border.all(color: Colors.grey.shade200),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -1181,7 +1183,9 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
       children: [
         Radio<String>(
           value: value,
+          // ignore: deprecated_member_use
           groupValue: groupValue,
+          // ignore: deprecated_member_use
           onChanged: onChanged,
           activeColor: Colors.amber.shade600,
         ),
@@ -1259,8 +1263,8 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.01),
-        border: Border.all(color: color.withOpacity(0.2)),
+        color: color.withValues(alpha: 0.01),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1313,7 +1317,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -1360,7 +1364,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                 'round_robin',
                 _tournamentFormat,
                 (value) {
-                  print(value);
+                  debugPrint(value);
                   setState(() => _tournamentFormat = value!);
                 },
               ),
@@ -1371,7 +1375,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                 'knockout',
                 _tournamentFormat,
                 (value) {
-                  print(value);
+                  debugPrint(value);
                   setState(() => _tournamentFormat = value!);
                 },
               ),
@@ -1798,7 +1802,7 @@ class _TournamentCreationFormState extends State<TournamentCreationForm> {
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation(
-                                Colors.white.withOpacity(0.8),
+                                Colors.white.withValues(alpha: 0.8),
                               ),
                             ),
                           )

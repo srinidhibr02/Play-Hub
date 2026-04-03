@@ -104,6 +104,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
     }
   }
 
+  // ignore: unused_element
   Future<String> _getTournamentStatus() async {
     try {
       final doc = await _firestore
@@ -499,7 +500,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.teal.withOpacity(0.3),
+                color: Colors.teal.withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -514,7 +515,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -532,7 +533,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
                           'Tournament Date',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.3,
                           ),
@@ -602,9 +603,9 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
       ),
       child: Column(
         children: [
@@ -624,7 +625,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
             label,
             style: TextStyle(
               fontSize: 10,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontWeight: FontWeight.w600,
               letterSpacing: 0.2,
             ),
@@ -662,12 +663,12 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
                 ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [color.withOpacity(0.9), color],
+                    colors: [color.withValues(alpha: 0.9), color],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: color.withOpacity(0.3),
+                      color: color.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -694,7 +695,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.25),
+                        color: Colors.white.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -762,7 +763,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
               status: status,
             ),
           );
-        }).toList(),
+        }),
 
         const SizedBox(height: 20),
       ],
@@ -774,17 +775,17 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color.withOpacity(0.08), color.withOpacity(0.04)],
+          colors: [color.withValues(alpha: 0.08), color.withValues(alpha: 0.04)],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.2), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(categoryIcons[category], color: color, size: 20),
@@ -842,7 +843,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
         border: Border.all(color: Colors.grey.shade200, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -861,12 +862,12 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
                 height: 44,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [color.withOpacity(0.8), color],
+                    colors: [color.withValues(alpha: 0.8), color],
                   ),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: color.withOpacity(0.3),
+                      color: color.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -939,9 +940,9 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
+                      color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: statusColor.withOpacity(0.3)),
+                      border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -966,9 +967,9 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
+                      color: color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: color.withOpacity(0.2)),
+                      border: Border.all(color: color.withValues(alpha: 0.2)),
                     ),
                     child: Text(
                       '#${(index + 1).toString().padLeft(2, '0')}',
@@ -1003,7 +1004,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -1021,7 +1022,7 @@ class _TournamentInfoScreenState extends State<TournamentInfoScreen>
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: buttonColor.withOpacity(0.3),
+                color: buttonColor.withValues(alpha: 0.3),
                 blurRadius: 16,
                 offset: const Offset(0, 8),
               ),

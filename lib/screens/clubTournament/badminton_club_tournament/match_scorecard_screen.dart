@@ -30,7 +30,9 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
   bool isLoading = false;
 
   final _service = ClubTournamentService();
+  // ignore: unused_field
   final _progressionService = TournamentProgressionService();
+  // ignore: unused_field
   final _firestore = FirebaseFirestore.instance;
 
   @override
@@ -121,7 +123,7 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
+                  color: Colors.black.withValues(alpha: 0.15),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -244,7 +246,7 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.orange.withOpacity(0.3),
+                                color: Colors.orange.withValues(alpha: 0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
@@ -787,7 +789,7 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.teal.withOpacity(0.3),
+            color: Colors.teal.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -840,10 +842,10 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           width: 2,
                         ),
                       ),
@@ -868,7 +870,7 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       letterSpacing: 1,
                     ),
                   ),
@@ -902,10 +904,10 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           width: 2,
                         ),
                       ),
@@ -931,10 +933,10 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1.5,
               ),
             ),
@@ -949,7 +951,7 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                           'Net Result',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -969,7 +971,7 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                     Container(
                       width: 1,
                       height: 40,
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                     ),
                     Column(
                       children: [
@@ -977,7 +979,7 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                           'Points',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1116,7 +1118,7 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -1146,13 +1148,13 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                     gradient: LinearGradient(
                       colors: resultSaved
                           ? [Colors.grey.shade200, Colors.grey.shade100]
-                          : [color.withOpacity(0.2), color.withOpacity(0.1)],
+                          : [color.withValues(alpha: 0.2), color.withValues(alpha: 0.1)],
                     ),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: resultSaved
                           ? Colors.grey.shade300
-                          : color.withOpacity(0.3),
+                          : color.withValues(alpha: 0.3),
                       width: 1.5,
                     ),
                   ),
@@ -1174,13 +1176,13 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                   gradient: LinearGradient(
                     colors: resultSaved
                         ? [Colors.grey.shade100, Colors.grey.shade50]
-                        : [color.withOpacity(0.15), color.withOpacity(0.05)],
+                        : [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: resultSaved
                         ? Colors.grey.shade300
-                        : color.withOpacity(0.3),
+                        : color.withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                 ),
@@ -1208,13 +1210,13 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                     gradient: LinearGradient(
                       colors: resultSaved
                           ? [Colors.grey.shade200, Colors.grey.shade100]
-                          : [color.withOpacity(0.2), color.withOpacity(0.1)],
+                          : [color.withValues(alpha: 0.2), color.withValues(alpha: 0.1)],
                     ),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: resultSaved
                           ? Colors.grey.shade300
-                          : color.withOpacity(0.3),
+                          : color.withValues(alpha: 0.3),
                       width: 1.5,
                     ),
                   ),
@@ -1291,9 +1293,9 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.3), width: 1),
+            border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
           ),
           child: Text(
             value,
@@ -1315,7 +1317,7 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -1360,7 +1362,7 @@ class _MatchScorecardScreenState extends State<MatchScorecardScreen> {
                   boxShadow: [
                     BoxShadow(
                       color: (resultSaved ? Colors.grey : Colors.green)
-                          .withOpacity(0.3),
+                          .withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),

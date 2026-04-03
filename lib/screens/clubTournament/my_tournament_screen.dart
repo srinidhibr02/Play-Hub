@@ -1,4 +1,3 @@
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -352,7 +351,7 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget>
             if (!isJoinedTab)
               ElevatedButton.icon(
                 onPressed: () {
-                  DefaultTabController.of(context)?.animateTo(0);
+                  DefaultTabController.of(context).animateTo(0);
                 },
                 icon: const Icon(Icons.explore),
                 label: const Text('Explore Tournaments'),
@@ -777,12 +776,12 @@ class _MyTournamentsWidgetState extends State<MyTournamentsWidget>
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.teal.shade200, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
