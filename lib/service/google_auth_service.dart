@@ -25,11 +25,16 @@ class _GoogleSignInState extends State<GoogleSignInButton> {
   static const String _clientId =
       '371130915379-54ket1adu7iqt2lqdoh4oqhvi3fedlnj.apps.googleusercontent.com';
 
+  // ignore: unused_field
   GoogleSignInAccount? _currentUser;
+  // ignore: unused_field
   bool _isAuthorized = false;
+  // ignore: unused_field
   String _contactText = '';
+  // ignore: unused_field
   String _errorMessage = '';
-  String _serverAuthCode = '';
+  // ignore: unused_field
+  final String _serverAuthCode = '';
   bool _isLoading = false;
   String _loadingMessage = '';
 

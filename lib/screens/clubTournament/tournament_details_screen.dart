@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:play_hub/screens/clubTournament/tournament_registration_screen.dart';
-import 'package:play_hub/service/initialise_sample_data.dart';
 
 class TournamentDetailsScreen extends StatefulWidget {
   final String tournamentId;
@@ -202,16 +201,16 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                   margin: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
+                        color: Colors.black.withValues(alpha: 0.25),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                         spreadRadius: 0,
                       ),
                       BoxShadow(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                         blurRadius: 8,
                         offset: const Offset(0, -2),
                       ),
@@ -232,8 +231,8 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                           minWidth: 44,
                           minHeight: 44,
                         ),
-                        highlightColor: Colors.white.withOpacity(0.1),
-                        splashColor: Colors.white.withOpacity(0.2),
+                        highlightColor: Colors.white.withValues(alpha: 0.1),
+                        splashColor: Colors.white.withValues(alpha: 0.2),
                       ),
                     ),
                   ),
@@ -261,7 +260,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.8),
+                              Colors.black.withValues(alpha: 0.8),
                             ],
                           ),
                         ),
@@ -469,7 +468,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                                           ? [
                                               BoxShadow(
                                                 color: Colors.teal.shade600
-                                                    .withOpacity(0.3),
+                                                    .withValues(alpha: 0.3),
                                                 blurRadius: 8,
                                                 offset: const Offset(0, 4),
                                               ),
@@ -581,7 +580,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
                                           ? [
                                               BoxShadow(
                                                 color: Colors.purple.shade600
-                                                    .withOpacity(0.3),
+                                                    .withValues(alpha: 0.3),
                                                 blurRadius: 8,
                                                 offset: const Offset(0, 4),
                                               ),
@@ -1199,7 +1198,7 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
               child: Material(
                 borderRadius: BorderRadius.circular(16),
                 elevation: 8,
-                shadowColor: Colors.teal.withOpacity(0.4),
+                shadowColor: Colors.teal.withValues(alpha: 0.4),
                 child: InkWell(
                   onTap: (isRegistrationOpen && !isFull && isBothSelected)
                       ? () => _navigateToRegistration(
@@ -1267,11 +1266,11 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.9),
+        color: color.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.4),
+            color: color.withValues(alpha: 0.4),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1300,11 +1299,11 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: (isOpen ? Colors.green : Colors.red).withOpacity(0.9),
+        color: (isOpen ? Colors.green : Colors.red).withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: (isOpen ? Colors.green : Colors.red).withOpacity(0.4),
+            color: (isOpen ? Colors.green : Colors.red).withValues(alpha: 0.4),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1342,10 +1341,10 @@ class _TournamentDetailsScreenState extends State<TournamentDetailsScreen>
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color.withOpacity(0.12), color.withOpacity(0.06)],
+          colors: [color.withValues(alpha: 0.12), color.withValues(alpha: 0.06)],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
       ),
       child: Column(
         children: [

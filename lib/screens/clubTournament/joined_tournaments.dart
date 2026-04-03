@@ -838,21 +838,21 @@ class _JoinedTournamentsState extends State<JoinedTournaments> {
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.teal.shade100.withOpacity(0.6),
+                        color: Colors.teal.shade100.withValues(alpha: 0.6),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Colors.teal.shade300.withOpacity(0.8),
+                          color: Colors.teal.shade300.withValues(alpha: 0.8),
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.teal.shade300.withOpacity(0.4),
+                            color: Colors.teal.shade300.withValues(alpha: 0.4),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                             spreadRadius: -2,
                           ),
                           BoxShadow(
-                            color: Colors.white.withOpacity(0.4),
+                            color: Colors.white.withValues(alpha: 0.4),
                             blurRadius: 8,
                             offset: const Offset(0, -2),
                           ),
@@ -861,12 +861,12 @@ class _JoinedTournamentsState extends State<JoinedTournaments> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(24),
                         child: Material(
-                          color: Colors.teal.shade600.withOpacity(0.15),
+                          color: Colors.teal.shade600.withValues(alpha: 0.15),
                           child: InkWell(
                             onTap: _showJoinTournamentDialog,
                             borderRadius: BorderRadius.circular(20),
-                            splashColor: Colors.teal.shade400.withOpacity(0.4),
-                            highlightColor: Colors.teal.shade300.withOpacity(
+                            splashColor: Colors.teal.shade400.withValues(alpha: 0.4),
+                            highlightColor: Colors.teal.shade300.withValues(alpha: 
                               0.2,
                             ),
                             child: Padding(

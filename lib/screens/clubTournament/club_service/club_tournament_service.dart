@@ -190,7 +190,7 @@ class ClubTournamentService {
 
           roundMatches.add(
             Match(
-              id: '${category}_League_M${matchCounter}',
+              id: '${category}_League_M$matchCounter',
               team1: team1,
               team2: team2,
               date: currentDateTime,

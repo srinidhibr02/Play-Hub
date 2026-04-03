@@ -337,14 +337,14 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isSelected
-                        ? [color.withOpacity(0.9), color]
+                        ? [color.withValues(alpha: 0.9), color]
                         : [Colors.grey.shade100, Colors.grey.shade200],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: color.withOpacity(0.3),
+                            color: color.withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -376,7 +376,7 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? Colors.white.withOpacity(0.25)
+                            ? Colors.white.withValues(alpha: 0.25)
                             : Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(6),
                       ),
@@ -428,7 +428,7 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: categoryColor.withOpacity(0.3),
+                color: categoryColor.withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -442,7 +442,7 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(icon, color: Colors.white, size: 28),
@@ -465,7 +465,7 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                           'Category Tournament',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -511,9 +511,9 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
       ),
       child: Column(
         children: [
@@ -532,7 +532,7 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
             label,
             style: TextStyle(
               fontSize: 9,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
@@ -839,12 +839,12 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            categoryColor.withOpacity(0.1),
-            categoryColor.withOpacity(0.05),
+            categoryColor.withValues(alpha: 0.1),
+            categoryColor.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: categoryColor.withOpacity(0.3), width: 1.5),
+        border: Border.all(color: categoryColor.withValues(alpha: 0.3), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -866,7 +866,7 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: categoryColor.withOpacity(0.2),
+                  color: categoryColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -929,10 +929,10 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+              colors: [color.withValues(alpha: 0.1), color.withValues(alpha: 0.05)],
             ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+            border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
           ),
           child: Row(
             children: [
@@ -969,13 +969,13 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                 ),
                 decoration: BoxDecoration(
                   color: isPhaseComplete
-                      ? Colors.green.withOpacity(0.15)
-                      : color.withOpacity(0.15),
+                      ? Colors.green.withValues(alpha: 0.15)
+                      : color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isPhaseComplete
-                        ? Colors.green.withOpacity(0.3)
-                        : color.withOpacity(0.3),
+                        ? Colors.green.withValues(alpha: 0.3)
+                        : color.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -1096,15 +1096,15 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isCompleted
-                  ? Colors.green.withOpacity(0.3)
+                  ? Colors.green.withValues(alpha: 0.3)
                   : stageStyle['borderColor'] as Color,
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
                 color: isCompleted
-                    ? Colors.green.withOpacity(0.1)
-                    : (stageStyle['color'] as Color).withOpacity(0.1),
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : (stageStyle['color'] as Color).withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -1126,10 +1126,10 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: categoryColor.withOpacity(0.15),
+                        color: categoryColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: categoryColor.withOpacity(0.3),
+                          color: categoryColor.withValues(alpha: 0.3),
                           width: 1.5,
                         ),
                       ),
@@ -1150,10 +1150,10 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: (stageStyle['color'] as Color).withOpacity(0.15),
+                        color: (stageStyle['color'] as Color).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: (stageStyle['color'] as Color).withOpacity(
+                          color: (stageStyle['color'] as Color).withValues(alpha: 
                             0.3,
                           ),
                           width: 1,
@@ -1282,13 +1282,13 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  categoryColor.withOpacity(0.15),
-                                  categoryColor.withOpacity(0.05),
+                                  categoryColor.withValues(alpha: 0.15),
+                                  categoryColor.withValues(alpha: 0.05),
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: categoryColor.withOpacity(0.2),
+                                color: categoryColor.withValues(alpha: 0.2),
                               ),
                             ),
                             child: Text(
@@ -1343,13 +1343,13 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  categoryColor.withOpacity(0.15),
-                                  categoryColor.withOpacity(0.05),
+                                  categoryColor.withValues(alpha: 0.15),
+                                  categoryColor.withValues(alpha: 0.05),
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: categoryColor.withOpacity(0.2),
+                                color: categoryColor.withValues(alpha: 0.2),
                               ),
                             ),
                             child: Text(
@@ -1541,6 +1541,8 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
           .getCategoryMatchesStream(widget.tournamentId, categoryName)
           .first;
 
+      if (!mounted) return;
+
       final semiMatches = matches
           .where((m) => (m['stage'] as String?) == 'Semi-Final')
           .toList();
@@ -1692,7 +1694,7 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.amber.withOpacity(0.4),
+              color: Colors.amber.withValues(alpha: 0.4),
               blurRadius: 30,
               offset: const Offset(0, 15),
             ),
@@ -1703,7 +1705,7 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: const Text('🏆', style: TextStyle(fontSize: 64)),
@@ -1732,10 +1734,10 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                   width: 1.5,
                 ),
               ),
@@ -1746,7 +1748,7 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -1784,7 +1786,7 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -1812,25 +1814,25 @@ class _RoundRobinScheduleScreenState extends State<RoundRobinScheduleScreen>
         return {
           'color': Colors.blue,
           'emoji': '⚽',
-          'borderColor': Colors.blue.withOpacity(0.3),
+          'borderColor': Colors.blue.withValues(alpha: 0.3),
         };
       case 'Semi-Final':
         return {
           'color': Colors.orange,
           'emoji': '🥊',
-          'borderColor': Colors.orange.withOpacity(0.3),
+          'borderColor': Colors.orange.withValues(alpha: 0.3),
         };
       case 'Final':
         return {
           'color': Colors.amber,
           'emoji': '🏆',
-          'borderColor': Colors.amber.withOpacity(0.3),
+          'borderColor': Colors.amber.withValues(alpha: 0.3),
         };
       default:
         return {
           'color': Colors.grey,
           'emoji': '🎯',
-          'borderColor': Colors.grey.withOpacity(0.3),
+          'borderColor': Colors.grey.withValues(alpha: 0.3),
         };
     }
   }

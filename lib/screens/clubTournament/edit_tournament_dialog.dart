@@ -150,7 +150,7 @@ class _EditTournamentDialogState extends State<EditTournamentDialog> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
@@ -176,7 +176,7 @@ class _EditTournamentDialogState extends State<EditTournamentDialog> {
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
@@ -286,7 +286,7 @@ class _EditTournamentDialogState extends State<EditTournamentDialog> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.green.withOpacity(0.3),
+                            color: Colors.green.withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -309,7 +309,7 @@ class _EditTournamentDialogState extends State<EditTournamentDialog> {
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation(
-                                        Colors.white.withOpacity(0.8),
+                                        Colors.white.withValues(alpha: 0.8),
                                       ),
                                     ),
                                   )

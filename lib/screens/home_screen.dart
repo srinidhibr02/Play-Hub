@@ -127,6 +127,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Check if user is authenticated
     bool isUserAuthenticated = _userEmailId != null && _userEmailId!.isNotEmpty;
 
+    // ignore: deprecated_member_use
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -231,7 +232,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             borderRadius: BorderRadius.circular(2),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.teal.shade700.withOpacity(0.4),
+                                color: Colors.teal.shade700.withValues(alpha: 0.4),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),

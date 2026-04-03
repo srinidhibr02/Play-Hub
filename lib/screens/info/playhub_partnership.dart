@@ -229,7 +229,7 @@ class _PlayhubPartnershipState extends State<PlayhubPartnership> {
         ),
         boxShadow: [
           BoxShadow(
-            color: (verified ? Colors.green : Colors.orange).withOpacity(0.1),
+            color: (verified ? Colors.green : Colors.orange).withValues(alpha: 0.1),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -270,7 +270,7 @@ class _PlayhubPartnershipState extends State<PlayhubPartnership> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -534,7 +534,7 @@ class _PlayhubPartnershipState extends State<PlayhubPartnership> {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                   const SizedBox(height: 20),
                 ],
                 if (pricePerHour.isNotEmpty) ...[
@@ -572,7 +572,7 @@ class _PlayhubPartnershipState extends State<PlayhubPartnership> {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                   const SizedBox(height: 20),
                 ],
                 if (amenities.isNotEmpty) ...[
@@ -756,8 +756,8 @@ class _RegistrationModalState extends State<_RegistrationModal> {
   late TextEditingController _latitudeController;
   late TextEditingController _longitudeController;
 
-  List<String> _selectedSports = [];
-  Map<String, bool> _amenities = {
+  final List<String> _selectedSports = [];
+  final Map<String, bool> _amenities = {
     'parking': false,
     'wifi': false,
     'cafeteria': false,
@@ -765,8 +765,8 @@ class _RegistrationModalState extends State<_RegistrationModal> {
     'firstAid': false,
   };
 
-  Map<String, TextEditingController> _priceControllers = {};
-  Map<String, String> _openingHours = {
+  final Map<String, TextEditingController> _priceControllers = {};
+  final Map<String, String> _openingHours = {
     'Monday': '',
     'Tuesday': '',
     'Wednesday': '',
@@ -844,6 +844,7 @@ class _RegistrationModalState extends State<_RegistrationModal> {
 
       // Get current position
       final position = await Geolocator.getCurrentPosition(
+        // ignore: deprecated_member_use
         desiredAccuracy: LocationAccuracy.high,
       );
 
@@ -1064,6 +1065,7 @@ class _RegistrationModalState extends State<_RegistrationModal> {
     }
   }
 
+  // ignore: unused_element
   Widget _buildStepIndicator(int step) {
     final isActive = step <= _currentStep;
     final isCurrent = step == _currentStep;
@@ -1283,7 +1285,7 @@ class _RegistrationModalState extends State<_RegistrationModal> {
                 label: sport,
               ),
             );
-          }).toList(),
+          }),
         ],
       ],
     );
@@ -1345,7 +1347,7 @@ class _RegistrationModalState extends State<_RegistrationModal> {
                         _applySameTimeToAllDays = value;
                       });
                     },
-                    activeColor: Colors.teal,
+                    activeThumbColor: Colors.teal,
                   ),
                 ],
               ),
@@ -1565,7 +1567,7 @@ class _RegistrationModalState extends State<_RegistrationModal> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? (data['color'] as Color).withOpacity(0.1)
+                      ? (data['color'] as Color).withValues(alpha: 0.1)
                       : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
@@ -1577,7 +1579,7 @@ class _RegistrationModalState extends State<_RegistrationModal> {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: (data['color'] as Color).withOpacity(0.2),
+                            color: (data['color'] as Color).withValues(alpha: 0.2),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -1770,9 +1772,9 @@ class _RegistrationModalState extends State<_RegistrationModal> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -1799,7 +1801,7 @@ class _RegistrationModalState extends State<_RegistrationModal> {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Icon(
                   Icons.arrow_forward,
-                  color: color.withOpacity(0.5),
+                  color: color.withValues(alpha: 0.5),
                   size: 16,
                 ),
               ),
@@ -1834,7 +1836,7 @@ class _RegistrationModalState extends State<_RegistrationModal> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Column(
             children: [

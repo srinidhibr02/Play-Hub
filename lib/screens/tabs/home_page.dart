@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:play_hub/constants/models.dart';
 import 'package:play_hub/screens/booking/club_screen.dart';
 import 'package:play_hub/screens/booking_ui_screens.dart';
-import 'package:play_hub/screens/tabs/clubs_page.dart';
 import 'package:play_hub/screens/tabs/profile_screen.dart';
 import 'package:play_hub/screens/tournament/tournament_setup_screen.dart';
 import 'package:play_hub/screens/clubTournament/tournament_screen.dart';

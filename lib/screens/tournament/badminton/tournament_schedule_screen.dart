@@ -1064,6 +1064,7 @@ class _BadmintonMatchScheduleScreenState
     );
   }
 
+  // ignore: unused_element
   Team? _getWinner() {
     return null;
   }

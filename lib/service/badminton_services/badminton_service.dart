@@ -1,3 +1,5 @@
+// ignore: unnecessary_import
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:play_hub/constants/badminton.dart';
@@ -206,7 +208,7 @@ class TournamentFirestoreService {
   ) async {
     try {
       final matches = await getAllMatches(userEmail, tournamentId);
-      final teams = await getTeams(userEmail, tournamentId);
+      final teams = getTeams(userEmail, tournamentId);
 
       final completedMatches = matches
           .where((m) => m.status == 'Completed')
@@ -284,7 +286,7 @@ class TournamentFirestoreService {
     String tournamentId,
   ) async* {
     await for (final matches in getAllMatchesStream(userEmail, tournamentId)) {
-      final teams = await getTeams(userEmail, tournamentId);
+      final teams = getTeams(userEmail, tournamentId);
 
       final completedMatches = matches
           .where((m) => m.status == 'Completed')
@@ -878,7 +880,7 @@ class TournamentFirestoreService {
     String userEmail,
   ) async {
     try {
-      print('addPlayerToTournament: $tournamentId, $userEmail');
+      debugPrint('addPlayerToTournament: $tournamentId, $userEmail');
       await _firestore
           .collection('friendlyTournaments')
           .doc(tournamentId)
@@ -917,6 +919,7 @@ class TournamentFirestoreService {
 
       if (creatorEmail != null && creatorEmail == currentUserEmail) {
         // ✅ Safety check
+        if (!context.mounted) return null;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Row(
@@ -935,7 +938,7 @@ class TournamentFirestoreService {
           ),
         );
       } else {
-        print('I am not going anywhere');
+        debugPrint('I am not going anywhere');
         await addPlayerToTournament(shareCode, currentUserEmail!);
       }
 

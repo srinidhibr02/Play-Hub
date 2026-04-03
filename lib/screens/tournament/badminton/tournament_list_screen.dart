@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:play_hub/screens/tournament/badminton/badminton_tournament_setup_screen.dart';
 import 'package:play_hub/screens/tournament/badminton/tournament_schedule_screen.dart';
 import 'package:play_hub/service/badminton_services/badminton_service.dart';
-import 'package:rxdart/rxdart.dart';
 
 class TournamentListScreen extends StatefulWidget {
   const TournamentListScreen({super.key});
@@ -24,6 +23,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
   late AnimationController _pulseController;
   late AnimationController _bounceController;
   late Animation<double> _pulseAnim;
+  // ignore: unused_field
   late Animation<Offset> _bounceAnim;
 
   @override
@@ -551,6 +551,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
     Timestamp? startDateTimestamp = schedule['startDate'];
     DateTime? startDate = startDateTimestamp?.toDate();
 
+    // ignore: unused_local_variable
     Color statusColor = status == 'active'
         ? Colors.green.shade600
         : status == 'completed'
@@ -1063,6 +1064,7 @@ class _TournamentListScreenState extends State<TournamentListScreen>
         return;
       }
 
+      if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(

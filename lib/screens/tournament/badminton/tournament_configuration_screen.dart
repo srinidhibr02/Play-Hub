@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:play_hub/screens/tournament/badminton/team_review_&_customization_screen.dart';
+import 'package:play_hub/screens/tournament/badminton/team_review_and_customization_screen.dart';
 
 class TournamentConfigScreen extends StatefulWidget {
   final List<String> members;
@@ -892,7 +892,7 @@ class _TournamentConfigScreenState extends State<TournamentConfigScreen> {
           Switch(
             value: allowRematches,
             activeTrackColor: Colors.orange.shade600,
-            activeColor: Colors.white,
+            activeThumbColor: Colors.white,
             inactiveTrackColor: Colors.grey.shade300,
             inactiveThumbColor: Colors.white,
             onChanged: (tournamentFormat == "knockout")

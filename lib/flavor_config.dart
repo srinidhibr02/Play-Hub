@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 class FlavorConfig {
   static String flavor = 'dev';
   static String get title {
@@ -13,6 +14,6 @@ class FlavorConfig {
 
   static void init(String f) {
     flavor = f;
-    print('🚀 Flavor: $flavor');
+    debugPrint('🚀 Flavor: $flavor');
   }
 }

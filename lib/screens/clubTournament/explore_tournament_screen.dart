@@ -285,7 +285,7 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? color.withOpacity(0.2)
+                      ? color.withValues(alpha: 0.2)
                       : Colors.grey.shade100,
                   border: Border.all(
                     color: isSelected ? color : Colors.grey.shade300,
@@ -320,6 +320,7 @@ class _ExploreTournamentsWidgetState extends State<ExploreTournamentsWidget> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildShimmerBox({
     required double height,
     double? width,
