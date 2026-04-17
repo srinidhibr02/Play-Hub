@@ -599,6 +599,7 @@ class _AuthPageState extends State<AuthPage>
 
   Widget _buildRegisterForm() {
     return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 5),
       child: Form(
         key: _registerFormKey,
         child: Column(

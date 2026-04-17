@@ -102,7 +102,9 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                       ),
                       onPressed: () => Navigator.pop(context),
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.teal.shade600.withValues(alpha: 0.1),
+                        backgroundColor: Colors.teal.shade600.withValues(
+                          alpha: 0.1,
+                        ),
                         foregroundColor: Colors.teal.shade800,
                         padding: const EdgeInsets.all(8),
                       ),
@@ -157,14 +159,18 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                         child: Material(
-                          color: Colors.deepOrange.shade600.withValues(alpha: 0.15),
+                          color: Colors.deepOrange.shade600.withValues(
+                            alpha: 0.15,
+                          ),
                           child: InkWell(
                             onTap: () => _showTournamentCreationForm(),
                             borderRadius: BorderRadius.circular(24),
-                            splashColor: Colors.deepOrange.shade400.withValues(alpha: 
-                              0.3,
+                            splashColor: Colors.deepOrange.shade400.withValues(
+                              alpha: 0.3,
                             ),
-                            highlightColor: Colors.deepOrange.withValues(alpha: 0.1),
+                            highlightColor: Colors.deepOrange.withValues(
+                              alpha: 0.1,
+                            ),
                             child: Padding(
                               padding: const EdgeInsets.all(12),
                               child: Icon(
@@ -523,7 +529,7 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.add_circle_outline_rounded,
+              Icons.not_interested_rounded,
               size: 64,
               color: Colors.teal.shade300,
             ),
@@ -896,8 +902,8 @@ class _HostTournamentScreenState extends State<HostTournamentScreen>
                                     boxShadow: !isCompleted
                                         ? [
                                             BoxShadow(
-                                              color: Colors.green.withValues(alpha: 
-                                                0.3,
+                                              color: Colors.green.withValues(
+                                                alpha: 0.3,
                                               ),
                                               blurRadius: 8,
                                               offset: const Offset(0, 4),
