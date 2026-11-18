@@ -7,6 +7,17 @@ import 'package:play_hub/models/team.dart';
 import 'package:play_hub/models/tournament.dart';
 import 'package:play_hub/models/tournament_match.dart';
 
+/// A problem the organizer can understand and act on, such as trying to edit
+/// a result after the next round was played.
+class ResultException implements Exception {
+  const ResultException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// All Firestore access for tournaments lives here.
 ///
 /// Data layout (a new root collection, so the previous version's data is
@@ -198,6 +209,184 @@ class TournamentRepository {
       'status': TournamentStatus.upcoming.name,
       'matchCount': 0,
       'completedCount': 0,
+    });
+  }
+
+  // ---------------------------------------------------------------- results
+
+  /// Marks a match as live (or back to scheduled). Completed matches are
+  /// left alone; clear their result first.
+  Future<void> setMatchLive(
+    String tournamentId,
+    String matchId, {
+    required bool live,
+  }) async {
+    final ref = _matches(tournamentId).doc(matchId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final data = snap.data();
+      if (data == null) throw const ResultException('This match was removed.');
+      final match = TournamentMatch.fromMap(snap.id, data);
+      if (match.status == MatchStatus.completed) return;
+      if (live && !match.hasBothTeams) {
+        throw const ResultException('Both teams must be known first.');
+      }
+      tx.update(ref, {
+        'status': (live ? MatchStatus.live : MatchStatus.scheduled).name,
+      });
+    });
+  }
+
+  /// Saves a final score.
+  ///
+  /// In one transaction this updates the match, the tournament's progress
+  /// counters and status, and (in a knockout) places the winner in the next
+  /// round. Editing a result is allowed unless it would change who reaches a
+  /// next-round match that has already been played.
+  Future<void> saveResult({
+    required String tournamentId,
+    required String matchId,
+    required MatchScore score,
+    required String? winnerId,
+  }) {
+    final tournamentRef = _tournaments.doc(tournamentId);
+    final matchRef = _matches(tournamentId).doc(matchId);
+
+    return _db.runTransaction((tx) async {
+      // All reads first; Firestore requires reads before writes.
+      final matchSnap = await tx.get(matchRef);
+      final tournamentSnap = await tx.get(tournamentRef);
+      final matchData = matchSnap.data();
+      final tournamentData = tournamentSnap.data();
+      if (matchData == null || tournamentData == null) {
+        throw const ResultException('This match was removed.');
+      }
+      final match = TournamentMatch.fromMap(matchSnap.id, matchData);
+      final tournament = Tournament.fromMap(tournamentSnap.id, tournamentData);
+
+      if (match.isBye || !match.hasBothTeams) {
+        throw const ResultException('Both teams must be known before scoring.');
+      }
+      final isKnockout = tournament.format == TournamentFormat.knockout;
+      if (isKnockout && winnerId == null) {
+        throw const ResultException('A knockout match needs a winner.');
+      }
+      if (winnerId != null &&
+          winnerId != match.teamAId &&
+          winnerId != match.teamBId) {
+        throw const ResultException('The winner must be one of the teams.');
+      }
+
+      DocumentReference<Map<String, dynamic>>? nextRef;
+      TournamentMatch? next;
+      if (match.nextMatchId != null) {
+        nextRef = _matches(tournamentId).doc(match.nextMatchId);
+        final nextSnap = await tx.get(nextRef);
+        final nextData = nextSnap.data();
+        if (nextData != null) {
+          next = TournamentMatch.fromMap(nextSnap.id, nextData);
+        }
+      }
+
+      final winnerChanged = winnerId != match.winnerId;
+      if (next != null &&
+          winnerChanged &&
+          next.status != MatchStatus.scheduled) {
+        throw const ResultException(
+          'The next round match has already started, so this result cannot '
+          'change who advances. Clear the next match first.',
+        );
+      }
+
+      // Writes.
+      tx.update(matchRef, {
+        'status': MatchStatus.completed.name,
+        'score': score.toMap(),
+        'winnerId': winnerId,
+      });
+
+      if (next != null && nextRef != null && winnerChanged) {
+        final winnerName =
+            winnerId == match.teamAId ? match.teamAName : match.teamBName;
+        tx.update(
+          nextRef,
+          match.nextSlot == 'A'
+              ? {'teamAId': winnerId, 'teamAName': winnerName}
+              : {'teamBId': winnerId, 'teamBName': winnerName},
+        );
+      }
+
+      final wasCompleted = match.status == MatchStatus.completed;
+      final completed = tournament.completedCount + (wasCompleted ? 0 : 1);
+      tx.update(tournamentRef, {
+        'completedCount': completed,
+        'status': (completed >= tournament.matchCount
+                ? TournamentStatus.completed
+                : TournamentStatus.live)
+            .name,
+      });
+    });
+  }
+
+  /// Removes a match's result so it can be scored again. In a knockout the
+  /// winner is taken back out of the next round, which must not have been
+  /// played yet.
+  Future<void> clearResult({
+    required String tournamentId,
+    required String matchId,
+  }) {
+    final tournamentRef = _tournaments.doc(tournamentId);
+    final matchRef = _matches(tournamentId).doc(matchId);
+
+    return _db.runTransaction((tx) async {
+      final matchSnap = await tx.get(matchRef);
+      final tournamentSnap = await tx.get(tournamentRef);
+      final matchData = matchSnap.data();
+      final tournamentData = tournamentSnap.data();
+      if (matchData == null || tournamentData == null) {
+        throw const ResultException('This match was removed.');
+      }
+      final match = TournamentMatch.fromMap(matchSnap.id, matchData);
+      final tournament = Tournament.fromMap(tournamentSnap.id, tournamentData);
+      if (match.status != MatchStatus.completed) return;
+
+      DocumentReference<Map<String, dynamic>>? nextRef;
+      TournamentMatch? next;
+      if (match.nextMatchId != null) {
+        nextRef = _matches(tournamentId).doc(match.nextMatchId);
+        final nextSnap = await tx.get(nextRef);
+        final nextData = nextSnap.data();
+        if (nextData != null) {
+          next = TournamentMatch.fromMap(nextSnap.id, nextData);
+        }
+      }
+      if (next != null && next.status != MatchStatus.scheduled) {
+        throw const ResultException(
+          'The next round match has already started. Clear that result '
+          'first.',
+        );
+      }
+
+      tx.update(matchRef, {
+        'status': MatchStatus.scheduled.name,
+        'score': null,
+        'winnerId': null,
+      });
+
+      if (next != null && nextRef != null) {
+        tx.update(
+          nextRef,
+          match.nextSlot == 'A'
+              ? {'teamAId': null, 'teamAName': null}
+              : {'teamBId': null, 'teamBName': null},
+        );
+      }
+
+      final completed = max(0, tournament.completedCount - 1);
+      tx.update(tournamentRef, {
+        'completedCount': completed,
+        'status': TournamentStatus.live.name,
+      });
     });
   }
 

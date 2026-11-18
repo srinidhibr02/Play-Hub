@@ -48,6 +48,7 @@ class MatchScore {
     this.runsB = 0,
     this.wicketsB = 0,
     this.ballsB = 0,
+    this.battedFirstA = true,
     this.games = const [],
     this.note = '',
   });
@@ -63,6 +64,9 @@ class MatchScore {
   final int runsB;
   final int wicketsB;
   final int ballsB;
+
+  /// Cricket: true if side A batted first.
+  final bool battedFirstA;
 
   final List<GameScore> games;
 
@@ -80,6 +84,7 @@ class MatchScore {
         'runsB': runsB,
         'wicketsB': wicketsB,
         'ballsB': ballsB,
+        'battedFirstA': battedFirstA,
         'games': games.map((g) => g.toMap()).toList(),
         'note': note,
       };
@@ -97,6 +102,7 @@ class MatchScore {
       runsB: parseInt(map['runsB']),
       wicketsB: parseInt(map['wicketsB']),
       ballsB: parseInt(map['ballsB']),
+      battedFirstA: parseBool(map['battedFirstA'], true),
       games: gamesRaw is List
           ? gamesRaw
               .whereType<Map<String, dynamic>>()

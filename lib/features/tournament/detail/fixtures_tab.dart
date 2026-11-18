@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:play_hub/core/navigation/app_route.dart';
 import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/widgets/empty_state.dart';
 import 'package:play_hub/core/widgets/entrance.dart';
 import 'package:play_hub/features/tournament/detail/match_tile.dart';
+import 'package:play_hub/features/tournament/score/match_score_screen.dart';
 import 'package:play_hub/models/team.dart';
 import 'package:play_hub/models/tournament.dart';
 import 'package:play_hub/models/tournament_match.dart';
@@ -304,10 +306,19 @@ class _FixturesTabState extends ConsumerState<FixturesTab> {
           ),
         );
       }
+      final canScore = widget.isOwner && match.hasBothTeams;
       items.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: MatchTile(match: match, accent: accent).entrance(index: index),
+          child: MatchTile(
+            match: match,
+            sport: _t.sport,
+            onTap: canScore
+                ? () => Navigator.of(context).push(
+                      appRoute(MatchScoreScreen(tournament: _t, match: match)),
+                    )
+                : null,
+          ).entrance(index: index),
         ),
       );
       index++;

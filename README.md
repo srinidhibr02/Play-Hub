@@ -12,8 +12,8 @@ the branch `feature/tournament-manager-reset`. It is being built in phases.
 | Phase | Scope | State |
 |-------|-------|-------|
 | 1 | Foundation: auth, theme, models, create tournament, teams, fixture generation (league + knockout) | Done |
-| 2 | Manual scoring: football goals, cricket runs/wickets/overs, badminton games; match status | Next |
-| 3 | Standings tables (points, goal difference, net run rate), knockout bracket view, auto-advance winners | Planned |
+| 2 | Manual scoring: football goals + penalties, cricket runs/wickets/overs + super-over tie-break, badminton games with rule validation; live status; winners advance in knockouts | Done |
+| 3 | Standings tables (points, goal difference, net run rate), knockout bracket view | Next |
 | 4 | Scheduling (date, time, venue per match), edit tournament, share link / code | Planned |
 | 5 | Player stats, top scorers, polish, offline behaviour, store release | Planned |
 
@@ -23,10 +23,10 @@ the branch `feature/tournament-manager-reset`. It is being built in phases.
 lib/
   core/        theme, shared animated widgets, helpers
   models/      Sport, Tournament, Team, TournamentMatch, MatchScore
-  logic/       pure Dart (no Firebase): FixtureGenerator
+  logic/       pure Dart (no Firebase): FixtureGenerator, MatchRules (score validation, winner, summaries)
   services/    AuthService, TournamentRepository (all Firestore access)
   providers/   Riverpod providers (streams for live updates)
-  features/    auth, home, tournament/create, tournament/detail
+  features/    auth, home, tournament/create, tournament/detail, tournament/score
 ```
 
 Firestore layout (new root collection, so old data is untouched):
