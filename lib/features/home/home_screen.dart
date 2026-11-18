@@ -39,8 +39,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             'the fixtures.',
         onCreate: _createTournament,
       ),
-      const TournamentsTab(
-        key: ValueKey('discover'),
+      TournamentsTab(
+        key: const ValueKey('discover'),
         provider: publicTournamentsProvider,
         title: 'Discover',
         subtitle: 'Follow tournaments happening around you',
