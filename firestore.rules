@@ -1,0 +1,54 @@
+rules_version = '2';
+
+// Rules for the Sports Event & Tournament Manager.
+//
+// Deploy with:  firebase deploy --only firestore:rules
+//
+// Model: anyone can read public tournaments; only the owner can read their
+// private ones and only the owner can change anything.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /sportsTournaments/{tournamentId} {
+      function isOwner() {
+        return signedIn() && resource.data.ownerId == request.auth.uid;
+      }
+
+      allow read: if resource.data.isPublic == true || isOwner();
+
+      // The creator must be recorded as the owner.
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid;
+
+      // Ownership can never be transferred.
+      allow update: if isOwner()
+        && request.resource.data.ownerId == resource.data.ownerId;
+
+      allow delete: if isOwner();
+
+      match /teams/{teamId} {
+        function parent() {
+          return get(/databases/$(database)/documents/sportsTournaments/$(tournamentId)).data;
+        }
+
+        allow read: if parent().isPublic == true
+          || (signedIn() && parent().ownerId == request.auth.uid);
+        allow write: if signedIn() && parent().ownerId == request.auth.uid;
+      }
+
+      match /matches/{matchId} {
+        function parentDoc() {
+          return get(/databases/$(database)/documents/sportsTournaments/$(tournamentId)).data;
+        }
+
+        allow read: if parentDoc().isPublic == true
+          || (signedIn() && parentDoc().ownerId == request.auth.uid);
+        allow write: if signedIn() && parentDoc().ownerId == request.auth.uid;
+      }
+    }
+  }
+}
