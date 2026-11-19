@@ -15,15 +15,19 @@ import 'package:play_hub/providers/providers.dart';
 class TournamentsTab extends ConsumerWidget {
   const TournamentsTab({
     super.key,
-    required this.provider,
+    required this.watch,
     required this.title,
     required this.subtitle,
     required this.emptyTitle,
     required this.emptyMessage,
     this.onCreate,
+    this.trailing,
+    this.headerExtra,
   });
 
-  final AutoDisposeStreamProvider<List<Tournament>> provider;
+  /// Reads the tournaments to show. Using a callback (rather than one
+  /// provider type) lets the same list serve streams and combined data.
+  final AsyncValue<List<Tournament>> Function(WidgetRef ref) watch;
   final String title;
   final String subtitle;
   final String emptyTitle;
@@ -32,10 +36,16 @@ class TournamentsTab extends ConsumerWidget {
   /// When set, the empty state offers a "create" button.
   final VoidCallback? onCreate;
 
+  /// Shown at the right of the title, e.g. a "Join with code" button.
+  final Widget? trailing;
+
+  /// Shown under the subtitle, e.g. a segmented control.
+  final Widget? headerExtra;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final tournaments = ref.watch(provider);
+    final tournaments = watch(ref);
     final filter = ref.watch(sportFilterProvider);
 
     return CustomScrollView(
@@ -46,19 +56,36 @@ class TournamentsTab extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (trailing != null) trailing!,
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
+                if (headerExtra != null) ...[
+                  const SizedBox(height: 14),
+                  headerExtra!,
+                ],
               ],
             ),
           ).entrance(),

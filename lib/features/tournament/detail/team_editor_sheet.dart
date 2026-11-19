@@ -3,22 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:play_hub/models/sport.dart';
 import 'package:play_hub/models/team.dart';
 
-/// Mid-dark colours that keep white text readable.
-const List<int> teamPalette = [
-  0xFFE11D48,
-  0xFFEA580C,
-  0xFFD97706,
-  0xFF16A34A,
-  0xFF0D9488,
-  0xFF0284C7,
-  0xFF4F46E5,
-  0xFF9333EA,
-  0xFFDB2777,
-  0xFF475569,
-];
-
-int paletteColor(int index) => teamPalette[index % teamPalette.length];
-
 /// Opens the add/edit sheet. Returns the team, or null if dismissed.
 Future<Team?> showTeamEditor(
   BuildContext context, {

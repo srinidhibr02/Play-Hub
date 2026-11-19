@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:play_hub/core/theme/app_theme.dart';
 import 'package:play_hub/core/widgets/entrance.dart';
-import 'package:play_hub/core/widgets/sport_badge.dart';
-import 'package:play_hub/models/sport.dart';
 import 'package:play_hub/providers/providers.dart';
 import 'package:play_hub/services/auth_service.dart';
 
@@ -100,7 +98,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.brandGradient),
+        // Same teal as the logo image so it blends in.
+        color: AppTheme.brand,
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -132,22 +131,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   Widget _buildHeader() {
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < Sport.values.length; i++) ...[
-              if (i > 0) const SizedBox(width: 14),
-              SportBadge(sport: Sport.values[i], size: 56).entrance(index: i),
-            ],
-          ],
-        ),
-        const SizedBox(height: 24),
+        Image.asset(AppTheme.logoOnTeal, width: 190, height: 190).entrance(),
+        const SizedBox(height: 4),
         const Text(
           'Run your local\ntournament like a pro',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white,
-            fontSize: 28,
+            fontSize: 26,
             height: 1.2,
             fontWeight: FontWeight.w800,
           ),

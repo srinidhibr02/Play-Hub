@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:play_hub/core/navigation/app_route.dart';
+import 'package:play_hub/features/home/join_by_code.dart';
+import 'package:play_hub/features/home/mine_tab.dart';
 import 'package:play_hub/features/home/profile_tab.dart';
 import 'package:play_hub/features/home/tournaments_tab.dart';
 import 'package:play_hub/features/tournament/create/create_tournament_screen.dart';
@@ -28,26 +30,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final greeting = firstName.isEmpty ? 'My tournaments' : 'Hi, $firstName';
 
     final tabs = <Widget>[
-      TournamentsTab(
+      MineTab(
         key: const ValueKey('mine'),
-        provider: myTournamentsProvider,
-        title: greeting,
-        subtitle: 'Your tournaments',
-        emptyTitle: 'No tournaments yet',
-        emptyMessage:
-            'Create your first tournament, add teams and let Play Hub draw '
-            'the fixtures.',
+        greeting: greeting,
         onCreate: _createTournament,
       ),
       TournamentsTab(
         key: const ValueKey('discover'),
-        provider: publicTournamentsProvider,
+        watch: (ref) => ref.watch(publicTournamentsProvider),
         title: 'Discover',
-        subtitle: 'Follow tournaments happening around you',
+        subtitle: 'Tournaments you can follow or join',
         emptyTitle: 'Nothing to discover yet',
         emptyMessage:
-            'Public tournaments will show up here as soon as organizers '
-            'create them.',
+            'Tournaments that organizers list publicly will show up here. '
+            'Have an invite code? Tap Join.',
+        trailing: const JoinByCodeButton(),
       ),
       const ProfileTab(key: ValueKey('profile')),
     ];

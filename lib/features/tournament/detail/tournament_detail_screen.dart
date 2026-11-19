@@ -5,7 +5,9 @@ import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/widgets/empty_state.dart';
 import 'package:play_hub/core/widgets/status_pill.dart';
 import 'package:play_hub/features/tournament/detail/fixtures_tab.dart';
+import 'package:play_hub/features/tournament/detail/overview_tab.dart';
 import 'package:play_hub/features/tournament/detail/teams_tab.dart';
+import 'package:play_hub/features/tournament/registration/registrations_tab.dart';
 import 'package:play_hub/models/tournament.dart';
 import 'package:play_hub/providers/providers.dart';
 
@@ -99,8 +101,26 @@ class _TournamentView extends ConsumerWidget {
     final isOwner = user != null && user.uid == t.ownerId;
     final topInset = MediaQuery.paddingOf(context).top;
 
+    // Hosted tournaments give their organizer a Requests tab.
+    final showRequests = t.isHosted && isOwner;
+    final pending = showRequests
+        ? (ref.watch(registrationsProvider(t.id)).valueOrNull ?? const [])
+            .where((r) => r.isPending)
+            .length
+        : 0;
+
+    final tabs = <Tab>[
+      const Tab(text: 'Overview'),
+      if (showRequests)
+        Tab(text: pending > 0 ? 'Requests ($pending)' : 'Requests'),
+      Tab(text: 'Teams (${t.teamCount})'),
+      const Tab(text: 'Fixtures'),
+    ];
+    final scrollable = tabs.length > 3;
+
     return DefaultTabController(
-      length: 2,
+      key: ValueKey(tabs.length),
+      length: tabs.length,
       child: Scaffold(
         body: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -147,6 +167,9 @@ class _TournamentView extends ConsumerWidget {
                 ),
               ),
               bottom: TabBar(
+                isScrollable: scrollable,
+                tabAlignment:
+                    scrollable ? TabAlignment.start : TabAlignment.fill,
                 indicatorColor: Colors.white,
                 indicatorWeight: 3,
                 labelColor: Colors.white,
@@ -156,15 +179,14 @@ class _TournamentView extends ConsumerWidget {
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
                 ),
-                tabs: [
-                  Tab(text: 'Teams (${t.teamCount})'),
-                  const Tab(text: 'Fixtures'),
-                ],
+                tabs: tabs,
               ),
             ),
           ],
           body: TabBarView(
             children: [
+              OverviewTab(tournament: t, isOwner: isOwner),
+              if (showRequests) RegistrationsTab(tournament: t),
               TeamsTab(tournament: t, isOwner: isOwner),
               FixturesTab(tournament: t, isOwner: isOwner),
             ],
@@ -214,7 +236,7 @@ class _Header extends StatelessWidget {
             const SizedBox(width: 10),
             Flexible(
               child: Text(
-                '${t.sport.label}  •  ${t.format.label}',
+                '${t.sport.label}  •  ${t.format.label}  •  ${t.kind.label}',
                 overflow: TextOverflow.ellipsis,
                 style: style.copyWith(fontWeight: FontWeight.w800),
               ),

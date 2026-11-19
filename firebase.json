@@ -34,8 +34,5 @@
         }
       }
     }
-  },
-  "firestore": {
-    "rules": "firestore.rules"
   }
 }

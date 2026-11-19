@@ -1,69 +1,90 @@
 # Play Hub: Sports Event & Tournament Manager
 
 Host and track local **badminton**, **cricket** and **football** tournaments
-from your phone. Create a tournament, add teams, draw fixtures, and (soon)
-score matches live with standings that update automatically.
+from your phone. Run a **friendly** tournament in seconds, or **host** one with invite codes,
+team registration, organizer approval and entry-fee tracking. Then draw
+fixtures and score matches.
+
+## Two kinds of tournament
+
+| | Friendly | Hosted |
+|---|---|---|
+| Created | Instantly (name, sport, format) | Same, plus registration settings |
+| Teams | Organizer adds them directly (Quick add takes a pasted list) | Teams register with an invite code; the organizer approves; walk-ins can still be added |
+| Entry fee | None | Optional, with payment tracking |
+| Discover list | Optional | Optional (invite code works either way) |
+
+**Registration flow (hosted):** organizer shares the invite code, a team opens
+*Join* and enters it, fills in team details, and the request shows up under
+*Requests*. Approving creates the team (capacity is checked in a transaction).
+Registration closes when fixtures are drawn, the deadline passes, or the
+tournament is full.
+
+**Payments (manual for now):** the app never moves money. The organizer sets a
+fee, a UPI ID and/or cash. Teams pay outside the app, tap *I have paid*
+(optionally adding the UTR reference), and the organizer marks it *paid*. An
+unpaid team can still be approved after a confirm prompt. An online gateway
+(for example Razorpay) needs a backend to verify payments and is on the
+roadmap.
 
 ## Status
 
-This is a ground-up rewrite of the previous Play Hub (club booking) app, on
-the branch `feature/tournament-manager-reset`. It is being built in phases.
+Rewrite of the previous Play Hub (club booking) app on branch
+`feature/tournament-manager-reset`, built in phases.
 
 | Phase | Scope | State |
 |-------|-------|-------|
-| 1 | Foundation: auth, theme, models, create tournament, teams, fixture generation (league + knockout) | Done |
-| 2 | Manual scoring: football goals + penalties, cricket runs/wickets/overs + super-over tie-break, badminton games with rule validation; live status; winners advance in knockouts | Done |
+| 1 | Auth, theme, models, create tournament, teams, fixtures (league + knockout) | Done |
+| 2 | Manual scoring for football, cricket and badminton; knockout advancement | Done |
+| 2.5 | Friendly vs hosted, invite codes, registrations, approval, manual payment tracking, logo restored | Done, **not yet compiled or run** |
 | 3 | Standings tables (points, goal difference, net run rate), knockout bracket view | Next |
-| 4 | Scheduling (date, time, venue per match), edit tournament, share link / code | Planned |
-| 5 | Player stats, top scorers, polish, offline behaviour, store release | Planned |
+| 4 | Scheduling, edit tournament, share sheet, UPI deep links | Planned |
+| 5 | Player stats, polish, offline behaviour, online payments, release | Planned |
 
 ## Architecture
 
 ```
 lib/
   core/        theme, shared animated widgets, helpers
-  models/      Sport, Tournament, Team, TournamentMatch, MatchScore
-  logic/       pure Dart (no Firebase): FixtureGenerator, MatchRules (score validation, winner, summaries)
+  models/      Sport, Tournament, Team, Registration, TournamentMatch
+  logic/       pure Dart: FixtureGenerator, MatchRules, InviteCode, Payments
   services/    AuthService, TournamentRepository (all Firestore access)
   providers/   Riverpod providers (streams for live updates)
-  features/    auth, home, tournament/create, tournament/detail, tournament/score
+  features/    auth, home, tournament/{create,detail,registration,score}
 ```
 
-Firestore layout (new root collection, so old data is untouched):
+Firestore layout (new root collections, so old data is untouched):
 
 ```
-sportsTournaments/{id}            tournament + rules + counters
-  teams/{teamId}                  name, colour, players, seed
-  matches/{matchId}               round, teams, status, score, next-match link
+sportsTournaments/{id}                 tournament, rules, fee, counters
+  teams/{teamId}                       name, colour, players, seed
+  matches/{matchId}                    round, teams, status, score, next-match link
+  registrations/{uid}                  pending/approved/rejected + payment status
+sportsInviteCodes/{CODE}               code -> tournament id lookup
+sportsUsers/{uid}/joined/{id}          tournaments a person registered for
 ```
-
-Knockout matches store `nextMatchId` and `nextSlot`, so entering a result can
-move the winner into the next round without re-computing the bracket.
 
 ## Firebase
 
-Uses the existing project `play-hub02` (`lib/firebase_options.dart`, the
-`google-services.json` per flavor, and `GoogleService-Info.plist` are
-unchanged).
+Uses the existing project `play-hub02`; the Firebase config files are unchanged.
 
-**Before the app can read or write data you must deploy the rules:**
+**Rules warning:** Firebase keeps one ruleset per project, and deploying
+replaces it. `firestore.rules` holds only the new `sports*` blocks. If the old
+app is still live on this project, paste those blocks into your existing rules
+in the console instead of deploying the file. `firebase.json` does not
+reference the file, so a plain `firebase deploy` will not touch your rules. If
+the project is only used by this app, deploy it with a config that points to
+the file, or paste it into the console.
 
-```
-firebase deploy --only firestore:rules
-```
-
-Rules live in `firestore.rules`: public tournaments are readable by anyone,
-everything is writable only by the owner.
-
-Sign-in methods used: Email/Password and Google. Make sure Email/Password is
-enabled in the Firebase console (Authentication > Sign-in method).
+Sign-in: Email/Password and Google. Enable Email/Password in the console
+(Authentication > Sign-in method).
 
 ## Running
 
 ```
 flutter pub get
 flutter test
-flutter run --dart-define=FLAVOR=dev
+flutter run --flavor dev --dart-define=FLAVOR=dev
 ```
 
-Android has two flavors (`dev`, `prod`); pass `--flavor dev` on Android.
+Android needs `--flavor dev` (or `prod`).
