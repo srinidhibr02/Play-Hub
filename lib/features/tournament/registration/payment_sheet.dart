@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:play_hub/core/utils/errors.dart';
 import 'package:play_hub/core/utils/formatters.dart';
@@ -50,6 +51,41 @@ class _PaymentSheetState extends ConsumerState<PaymentSheet> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text('$what copied')));
+  }
+
+  /// Opens the person's UPI app with the payee, amount and note filled in.
+  /// Paying still happens in that app; the team comes back and taps
+  /// "I've paid" afterwards.
+  Future<void> _openUpiApp() async {
+    final link = Payments.upiPayLink(
+      upiId: _t.upiId,
+      payeeName: _t.payeeName.isNotEmpty ? _t.payeeName : _t.ownerName,
+      amount: _t.entryFee,
+      note: '${_t.name} entry',
+    );
+    var opened = false;
+    if (link != null) {
+      try {
+        opened = await launchUrl(
+          Uri.parse(link),
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (_) {
+        opened = false;
+      }
+    }
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not open a UPI app. Copy the UPI ID and pay from your '
+              'app instead.',
+            ),
+          ),
+        );
+    }
   }
 
   Future<void> _submit(PaymentMethod method) async {
@@ -157,6 +193,12 @@ class _PaymentSheetState extends ConsumerState<PaymentSheet> {
                         ),
                       ],
                     ),
+                    OutlinedButton.icon(
+                      onPressed: _openUpiApp,
+                      icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                      label: Text('Pay ${formatRupees(_t.entryFee)} in UPI app'),
+                    ),
+                    const SizedBox(height: 10),
                     Text(
                       'Open any UPI app, send ${formatRupees(_t.entryFee)} to '
                       'this ID, then enter the reference number below.',

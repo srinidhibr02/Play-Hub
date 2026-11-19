@@ -38,8 +38,8 @@ Rewrite of the previous Play Hub (club booking) app on branch
 | 2 | Manual scoring for football, cricket and badminton; knockout advancement | Done |
 | 2.5 | Friendly vs hosted, invite codes, registrations, approval, manual payment tracking, logo restored | Done, **not yet compiled or run** |
 | 3 | Standings table (points, goal difference, net run rate, game/point difference) and knockout bracket with champion banner | Done, **not yet compiled or run** |
-| 4 | Scheduling, edit tournament, share sheet, UPI deep links | Next |
-| 5 | Player stats, polish, offline behaviour, online payments, release | Planned |
+| 4 | Match scheduling (date, time, venue), edit tournament details, share sheet for invites, open UPI app to pay | Done, **not yet compiled or run** |
+| 5 | Player stats, top scorers, polish, offline behaviour, online payments, release | Next |
 
 ## Architecture
 

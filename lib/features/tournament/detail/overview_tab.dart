@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:play_hub/core/navigation/app_route.dart';
 import 'package:play_hub/core/utils/errors.dart';
@@ -81,6 +82,20 @@ class _InviteCardState extends ConsumerState<_InviteCard> {
   Future<void> _copy(String text, String what) async {
     await Clipboard.setData(ClipboardData(text: text));
     _toast('$what copied');
+  }
+
+  Future<void> _share() async {
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: buildInviteMessage(_t),
+          subject: 'Join ${_t.name} on Play Hub',
+        ),
+      );
+    } catch (e) {
+      // No share sheet available: fall back to the clipboard.
+      await _copy(buildInviteMessage(_t), 'Invite message');
+    }
   }
 
   Future<void> _createCode() async {
@@ -175,12 +190,9 @@ class _InviteCardState extends ConsumerState<_InviteCard> {
                       foregroundColor: _t.sport.colorDark,
                       minimumSize: const Size(0, 46),
                     ),
-                    onPressed: () => _copy(
-                      buildInviteMessage(_t),
-                      'Invite message',
-                    ),
+                    onPressed: _share,
                     icon: const Icon(Icons.share_outlined, size: 18),
-                    label: const Text('Copy invite message'),
+                    label: const Text('Share invite'),
                   ),
                 ),
               ],

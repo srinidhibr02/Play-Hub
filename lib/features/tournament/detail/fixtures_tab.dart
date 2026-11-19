@@ -6,6 +6,7 @@ import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/widgets/empty_state.dart';
 import 'package:play_hub/core/widgets/entrance.dart';
 import 'package:play_hub/features/tournament/detail/match_tile.dart';
+import 'package:play_hub/features/tournament/detail/schedule_sheet.dart';
 import 'package:play_hub/features/tournament/score/match_score_screen.dart';
 import 'package:play_hub/models/team.dart';
 import 'package:play_hub/models/tournament.dart';
@@ -105,6 +106,27 @@ class _FixturesTabState extends ConsumerState<FixturesTab> {
       _toast('Could not create fixtures. Check your connection and retry.');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _schedule(TournamentMatch match) async {
+    final choice = await showScheduleSheet(
+      context,
+      match: match,
+      defaultVenue: _t.venue,
+      tournamentStart: _t.startDate,
+    );
+    if (choice == null || !mounted) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).setSchedule(
+            _t.id,
+            match.id,
+            at: choice.at,
+            venue: choice.venue,
+          );
+      _toast(choice.at == null ? 'Time cleared.' : 'Match scheduled.');
+    } catch (e) {
+      _toast('Could not save the schedule. Try again.');
     }
   }
 
@@ -332,6 +354,7 @@ class _FixturesTabState extends ConsumerState<FixturesTab> {
                       appRoute(MatchScoreScreen(tournament: _t, match: match)),
                     )
                 : null,
+            onSchedule: widget.isOwner ? () => _schedule(match) : null,
           ).entrance(index: index),
         ),
       );

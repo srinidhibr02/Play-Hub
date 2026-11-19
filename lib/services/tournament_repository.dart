@@ -196,6 +196,27 @@ class TournamentRepository {
       'description': tournament.description,
       'startDate': Timestamp.fromDate(tournament.startDate),
       'isPublic': tournament.isPublic,
+      // Hosted details that are safe to change at any time. The fee and
+      // capacity are not here: teams may already have registered or paid.
+      if (tournament.isHosted) ...{
+        'payeeName': tournament.payeeName,
+        'upiId': tournament.upiId,
+        'acceptCash': tournament.acceptCash,
+        'contactPhone': tournament.contactPhone,
+      },
+    });
+  }
+
+  /// Sets or clears when and where a match is played.
+  Future<void> setSchedule(
+    String tournamentId,
+    String matchId, {
+    DateTime? at,
+    String venue = '',
+  }) {
+    return _matches(tournamentId).doc(matchId).update({
+      'scheduledAt': at == null ? null : Timestamp.fromDate(at),
+      'venue': venue.trim(),
     });
   }
 
