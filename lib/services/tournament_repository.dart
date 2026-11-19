@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:play_hub/logic/fixture_generator.dart';
+import 'package:play_hub/logic/invite_code.dart';
+import 'package:play_hub/models/registration.dart';
 import 'package:play_hub/models/team.dart';
 import 'package:play_hub/models/tournament.dart';
 import 'package:play_hub/models/tournament_match.dart';
@@ -32,6 +34,11 @@ class TournamentRepository {
 
   static const String rootCollection = 'sportsTournaments';
 
+  // Prefixed with "sports" so they cannot collide with collections used by
+  // the previous version of the app in the same Firebase project.
+  static const String inviteCodesCollection = 'sportsInviteCodes';
+  static const String usersCollection = 'sportsUsers';
+
   // Firestore allows 500 writes per batch; stay comfortably below.
   static const int _batchSize = 400;
 
@@ -45,6 +52,20 @@ class TournamentRepository {
 
   CollectionReference<Map<String, dynamic>> _matches(String tournamentId) =>
       _tournaments.doc(tournamentId).collection('matches');
+
+  CollectionReference<Map<String, dynamic>> _registrations(
+    String tournamentId,
+  ) =>
+      _tournaments.doc(tournamentId).collection('registrations');
+
+  /// code -> tournament lookup, so a tournament can be found from its invite
+  /// code without listing every tournament.
+  CollectionReference<Map<String, dynamic>> get _inviteCodes =>
+      _db.collection(inviteCodesCollection);
+
+  /// Tournaments a user has registered for.
+  CollectionReference<Map<String, dynamic>> _joined(String uid) =>
+      _db.collection(usersCollection).doc(uid).collection('joined');
 
   // ---------------------------------------------------------------- streams
 
@@ -102,14 +123,70 @@ class TournamentRepository {
 
   // ------------------------------------------------------------ tournaments
 
-  /// Creates the tournament and returns its new id.
+  /// Creates the tournament, reserves its invite code and returns its id.
   Future<String> createTournament(Tournament tournament) async {
     final ref = _tournaments.doc();
+    final code = await _reserveInviteCode(
+      tournamentId: ref.id,
+      ownerId: tournament.ownerId,
+    );
     await ref.set({
       ...tournament.toMap(),
+      'inviteCode': code,
       'createdAt': FieldValue.serverTimestamp(),
     });
     return ref.id;
+  }
+
+  /// Gives a tournament that has no invite code (created before codes
+  /// existed) one. Returns the code.
+  Future<String> ensureInviteCode(Tournament tournament) async {
+    if (tournament.inviteCode.isNotEmpty) return tournament.inviteCode;
+    final code = await _reserveInviteCode(
+      tournamentId: tournament.id,
+      ownerId: tournament.ownerId,
+    );
+    await _tournaments.doc(tournament.id).update({'inviteCode': code});
+    return code;
+  }
+
+  /// Picks a random unused code and claims it in a transaction, so two
+  /// tournaments can never share one.
+  Future<String> _reserveInviteCode({
+    required String tournamentId,
+    required String ownerId,
+  }) async {
+    final random = Random.secure();
+    for (var attempt = 0; attempt < 8; attempt++) {
+      final code = InviteCode.generate(random);
+      final codeRef = _inviteCodes.doc(code);
+      final claimed = await _db.runTransaction<bool>((tx) async {
+        final snap = await tx.get(codeRef);
+        if (snap.exists) return false;
+        tx.set(codeRef, {
+          'tournamentId': tournamentId,
+          'ownerId': ownerId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        return true;
+      });
+      if (claimed) return code;
+    }
+    throw const ResultException('Could not create an invite code. Try again.');
+  }
+
+  /// Looks up a tournament id from an invite code as typed by a person.
+  /// Returns null if the code is malformed or unknown.
+  Future<String?> findTournamentIdByCode(String input) async {
+    if (!InviteCode.isValid(input)) return null;
+    final snap = await _inviteCodes.doc(InviteCode.normalize(input)).get();
+    final id = snap.data()?['tournamentId'];
+    return id is String && id.isNotEmpty ? id : null;
+  }
+
+  /// Opens or closes registration for a hosted tournament.
+  Future<void> setRegistrationOpen(String tournamentId, bool open) {
+    return _tournaments.doc(tournamentId).update({'registrationOpen': open});
   }
 
   Future<void> updateTournament(Tournament tournament) {
@@ -122,11 +199,19 @@ class TournamentRepository {
     });
   }
 
-  /// Deletes the tournament together with its teams and matches.
+  /// Deletes the tournament together with its teams, matches, registrations
+  /// and invite code.
   Future<void> deleteTournament(String tournamentId) async {
+    final snap = await _tournaments.doc(tournamentId).get();
+    final code = snap.data()?['inviteCode'];
+
     await _deleteAll(_matches(tournamentId));
     await _deleteAll(_teams(tournamentId));
+    await _deleteAll(_registrations(tournamentId));
     await _tournaments.doc(tournamentId).delete();
+    if (code is String && code.isNotEmpty) {
+      await _inviteCodes.doc(code).delete();
+    }
   }
 
   // ------------------------------------------------------------------ teams
@@ -154,13 +239,27 @@ class TournamentRepository {
     return _teams(tournamentId).doc(team.id).update(team.toMap());
   }
 
-  Future<void> deleteTeam(String tournamentId, String teamId) async {
-    final batch = _db.batch();
-    batch.delete(_teams(tournamentId).doc(teamId));
-    batch.update(_tournaments.doc(tournamentId), {
-      'teamCount': FieldValue.increment(-1),
+  /// Removes a team. If it came from an approved registration (the team id
+  /// is the registration id) that registration is marked rejected, so the
+  /// two never disagree.
+  Future<void> deleteTeam(String tournamentId, String teamId) {
+    final regRef = _registrations(tournamentId).doc(teamId);
+    return _db.runTransaction((tx) async {
+      final regSnap = await tx.get(regRef);
+      tx.delete(_teams(tournamentId).doc(teamId));
+      tx.update(_tournaments.doc(tournamentId), {
+        'teamCount': FieldValue.increment(-1),
+      });
+      final regData = regSnap.data();
+      if (regData != null &&
+          RegistrationStatus.fromName(regData['status']) ==
+              RegistrationStatus.approved) {
+        tx.update(regRef, {
+          'status': RegistrationStatus.rejected.name,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
     });
-    await batch.commit();
   }
 
   // --------------------------------------------------------------- fixtures
@@ -198,6 +297,8 @@ class TournamentRepository {
       'status': TournamentStatus.live.name,
       'matchCount': playable,
       'completedCount': 0,
+      // Once the draw is made nobody else can join.
+      'registrationOpen': false,
     });
     return playable;
   }
@@ -209,6 +310,196 @@ class TournamentRepository {
       'status': TournamentStatus.upcoming.name,
       'matchCount': 0,
       'completedCount': 0,
+    });
+  }
+
+  // ---------------------------------------------------------- registrations
+
+  /// All registrations for a tournament. Only the organizer can read these.
+  Stream<List<Registration>> watchRegistrations(String tournamentId) {
+    return _registrations(tournamentId).snapshots().map((snap) {
+      final list = snap.docs
+          .map((d) => Registration.fromMap(d.id, d.data()))
+          .toList(growable: true);
+      final now = DateTime.now();
+      list.sort(
+        (a, b) => (a.createdAt ?? now).compareTo(b.createdAt ?? now),
+      );
+      return list;
+    });
+  }
+
+  /// One person's own registration (null if they have not registered).
+  Stream<Registration?> watchMyRegistration(String tournamentId, String uid) {
+    return _registrations(tournamentId).doc(uid).snapshots().map((doc) {
+      final data = doc.data();
+      return data == null ? null : Registration.fromMap(doc.id, data);
+    });
+  }
+
+  /// Ids of tournaments a user has registered for, newest first.
+  Stream<List<String>> watchJoinedIds(String uid) {
+    return _joined(uid).snapshots().map((snap) {
+      final now = DateTime.now();
+      final docs = snap.docs.toList()
+        ..sort((a, b) {
+          final at = (a.data()['joinedAt'] as Timestamp?)?.toDate() ?? now;
+          final bt = (b.data()['joinedAt'] as Timestamp?)?.toDate() ?? now;
+          return bt.compareTo(at);
+        });
+      return docs.map((d) => d.id).toList(growable: false);
+    });
+  }
+
+  /// Registers the signed-in user's team. The registration id is the user id,
+  /// so a second attempt cannot create a duplicate.
+  Future<void> submitRegistration(
+    Tournament tournament,
+    Registration registration,
+  ) async {
+    final blocked = tournament.registrationBlockedReason(DateTime.now());
+    if (blocked != null) throw ResultException(blocked);
+
+    final batch = _db.batch();
+    batch.set(_registrations(tournament.id).doc(registration.userId), {
+      ...registration.toMap(),
+      'paymentStatus': (tournament.hasEntryFee
+              ? PaymentStatus.unpaid
+              : PaymentStatus.notRequired)
+          .name,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    batch.set(_joined(registration.userId).doc(tournament.id), {
+      'tournamentId': tournament.id,
+      'joinedAt': FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+  }
+
+  /// Cancels a registration that has not been approved yet.
+  Future<void> withdrawRegistration(String tournamentId, String uid) async {
+    final batch = _db.batch();
+    batch.delete(_registrations(tournamentId).doc(uid));
+    batch.delete(_joined(uid).doc(tournamentId));
+    await batch.commit();
+  }
+
+  /// Team tells the organizer it has paid. The organizer still has to
+  /// confirm it with [setPaymentStatus].
+  Future<void> submitPayment({
+    required String tournamentId,
+    required String uid,
+    required PaymentMethod method,
+    String reference = '',
+  }) {
+    return _registrations(tournamentId).doc(uid).update({
+      'paymentStatus': PaymentStatus.submitted.name,
+      'paymentMethod': method.name,
+      'paymentRef': reference.trim(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Organizer confirms (or reverts) a payment.
+  Future<void> setPaymentStatus({
+    required String tournamentId,
+    required String registrationId,
+    required PaymentStatus status,
+  }) {
+    return _registrations(tournamentId).doc(registrationId).update({
+      'paymentStatus': status.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Accepts a registration: the team is added to the tournament in the same
+  /// transaction. Refused when the tournament is full or fixtures are drawn.
+  Future<void> approveRegistration({
+    required String tournamentId,
+    required String registrationId,
+  }) {
+    final tournamentRef = _tournaments.doc(tournamentId);
+    final regRef = _registrations(tournamentId).doc(registrationId);
+    // The team reuses the registration id, which links the two.
+    final teamRef = _teams(tournamentId).doc(registrationId);
+
+    return _db.runTransaction((tx) async {
+      final tournamentSnap = await tx.get(tournamentRef);
+      final regSnap = await tx.get(regRef);
+      final tournamentData = tournamentSnap.data();
+      final regData = regSnap.data();
+      if (tournamentData == null || regData == null) {
+        throw const ResultException('This registration was removed.');
+      }
+      final tournament = Tournament.fromMap(tournamentSnap.id, tournamentData);
+      final registration = Registration.fromMap(regSnap.id, regData);
+
+      if (tournament.hasFixtures) {
+        throw const ResultException(
+          'Fixtures are already drawn. Reset them to change the teams.',
+        );
+      }
+      if (registration.isApproved) {
+        throw const ResultException('This team is already approved.');
+      }
+      if (tournament.isFull) {
+        throw ResultException(
+          'The tournament is full (${tournament.maxTeams} teams).',
+        );
+      }
+
+      final team = Team(
+        id: registrationId,
+        name: registration.teamName,
+        shortName: Team.autoShortName(registration.teamName),
+        colorValue: paletteColor(tournament.teamCount),
+        players: registration.players,
+        seed: tournament.teamCount,
+      );
+      tx.set(teamRef, team.toMap());
+      tx.update(regRef, {
+        'status': RegistrationStatus.approved.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      tx.update(tournamentRef, {'teamCount': FieldValue.increment(1)});
+    });
+  }
+
+  /// Declines a registration. If it had been approved, the team is taken
+  /// back out of the tournament (only possible before fixtures are drawn).
+  Future<void> rejectRegistration({
+    required String tournamentId,
+    required String registrationId,
+  }) {
+    final tournamentRef = _tournaments.doc(tournamentId);
+    final regRef = _registrations(tournamentId).doc(registrationId);
+
+    return _db.runTransaction((tx) async {
+      final tournamentSnap = await tx.get(tournamentRef);
+      final regSnap = await tx.get(regRef);
+      final tournamentData = tournamentSnap.data();
+      final regData = regSnap.data();
+      if (tournamentData == null || regData == null) {
+        throw const ResultException('This registration was removed.');
+      }
+      final tournament = Tournament.fromMap(tournamentSnap.id, tournamentData);
+      final registration = Registration.fromMap(regSnap.id, regData);
+      if (registration.isRejected) return;
+
+      if (registration.isApproved) {
+        if (tournament.hasFixtures) {
+          throw const ResultException(
+            'Fixtures are already drawn. Reset them to remove a team.',
+          );
+        }
+        tx.delete(_teams(tournamentId).doc(registrationId));
+        tx.update(tournamentRef, {'teamCount': FieldValue.increment(-1)});
+      }
+      tx.update(regRef, {
+        'status': RegistrationStatus.rejected.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 

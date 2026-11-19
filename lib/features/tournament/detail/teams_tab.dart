@@ -270,8 +270,13 @@ class TeamsTab extends ConsumerWidget {
                   color: sport.color,
                   title: 'No ${sport.participantNounPlural.toLowerCase()} yet',
                   message: isOwner
-                      ? 'Add the ${sport.participantNounPlural.toLowerCase()} '
-                          'taking part, then draw the fixtures.'
+                      ? (tournament.isHosted
+                          ? 'Teams appear here when you approve their '
+                              'registrations. You can also add walk-ins '
+                              'yourself.'
+                          : 'Add the '
+                              '${sport.participantNounPlural.toLowerCase()} '
+                              'taking part, then draw the fixtures.')
                       : 'The organizer has not added any '
                           '${sport.participantNounPlural.toLowerCase()} yet.',
                   actionLabel:

@@ -1,5 +1,22 @@
 import 'package:play_hub/models/parse_utils.dart';
 
+/// Mid-dark colours that keep white text readable.
+const List<int> teamPalette = [
+  0xFFE11D48,
+  0xFFEA580C,
+  0xFFD97706,
+  0xFF16A34A,
+  0xFF0D9488,
+  0xFF0284C7,
+  0xFF4F46E5,
+  0xFF9333EA,
+  0xFFDB2777,
+  0xFF475569,
+];
+
+/// Picks a palette colour for the team at [index], wrapping around.
+int paletteColor(int index) => teamPalette[index % teamPalette.length];
+
 /// A competing side: a team (cricket, football) or a player/pair (badminton).
 class Team {
   const Team({

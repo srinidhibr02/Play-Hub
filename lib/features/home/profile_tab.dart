@@ -74,10 +74,32 @@ class ProfileTab extends ConsumerWidget {
         Card(
           child: Column(
             children: [
-              const ListTile(
-                leading: Icon(Icons.info_outline_rounded),
-                title: Text('Play Hub'),
-                subtitle: Text('Sports Event & Tournament Manager'),
+              ListTile(
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    AppTheme.logoOnWhite,
+                    width: 44,
+                    height: 44,
+                  ),
+                ),
+                title: const Text('Play Hub'),
+                subtitle: const Text('Sports Event & Tournament Manager'),
+                onTap: () => showAboutDialog(
+                  context: context,
+                  applicationName: 'Play Hub',
+                  applicationIcon: Image.asset(
+                    AppTheme.logoOnWhite,
+                    width: 64,
+                    height: 64,
+                  ),
+                  children: const [
+                    Text(
+                      'Host and track local badminton, cricket and football '
+                      'tournaments.',
+                    ),
+                  ],
+                ),
               ),
               const Divider(height: 1),
               ListTile(

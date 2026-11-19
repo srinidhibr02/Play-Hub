@@ -82,6 +82,8 @@ class TournamentCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
+                  _Tags(tournament: t),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 16,
                     runSpacing: 6,
@@ -162,6 +164,83 @@ class _Meta extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Friendly / Hosted label plus, for hosted tournaments, whether people can
+/// still register and what it costs.
+class _Tags extends StatelessWidget {
+  const _Tags({required this.tournament});
+
+  final Tournament tournament;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = tournament;
+    final scheme = Theme.of(context).colorScheme;
+    final now = DateTime.now();
+
+    final tags = <Widget>[
+      _Tag(
+        label: t.kind.label,
+        icon: t.isHosted ? Icons.campaign_outlined : Icons.bolt_rounded,
+        color: t.sport.color,
+      ),
+      if (t.isHosted && t.canRegister(now))
+        const _Tag(
+          label: 'Registration open',
+          icon: Icons.how_to_reg_outlined,
+          color: Color(0xFF16A34A),
+        ),
+      if (t.isHosted && !t.hasFixtures && t.registrationOpen && t.isFull)
+        const _Tag(
+          label: 'Full',
+          icon: Icons.block_rounded,
+          color: Color(0xFFD97706),
+        ),
+      if (t.isHosted)
+        _Tag(
+          label: t.hasEntryFee ? formatRupees(t.entryFee) : 'Free entry',
+          icon: Icons.currency_rupee_rounded,
+          color: scheme.onSurfaceVariant,
+        ),
+    ];
+
+    return Wrap(spacing: 8, runSpacing: 6, children: tags);
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label, required this.icon, required this.color});
+
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

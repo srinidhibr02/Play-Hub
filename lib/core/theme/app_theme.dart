@@ -4,13 +4,19 @@ import 'package:flutter/material.dart';
 class AppTheme {
   const AppTheme._();
 
-  static const Color brand = Color(0xFF0D9488);
-  static const Color brandDark = Color(0xFF115E59);
+  /// The exact teal of images/tealBGlogo.png. Screens that show that image
+  /// use this as their background so the logo blends in without a visible
+  /// edge.
+  static const Color brand = Color(0xFF028476);
+  static const Color brandDark = Color(0xFF015F55);
+
+  static const String logoOnTeal = 'images/tealBGlogo.png';
+  static const String logoOnWhite = 'images/whiteBGlogo.png';
 
   static const LinearGradient brandGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF14B8A6), brandDark],
+    colors: [Color(0xFF0FA394), brandDark],
   );
 
   static ThemeData light() => _build(Brightness.light);

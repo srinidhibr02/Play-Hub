@@ -72,11 +72,25 @@ class _FixturesTabState extends ConsumerState<FixturesTab> {
   }
 
   Future<void> _generate(List<Team> teams) async {
+    // Registrations that are still waiting would be left out of the draw.
+    final pending = _t.isHosted
+        ? (ref.read(registrationsProvider(_t.id)).valueOrNull ?? const [])
+            .where((r) => r.isPending)
+            .length
+        : 0;
+
     final ok = await _confirm(
       title: 'Generate fixtures?',
-      message:
-          'Entries will be locked once the fixtures are drawn. You can reset '
-          'the fixtures later if you need to make changes.',
+      message: [
+        if (pending > 0)
+          '$pending pending '
+              '${pending == 1 ? 'registration is' : 'registrations are'} '
+              'not in the draw. Review them first if you want them in.',
+        if (_t.isHosted && _t.registrationOpen)
+          'Registration will close once the fixtures are drawn.',
+        'Entries will be locked once the fixtures are drawn. You can reset '
+            'the fixtures later if you need to make changes.',
+      ].join('\n\n'),
       action: 'Generate',
     );
     if (!ok || !mounted) return;
