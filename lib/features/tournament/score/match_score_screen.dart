@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:play_hub/core/widgets/entrance.dart';
+import 'package:play_hub/features/tournament/score/match_event_sheet.dart';
+import 'package:play_hub/logic/match_events.dart';
 import 'package:play_hub/logic/match_rules.dart';
 import 'package:play_hub/models/sport.dart';
 import 'package:play_hub/models/tournament.dart';
@@ -58,6 +60,7 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
   int _goalsB = 0;
   int _pensA = 0;
   int _pensB = 0;
+  List<MatchEvent> _events = [];
 
   // Cricket
   bool _battedFirstA = true;
@@ -92,6 +95,7 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
       _goalsB = s.goalsB;
       _pensA = s.penaltiesA ?? 0;
       _pensB = s.penaltiesB ?? 0;
+      _events = [...s.events];
 
       _battedFirstA = s.battedFirstA;
       _runsA.text = s.runsA == 0 && s.ballsA == 0 ? '' : '${s.runsA}';
@@ -138,6 +142,7 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
           goalsB: _goalsB,
           penaltiesA: usePens ? _pensA : null,
           penaltiesB: usePens ? _pensB : null,
+          events: _events,
         );
       case Sport.cricket:
         final ballsA = MatchRules.parseOvers(
@@ -179,14 +184,23 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
     final tieBreak = tied ? _tieBreakId : null;
 
     final error = MatchRules.validate(
-      sport: _sport,
-      settings: _t.settings,
-      score: score,
-      knockout: _knockout,
-      teamAId: teamA,
-      teamBId: teamB,
-      tieBreakWinnerId: tieBreak,
-    );
+          sport: _sport,
+          settings: _t.settings,
+          score: score,
+          knockout: _knockout,
+          teamAId: teamA,
+          teamBId: teamB,
+          tieBreakWinnerId: tieBreak,
+        ) ??
+        (_sport == Sport.football
+            ? MatchEvents.validate(
+                events: score.events,
+                goalsA: score.goalsA,
+                goalsB: score.goalsB,
+                teamAId: teamA,
+                teamBId: teamB,
+              )
+            : null);
     final winner = MatchRules.winnerId(
       sport: _sport,
       score: score,
@@ -488,7 +502,146 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
                 )
               : const SizedBox(width: double.infinity),
         ),
+        const SizedBox(height: 14),
+        _buildEvents(),
       ],
+    );
+  }
+
+  // ----------------------------------------------------------- football events
+
+  List<String> _squadOf(String? teamId) {
+    final teams = ref.read(teamsProvider(_t.id)).valueOrNull ?? const [];
+    for (final team in teams) {
+      if (team.id == teamId) return team.players;
+    }
+    return const [];
+  }
+
+  String _teamName(String teamId) =>
+      teamId == _m.teamAId ? _nameA : _nameB;
+
+  Future<void> _editEvent({MatchEvent? existing, int? index}) async {
+    final event = await showMatchEventSheet(
+      context,
+      teamAId: _m.teamAId!,
+      teamBId: _m.teamBId!,
+      nameA: _nameA,
+      nameB: _nameB,
+      squadA: _squadOf(_m.teamAId),
+      squadB: _squadOf(_m.teamBId),
+      accent: _sport.color,
+      initial: existing,
+    );
+    if (event == null || !mounted) return;
+
+    setState(() {
+      if (index == null) {
+        _events = [..._events, event];
+      } else {
+        _events = [..._events]..[index] = event;
+      }
+      // Keep the scoreline in step: if the events now credit more goals than
+      // the score shows, raise the score to match.
+      final (a, b) = MatchEvents.credited(_events, _m.teamAId!, _m.teamBId!);
+      if (a > _goalsA) _goalsA = a;
+      if (b > _goalsB) _goalsB = b;
+    });
+  }
+
+  void _removeEvent(int index) {
+    setState(() => _events = [..._events]..removeAt(index));
+  }
+
+  Widget _buildEvents() {
+    final theme = Theme.of(context);
+    final ordered = MatchEvents.sorted(_events);
+    final (ca, cb) = MatchEvents.credited(_events, _m.teamAId!, _m.teamBId!);
+    final missing = (_goalsA - ca) + (_goalsB - cb);
+
+    IconData iconOf(MatchEventType t) => switch (t) {
+          MatchEventType.goal => Icons.sports_soccer_rounded,
+          MatchEventType.penaltyGoal => Icons.adjust_rounded,
+          MatchEventType.ownGoal => Icons.replay_rounded,
+          MatchEventType.yellowCard => Icons.style_rounded,
+          MatchEventType.redCard => Icons.style_rounded,
+        };
+    Color colorOf(MatchEventType t) => switch (t) {
+          MatchEventType.yellowCard => const Color(0xFFEAB308),
+          MatchEventType.redCard => const Color(0xFFDC2626),
+          _ => _sport.color,
+        };
+
+    return _Panel(
+      title: 'Match events',
+      subtitle: 'Scorers, assists and cards. Optional, but they feed the '
+          'top scorer and discipline tables.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (ordered.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'No events recorded yet.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          for (final e in ordered)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              leading: Icon(iconOf(e.type), color: colorOf(e.type)),
+              title: Text(
+                e.player,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                [
+                  '${e.type.label} · ${_teamName(e.teamId)}',
+                  if (e.assist.isNotEmpty) 'assist ${e.assist}',
+                ].join(' · '),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (e.minute != null)
+                    Text(
+                      "${e.minute}'",
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  IconButton(
+                    tooltip: 'Remove',
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => _removeEvent(_events.indexOf(e)),
+                  ),
+                ],
+              ),
+              onTap: () => _editEvent(
+                existing: e,
+                index: _events.indexOf(e),
+              ),
+            ),
+          if (missing > 0 && _events.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '$missing ${missing == 1 ? 'goal has' : 'goals have'} no '
+                'scorer recorded.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          OutlinedButton.icon(
+            onPressed: _editEvent,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add goal or card'),
+          ),
+        ],
+      ),
     );
   }
 

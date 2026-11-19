@@ -30,6 +30,71 @@ class GameScore {
       GameScore(parseInt(map['a']), parseInt(map['b']));
 }
 
+enum MatchEventType {
+  goal,
+  penaltyGoal,
+  ownGoal,
+  yellowCard,
+  redCard;
+
+  String get label => switch (this) {
+        MatchEventType.goal => 'Goal',
+        MatchEventType.penaltyGoal => 'Penalty goal',
+        MatchEventType.ownGoal => 'Own goal',
+        MatchEventType.yellowCard => 'Yellow card',
+        MatchEventType.redCard => 'Red card',
+      };
+
+  bool get isGoal =>
+      this == goal || this == penaltyGoal || this == ownGoal;
+
+  bool get isCard => this == yellowCard || this == redCard;
+
+  static MatchEventType fromName(Object? name) =>
+      parseEnum(MatchEventType.values, name, MatchEventType.goal);
+}
+
+/// Something that happened in a football match.
+///
+/// [teamId] is always the team of the player named in [player]. For an own
+/// goal that is the team that conceded it, so the goal counts for the other
+/// side.
+class MatchEvent {
+  const MatchEvent({
+    required this.type,
+    required this.teamId,
+    required this.player,
+    this.assist = '',
+    this.minute,
+  });
+
+  final MatchEventType type;
+  final String teamId;
+  final String player;
+
+  /// Goals only. Not used for penalties or own goals.
+  final String assist;
+
+  /// 1-based match minute, or null if not recorded.
+  final int? minute;
+
+  Map<String, dynamic> toMap() => {
+        'type': type.name,
+        'teamId': teamId,
+        'player': player,
+        'assist': assist,
+        'minute': minute,
+      };
+
+  factory MatchEvent.fromMap(Map<String, dynamic> map) => MatchEvent(
+        type: MatchEventType.fromName(map['type']),
+        teamId: parseString(map['teamId']),
+        player: parseString(map['player']),
+        assist: parseString(map['assist']),
+        minute: map['minute'] is num ? parseInt(map['minute']) : null,
+      );
+}
+
 /// The score of a match. One shape covers all three sports; only the fields
 /// for the match's sport are used.
 ///
@@ -50,6 +115,7 @@ class MatchScore {
     this.ballsB = 0,
     this.battedFirstA = true,
     this.games = const [],
+    this.events = const [],
     this.note = '',
   });
 
@@ -70,6 +136,9 @@ class MatchScore {
 
   final List<GameScore> games;
 
+  /// Football: goals and cards with the players involved.
+  final List<MatchEvent> events;
+
   /// Free text such as "Won by 5 wickets" or "Walkover".
   final String note;
 
@@ -86,6 +155,7 @@ class MatchScore {
         'ballsB': ballsB,
         'battedFirstA': battedFirstA,
         'games': games.map((g) => g.toMap()).toList(),
+        'events': events.map((e) => e.toMap()).toList(),
         'note': note,
       };
 
@@ -107,6 +177,12 @@ class MatchScore {
           ? gamesRaw
               .whereType<Map<String, dynamic>>()
               .map(GameScore.fromMap)
+              .toList()
+          : const [],
+      events: map['events'] is List
+          ? (map['events'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(MatchEvent.fromMap)
               .toList()
           : const [],
       note: parseString(map['note']),
