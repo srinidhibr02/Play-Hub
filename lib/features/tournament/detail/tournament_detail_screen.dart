@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/widgets/empty_state.dart';
 import 'package:play_hub/core/widgets/status_pill.dart';
+import 'package:play_hub/features/tournament/detail/bracket_tab.dart';
 import 'package:play_hub/features/tournament/detail/fixtures_tab.dart';
 import 'package:play_hub/features/tournament/detail/overview_tab.dart';
+import 'package:play_hub/features/tournament/detail/standings_tab.dart';
 import 'package:play_hub/features/tournament/detail/teams_tab.dart';
 import 'package:play_hub/features/tournament/registration/registrations_tab.dart';
 import 'package:play_hub/models/tournament.dart';
@@ -109,12 +111,15 @@ class _TournamentView extends ConsumerWidget {
             .length
         : 0;
 
+    final isKnockout = t.format == TournamentFormat.knockout;
+
     final tabs = <Tab>[
       const Tab(text: 'Overview'),
       if (showRequests)
         Tab(text: pending > 0 ? 'Requests ($pending)' : 'Requests'),
       Tab(text: 'Teams (${t.teamCount})'),
       const Tab(text: 'Fixtures'),
+      Tab(text: isKnockout ? 'Bracket' : 'Table'),
     ];
     final scrollable = tabs.length > 3;
 
@@ -189,6 +194,10 @@ class _TournamentView extends ConsumerWidget {
               if (showRequests) RegistrationsTab(tournament: t),
               TeamsTab(tournament: t, isOwner: isOwner),
               FixturesTab(tournament: t, isOwner: isOwner),
+              if (isKnockout)
+                BracketTab(tournament: t)
+              else
+                StandingsTab(tournament: t),
             ],
           ),
         ),

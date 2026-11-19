@@ -37,8 +37,8 @@ Rewrite of the previous Play Hub (club booking) app on branch
 | 1 | Auth, theme, models, create tournament, teams, fixtures (league + knockout) | Done |
 | 2 | Manual scoring for football, cricket and badminton; knockout advancement | Done |
 | 2.5 | Friendly vs hosted, invite codes, registrations, approval, manual payment tracking, logo restored | Done, **not yet compiled or run** |
-| 3 | Standings tables (points, goal difference, net run rate), knockout bracket view | Next |
-| 4 | Scheduling, edit tournament, share sheet, UPI deep links | Planned |
+| 3 | Standings table (points, goal difference, net run rate, game/point difference) and knockout bracket with champion banner | Done, **not yet compiled or run** |
+| 4 | Scheduling, edit tournament, share sheet, UPI deep links | Next |
 | 5 | Player stats, polish, offline behaviour, online payments, release | Planned |
 
 ## Architecture
@@ -47,7 +47,7 @@ Rewrite of the previous Play Hub (club booking) app on branch
 lib/
   core/        theme, shared animated widgets, helpers
   models/      Sport, Tournament, Team, Registration, TournamentMatch
-  logic/       pure Dart: FixtureGenerator, MatchRules, InviteCode, Payments
+  logic/       pure Dart: FixtureGenerator, MatchRules, Standings, InviteCode, Payments
   services/    AuthService, TournamentRepository (all Firestore access)
   providers/   Riverpod providers (streams for live updates)
   features/    auth, home, tournament/{create,detail,registration,score}
