@@ -4,11 +4,11 @@ class FlavorConfig {
   static String get title {
     switch (flavor) {
       case 'prod':
-        return 'PlayHub';
+        return 'Play Hub';
       case 'dev':
-        return 'PlayHub Dev';
+        return 'Play Hub Dev';
       default:
-        return 'PlayHub';
+        return 'Play Hub';
     }
   }
 
