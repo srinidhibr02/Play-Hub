@@ -11,6 +11,7 @@ import 'package:play_hub/features/tournament/registration/payment_sheet.dart';
 import 'package:play_hub/features/tournament/registration/register_screen.dart';
 import 'package:play_hub/logic/invite_code.dart';
 import 'package:play_hub/logic/payments.dart';
+import 'package:play_hub/logic/tournament_stats.dart';
 import 'package:play_hub/models/registration.dart';
 import 'package:play_hub/models/tournament.dart';
 import 'package:play_hub/providers/providers.dart';
@@ -43,12 +44,111 @@ class OverviewTab extends ConsumerWidget {
                   : _MyRegistrationCard(tournament: t))
               .entrance(index: 1),
         ],
+        _StatsCard(tournament: t),
         const SizedBox(height: 14),
         _DetailsCard(
           tournament: t,
           showContact: isOwner || registered,
-        ).entrance(index: 2),
+        ).entrance(index: 3),
       ],
+    );
+  }
+}
+
+// ======================================================================
+// Stats
+// ======================================================================
+
+/// Headline numbers from the results entered so far. Hidden until a match
+/// has been completed.
+class _StatsCard extends ConsumerWidget {
+  const _StatsCard({required this.tournament});
+
+  final Tournament tournament;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = tournament;
+    final matches = ref.watch(matchesProvider(t.id)).valueOrNull;
+    if (matches == null) return const SizedBox.shrink();
+
+    final lines = TournamentStats.compute(sport: t.sport, matches: matches);
+    if (lines.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.insights_rounded, color: t.sport.color),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Tournament stats',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${t.completedCount}/${t.matchCount} played',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              for (final line in lines)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              line.label,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (line.detail.isNotEmpty)
+                              Text(
+                                line.detail,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        line.value,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: t.sport.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
