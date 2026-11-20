@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:play_hub/models/parse_utils.dart';
+import 'package:play_hub/models/scorecard_lines.dart';
+
+export 'package:play_hub/models/scorecard_lines.dart';
 
 enum MatchStatus {
   scheduled,
@@ -116,6 +119,10 @@ class MatchScore {
     this.battedFirstA = true,
     this.games = const [],
     this.events = const [],
+    this.battersA = const [],
+    this.battersB = const [],
+    this.bowlersA = const [],
+    this.bowlersB = const [],
     this.note = '',
   });
 
@@ -139,6 +146,14 @@ class MatchScore {
   /// Football: goals and cards with the players involved.
   final List<MatchEvent> events;
 
+  /// Cricket scorecard. "A" lists belong to side A: its batters, and the
+  /// bowlers it used against side B. Any list may be empty (scorecards are
+  /// optional).
+  final List<BatterLine> battersA;
+  final List<BatterLine> battersB;
+  final List<BowlerLine> bowlersA;
+  final List<BowlerLine> bowlersB;
+
   /// Free text such as "Won by 5 wickets" or "Walkover".
   final String note;
 
@@ -156,6 +171,10 @@ class MatchScore {
         'battedFirstA': battedFirstA,
         'games': games.map((g) => g.toMap()).toList(),
         'events': events.map((e) => e.toMap()).toList(),
+        'battersA': battersA.map((b) => b.toMap()).toList(),
+        'battersB': battersB.map((b) => b.toMap()).toList(),
+        'bowlersA': bowlersA.map((b) => b.toMap()).toList(),
+        'bowlersB': bowlersB.map((b) => b.toMap()).toList(),
         'note': note,
       };
 
@@ -185,10 +204,19 @@ class MatchScore {
               .map(MatchEvent.fromMap)
               .toList()
           : const [],
+      battersA: _list(map['battersA'], BatterLine.fromMap),
+      battersB: _list(map['battersB'], BatterLine.fromMap),
+      bowlersA: _list(map['bowlersA'], BowlerLine.fromMap),
+      bowlersB: _list(map['bowlersB'], BowlerLine.fromMap),
       note: parseString(map['note']),
     );
   }
 }
+
+List<T> _list<T>(Object? raw, T Function(Map<String, dynamic>) build) =>
+    raw is List
+        ? raw.whereType<Map<String, dynamic>>().map(build).toList()
+        : <T>[];
 
 /// A single fixture. Named `TournamentMatch` to avoid clashing with
 /// `dart:core`'s `Match`.
