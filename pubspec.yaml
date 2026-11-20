@@ -2,7 +2,7 @@ name: play_hub
 description: "Sports Event & Tournament Manager - host and track local badminton, cricket and football tournaments."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 2.0.0+13
 
 environment:
   sdk: ^3.9.2
