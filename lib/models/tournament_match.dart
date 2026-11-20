@@ -38,7 +38,8 @@ enum MatchEventType {
   penaltyGoal,
   ownGoal,
   yellowCard,
-  redCard;
+  redCard,
+  substitution;
 
   String get label => switch (this) {
         MatchEventType.goal => 'Goal',
@@ -46,12 +47,15 @@ enum MatchEventType {
         MatchEventType.ownGoal => 'Own goal',
         MatchEventType.yellowCard => 'Yellow card',
         MatchEventType.redCard => 'Red card',
+        MatchEventType.substitution => 'Substitution',
       };
 
   bool get isGoal =>
       this == goal || this == penaltyGoal || this == ownGoal;
 
   bool get isCard => this == yellowCard || this == redCard;
+
+  bool get isSubstitution => this == substitution;
 
   static MatchEventType fromName(Object? name) =>
       parseEnum(MatchEventType.values, name, MatchEventType.goal);
@@ -68,6 +72,7 @@ class MatchEvent {
     required this.teamId,
     required this.player,
     this.assist = '',
+    this.playerOff = '',
     this.minute,
   });
 
@@ -78,6 +83,9 @@ class MatchEvent {
   /// Goals only. Not used for penalties or own goals.
   final String assist;
 
+  /// Substitutions only: [player] comes on and [playerOff] goes off.
+  final String playerOff;
+
   /// 1-based match minute, or null if not recorded.
   final int? minute;
 
@@ -86,6 +94,7 @@ class MatchEvent {
         'teamId': teamId,
         'player': player,
         'assist': assist,
+        'playerOff': playerOff,
         'minute': minute,
       };
 
@@ -94,6 +103,7 @@ class MatchEvent {
         teamId: parseString(map['teamId']),
         player: parseString(map['player']),
         assist: parseString(map['assist']),
+        playerOff: parseString(map['playerOff']),
         minute: map['minute'] is num ? parseInt(map['minute']) : null,
       );
 }
@@ -119,6 +129,8 @@ class MatchScore {
     this.battedFirstA = true,
     this.games = const [],
     this.events = const [],
+    this.lineupA = const [],
+    this.lineupB = const [],
     this.battersA = const [],
     this.battersB = const [],
     this.bowlersA = const [],
@@ -146,6 +158,11 @@ class MatchScore {
   /// Football: goals and cards with the players involved.
   final List<MatchEvent> events;
 
+  /// Football: names of the starting players for each side. Empty means
+  /// the lineup was not recorded.
+  final List<String> lineupA;
+  final List<String> lineupB;
+
   /// Cricket scorecard. "A" lists belong to side A: its batters, and the
   /// bowlers it used against side B. Any list may be empty (scorecards are
   /// optional).
@@ -171,6 +188,8 @@ class MatchScore {
         'battedFirstA': battedFirstA,
         'games': games.map((g) => g.toMap()).toList(),
         'events': events.map((e) => e.toMap()).toList(),
+        'lineupA': lineupA,
+        'lineupB': lineupB,
         'battersA': battersA.map((b) => b.toMap()).toList(),
         'battersB': battersB.map((b) => b.toMap()).toList(),
         'bowlersA': bowlersA.map((b) => b.toMap()).toList(),
@@ -204,6 +223,8 @@ class MatchScore {
               .map(MatchEvent.fromMap)
               .toList()
           : const [],
+      lineupA: _names(map['lineupA']),
+      lineupB: _names(map['lineupB']),
       battersA: _list(map['battersA'], BatterLine.fromMap),
       battersB: _list(map['battersB'], BatterLine.fromMap),
       bowlersA: _list(map['bowlersA'], BowlerLine.fromMap),
@@ -212,6 +233,10 @@ class MatchScore {
     );
   }
 }
+
+List<String> _names(Object? raw) => raw is List
+    ? raw.whereType<String>().where((n) => n.trim().isNotEmpty).toList()
+    : <String>[];
 
 List<T> _list<T>(Object? raw, T Function(Map<String, dynamic>) build) =>
     raw is List

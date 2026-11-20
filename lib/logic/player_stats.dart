@@ -15,6 +15,8 @@ class PlayerStat {
   int ownGoals = 0;
   int yellowCards = 0;
   int redCards = 0;
+  int starts = 0;
+  int appearances = 0; // starts plus coming on as a substitute
 
   int get goalContributions => goals + assists;
   int get cardPoints => yellowCards + redCards * 3;
@@ -48,6 +50,28 @@ class PlayerStats {
 
     for (final m in matches) {
       if (!m.isCompleted || m.score == null) continue;
+
+      // Appearances: starters, plus anyone who came on.
+      final played = <String>{};
+      void appear(String? teamId, String name, {required bool start}) {
+        if (teamId == null || name.trim().isEmpty) return;
+        final key = '$teamId|${name.trim().toLowerCase()}';
+        if (!played.add(key)) return;
+        final p = of(teamId, name);
+        p.appearances++;
+        if (start) p.starts++;
+      }
+
+      for (final n in m.score!.lineupA) {
+        appear(m.teamAId, n, start: true);
+      }
+      for (final n in m.score!.lineupB) {
+        appear(m.teamBId, n, start: true);
+      }
+      for (final e in m.score!.events) {
+        if (e.type.isSubstitution) appear(e.teamId, e.player, start: false);
+      }
+
       for (final e in m.score!.events) {
         if (e.player.trim().isEmpty) continue;
         final p = of(e.teamId, e.player);
@@ -64,6 +88,8 @@ class PlayerStats {
             p.yellowCards++;
           case MatchEventType.redCard:
             p.redCards++;
+          case MatchEventType.substitution:
+            break;
         }
       }
     }

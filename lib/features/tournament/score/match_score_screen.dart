@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:play_hub/core/widgets/entrance.dart';
+import 'package:play_hub/features/tournament/score/lineup_sheet.dart';
 import 'package:play_hub/features/tournament/score/match_event_sheet.dart';
 import 'package:play_hub/features/tournament/score/scorecard_sheets.dart';
 import 'package:play_hub/logic/match_events.dart';
@@ -63,6 +64,8 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
   int _pensA = 0;
   int _pensB = 0;
   List<MatchEvent> _events = [];
+  List<String> _lineupA = [];
+  List<String> _lineupB = [];
 
   // Cricket
   bool _battedFirstA = true;
@@ -102,6 +105,8 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
       _pensA = s.penaltiesA ?? 0;
       _pensB = s.penaltiesB ?? 0;
       _events = [...s.events];
+      _lineupA = [...s.lineupA];
+      _lineupB = [...s.lineupB];
 
       _battedFirstA = s.battedFirstA;
       _runsA.text = s.runsA == 0 && s.ballsA == 0 ? '' : '${s.runsA}';
@@ -153,6 +158,8 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
           penaltiesA: usePens ? _pensA : null,
           penaltiesB: usePens ? _pensB : null,
           events: _events,
+          lineupA: _lineupA,
+          lineupB: _lineupB,
         );
       case Sport.cricket:
         final ballsA = MatchRules.parseOvers(
@@ -211,6 +218,15 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
                 events: score.events,
                 goalsA: score.goalsA,
                 goalsB: score.goalsB,
+                teamAId: teamA,
+                teamBId: teamB,
+              )
+            : null) ??
+        (_sport == Sport.football
+            ? MatchEvents.validateLineups(
+                lineupA: score.lineupA,
+                lineupB: score.lineupB,
+                events: score.events,
                 teamAId: teamA,
                 teamBId: teamB,
               )
@@ -525,6 +541,8 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
               : const SizedBox(width: double.infinity),
         ),
         const SizedBox(height: 14),
+        _buildLineups(),
+        const SizedBox(height: 14),
         _buildEvents(),
       ],
     );
@@ -542,6 +560,67 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
 
   String _teamName(String teamId) =>
       teamId == _m.teamAId ? _nameA : _nameB;
+
+  Future<void> _editLineup(bool sideA) async {
+    final result = await showLineupSheet(
+      context,
+      teamName: sideA ? _nameA : _nameB,
+      squad: _squadOf(sideA ? _m.teamAId : _m.teamBId),
+      initial: sideA ? _lineupA : _lineupB,
+      accent: _sport.color,
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      if (sideA) {
+        _lineupA = result;
+      } else {
+        _lineupB = result;
+      }
+    });
+  }
+
+  Widget _buildLineups() {
+    final theme = Theme.of(context);
+
+    Widget row(bool sideA) {
+      final name = sideA ? _nameA : _nameB;
+      final lineup = sideA ? _lineupA : _lineupB;
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+        title: Text(
+          name,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          lineup.isEmpty ? 'Not set' : lineup.join(', '),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: TextButton(
+          onPressed: () => _editLineup(sideA),
+          child: Text(lineup.isEmpty ? 'Set' : 'Edit'),
+        ),
+        onTap: () => _editLineup(sideA),
+      );
+    }
+
+    return _Panel(
+      title: 'Lineups',
+      subtitle: 'Optional. With a lineup, substitutions are checked against '
+          'who is on the pitch, and players get appearances.',
+      child: Column(
+        children: [
+          row(true),
+          Divider(
+            height: 1,
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+          ),
+          row(false),
+        ],
+      ),
+    );
+  }
 
   Future<void> _editEvent({MatchEvent? existing, int? index}) async {
     final event = await showMatchEventSheet(
@@ -587,6 +666,7 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
           MatchEventType.ownGoal => Icons.replay_rounded,
           MatchEventType.yellowCard => Icons.style_rounded,
           MatchEventType.redCard => Icons.style_rounded,
+          MatchEventType.substitution => Icons.swap_vert_rounded,
         };
     Color colorOf(MatchEventType t) => switch (t) {
           MatchEventType.yellowCard => const Color(0xFFEAB308),
@@ -617,7 +697,9 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
               dense: true,
               leading: Icon(iconOf(e.type), color: colorOf(e.type)),
               title: Text(
-                e.player,
+                e.type.isSubstitution
+                    ? '${e.player} on, ${e.playerOff} off'
+                    : e.player,
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               subtitle: Text(

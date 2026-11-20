@@ -63,6 +63,7 @@ class _EventSheetState extends State<_EventSheet> {
   late bool _sideA;
   late final TextEditingController _player;
   late final TextEditingController _assist;
+  late final TextEditingController _off;
   late final TextEditingController _minute;
   bool _submitted = false;
 
@@ -74,6 +75,7 @@ class _EventSheetState extends State<_EventSheet> {
     _sideA = e == null || e.teamId == widget.teamAId;
     _player = TextEditingController(text: e?.player ?? '');
     _assist = TextEditingController(text: e?.assist ?? '');
+    _off = TextEditingController(text: e?.playerOff ?? '');
     _minute = TextEditingController(text: e?.minute?.toString() ?? '');
   }
 
@@ -81,15 +83,27 @@ class _EventSheetState extends State<_EventSheet> {
   void dispose() {
     _player.dispose();
     _assist.dispose();
+    _off.dispose();
     _minute.dispose();
     super.dispose();
   }
 
   List<String> get _squad => _sideA ? widget.squadA : widget.squadB;
   bool get _hasAssist => _type == MatchEventType.goal;
+  bool get _isSub => _type == MatchEventType.substitution;
 
   String? get _playerError =>
       _player.text.trim().isEmpty ? 'Enter the player' : null;
+
+  String? get _offError {
+    if (!_isSub) return null;
+    final off = _off.text.trim();
+    if (off.isEmpty) return 'Enter the player going off';
+    if (off.toLowerCase() == _player.text.trim().toLowerCase()) {
+      return 'Must be a different player';
+    }
+    return null;
+  }
 
   String? get _minuteError {
     final text = _minute.text.trim();
@@ -100,7 +114,9 @@ class _EventSheetState extends State<_EventSheet> {
 
   void _save() {
     setState(() => _submitted = true);
-    if (_playerError != null || _minuteError != null) return;
+    if (_playerError != null || _offError != null || _minuteError != null) {
+      return;
+    }
     final assist = _hasAssist ? _assist.text.trim() : '';
     Navigator.of(context).pop(
       MatchEvent(
@@ -111,6 +127,7 @@ class _EventSheetState extends State<_EventSheet> {
         assist: assist.toLowerCase() == _player.text.trim().toLowerCase()
             ? ''
             : assist,
+        playerOff: _isSub ? _off.text.trim() : '',
         minute: int.tryParse(_minute.text.trim()),
       ),
     );
@@ -196,12 +213,26 @@ class _EventSheetState extends State<_EventSheet> {
               textCapitalization: TextCapitalization.words,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'Player',
+                labelText: _isSub ? 'Player coming on' : 'Player',
                 prefixIcon: const Icon(Icons.person_outline_rounded),
                 errorText: _submitted ? _playerError : null,
               ),
             ),
             _squadChips(_player),
+            if (_isSub) ...[
+              const SizedBox(height: 14),
+              TextField(
+                controller: _off,
+                textCapitalization: TextCapitalization.words,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: 'Player going off',
+                  prefixIcon: const Icon(Icons.logout_rounded),
+                  errorText: _submitted ? _offError : null,
+                ),
+              ),
+              _squadChips(_off),
+            ],
             if (_hasAssist) ...[
               const SizedBox(height: 14),
               TextField(

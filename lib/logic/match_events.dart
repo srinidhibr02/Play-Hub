@@ -45,6 +45,13 @@ class MatchEvents {
       if (e.player.trim().isEmpty) {
         return 'Every event needs a player name.';
       }
+      if (e.type.isSubstitution) {
+        final off = e.playerOff.trim();
+        if (off.isEmpty) return 'A substitution needs the player going off.';
+        if (off.toLowerCase() == e.player.trim().toLowerCase()) {
+          return 'A player cannot replace themselves.';
+        }
+      }
       final m = e.minute;
       if (m != null && (m < 1 || m > 150)) {
         return 'Minutes should be between 1 and 150.';
@@ -77,6 +84,60 @@ class MatchEvents {
       }
     }
     return null;
+  }
+
+  /// Checks lineups and substitutions against each other.
+  ///
+  /// Lineups are optional: with none recorded for a side, its substitutions
+  /// are not checked against who is on the pitch. With a lineup, the player
+  /// going off must be on the pitch, the player coming on must not be, and a
+  /// player who has gone off cannot return.
+  static String? validateLineups({
+    required List<String> lineupA,
+    required List<String> lineupB,
+    required List<MatchEvent> events,
+    required String teamAId,
+    required String teamBId,
+    int maxPlayers = 11,
+  }) {
+    String key(String n) => n.trim().toLowerCase();
+
+    String? side(String label, List<String> lineup, String teamId) {
+      if (lineup.length > maxPlayers) {
+        return '$label: a lineup has at most $maxPlayers players.';
+      }
+      final onPitch = <String>{};
+      for (final n in lineup) {
+        if (!onPitch.add(key(n))) return '$label: ${n.trim()} is listed twice.';
+      }
+      if (lineup.isEmpty) return null;
+
+      final wentOff = <String>{};
+      final subs = sorted(events)
+          .where((e) => e.type.isSubstitution && e.teamId == teamId);
+      for (final e in subs) {
+        final on = key(e.player);
+        final off = key(e.playerOff);
+        if (!onPitch.contains(off)) {
+          return '$label: ${e.playerOff.trim()} is not on the pitch to be '
+              'substituted.';
+        }
+        if (onPitch.contains(on)) {
+          return '$label: ${e.player.trim()} is already on the pitch.';
+        }
+        if (wentOff.contains(on)) {
+          return '$label: ${e.player.trim()} was substituted off and cannot '
+              'return.';
+        }
+        onPitch.remove(off);
+        wentOff.add(off);
+        onPitch.add(on);
+      }
+      return null;
+    }
+
+    return side('Lineup A', lineupA, teamAId) ??
+        side('Lineup B', lineupB, teamBId);
   }
 
   /// Events in match order: by minute, unknown minutes last.

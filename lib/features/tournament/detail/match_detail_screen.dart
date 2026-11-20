@@ -168,8 +168,45 @@ class _Body extends StatelessWidget {
   List<Widget> _football(BuildContext context, MatchScore score) {
     final theme = Theme.of(context);
     final events = MatchEvents.sorted(score.events);
+    final lineups = (score.lineupA.isNotEmpty || score.lineupB.isNotEmpty)
+        ? _Section(
+            title: 'Lineups',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final entry in [
+                  (match.teamAName ?? 'Team A', score.lineupA),
+                  (match.teamBName ?? 'Team B', score.lineupB),
+                ])
+                  if (entry.$2.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.$1,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            entry.$2.join(', '),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+              ],
+            ),
+          )
+        : null;
     if (events.isEmpty) {
       return [
+        if (lineups != null) lineups,
         _Section(
           title: 'Match events',
           child: Text(
@@ -191,6 +228,7 @@ class _Body extends StatelessWidget {
           MatchEventType.ownGoal => Icons.replay_rounded,
           MatchEventType.yellowCard => Icons.style_rounded,
           MatchEventType.redCard => Icons.style_rounded,
+          MatchEventType.substitution => Icons.swap_vert_rounded,
         };
     Color color(MatchEventType t) => switch (t) {
           MatchEventType.yellowCard => const Color(0xFFEAB308),
@@ -199,6 +237,7 @@ class _Body extends StatelessWidget {
         };
 
     return [
+      if (lineups != null) lineups,
       _Section(
         title: 'Match events',
         child: Column(
@@ -209,7 +248,9 @@ class _Body extends StatelessWidget {
                 dense: true,
                 leading: Icon(icon(e.type), color: color(e.type)),
                 title: Text(
-                  e.player,
+                  e.type.isSubstitution
+                      ? '${e.player} on, ${e.playerOff} off'
+                      : e.player,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 subtitle: Text(
