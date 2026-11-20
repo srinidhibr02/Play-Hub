@@ -43,7 +43,7 @@ Rewrite of the previous Play Hub (club booking) app on branch
 | 6a | Football match events (scorers, assists, penalties, own goals, cards) and player leaders (top scorers, assists, discipline) | Done, **not yet compiled or run** |
 | 6b | Cricket scorecards (batters and bowlers per innings), run, wicket and six leaders, read-only match detail screen for everyone | Done, **not yet compiled or run** |
 | 6c | Football lineups and substitutions (checked against who is on the pitch), appearances in player stats | Done, **not yet compiled or run** |
-| 6d | Badminton players (singles/doubles names, player records) | Next |
+| 6d | Badminton player records for singles and doubles (most wins, best point difference) | Done, **not yet compiled or run** |
 | 7 | Release prep, online payments (needs a backend) | Planned |
 
 ## Architecture

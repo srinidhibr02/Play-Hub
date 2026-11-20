@@ -9,6 +9,7 @@ import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/widgets/entrance.dart';
 import 'package:play_hub/features/tournament/registration/payment_sheet.dart';
 import 'package:play_hub/features/tournament/registration/register_screen.dart';
+import 'package:play_hub/logic/badminton_stats.dart';
 import 'package:play_hub/logic/invite_code.dart';
 import 'package:play_hub/logic/payments.dart';
 import 'package:play_hub/logic/player_stats.dart';
@@ -274,18 +275,48 @@ class _LeadersCard extends ConsumerWidget {
     ];
   }
 
+  List<_LeaderSection> _badminton(
+    List<TournamentMatch> matches,
+    List<Team> teams,
+  ) {
+    final all = BadmintonStats.compute(matches: matches, teams: teams);
+    return [
+      _LeaderSection(
+        'Most wins',
+        Icons.emoji_events_outlined,
+        [
+          for (final p in BadmintonStats.mostWins(all))
+            _LeaderRow(
+              p.name,
+              '${p.teamName} · ${p.won} of ${p.played} won',
+              '${p.won}',
+            ),
+        ],
+      ),
+      _LeaderSection(
+        'Best point difference',
+        Icons.trending_up_rounded,
+        [
+          for (final p in BadmintonStats.bestPointDifference(all))
+            _LeaderRow(p.name, p.teamName, '+${p.pointDifference}'),
+        ],
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = tournament;
-    if (t.sport == Sport.badminton) return const SizedBox.shrink();
 
     final matches = ref.watch(matchesProvider(t.id)).valueOrNull;
     final teams = ref.watch(teamsProvider(t.id)).valueOrNull;
     if (matches == null || teams == null) return const SizedBox.shrink();
 
-    final sections = (t.sport == Sport.football
-            ? _football(matches, teams)
-            : _cricket(matches, teams))
+    final sections = (switch (t.sport) {
+      Sport.football => _football(matches, teams),
+      Sport.cricket => _cricket(matches, teams),
+      Sport.badminton => _badminton(matches, teams),
+    })
         .where((s) => s.rows.isNotEmpty)
         .toList();
     if (sections.isEmpty) return const SizedBox.shrink();
