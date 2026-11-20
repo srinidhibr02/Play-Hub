@@ -5,6 +5,7 @@ import 'package:play_hub/core/navigation/app_route.dart';
 import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/widgets/empty_state.dart';
 import 'package:play_hub/core/widgets/entrance.dart';
+import 'package:play_hub/features/tournament/detail/match_detail_screen.dart';
 import 'package:play_hub/features/tournament/detail/match_tile.dart';
 import 'package:play_hub/features/tournament/detail/schedule_sheet.dart';
 import 'package:play_hub/features/tournament/score/match_score_screen.dart';
@@ -343,6 +344,10 @@ class _FixturesTabState extends ConsumerState<FixturesTab> {
         );
       }
       final canScore = widget.isOwner && match.hasBothTeams;
+      // Everyone else can open a match once it has started.
+      final canView = !widget.isOwner &&
+          match.hasBothTeams &&
+          match.status != MatchStatus.scheduled;
       items.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -353,7 +358,16 @@ class _FixturesTabState extends ConsumerState<FixturesTab> {
                 ? () => Navigator.of(context).push(
                       appRoute(MatchScoreScreen(tournament: _t, match: match)),
                     )
-                : null,
+                : canView
+                    ? () => Navigator.of(context).push(
+                          appRoute(
+                            MatchDetailScreen(
+                              tournament: _t,
+                              matchId: match.id,
+                            ),
+                          ),
+                        )
+                    : null,
             onSchedule: widget.isOwner ? () => _schedule(match) : null,
           ).entrance(index: index),
         ),

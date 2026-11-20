@@ -12,10 +12,13 @@ import 'package:play_hub/features/tournament/registration/register_screen.dart';
 import 'package:play_hub/logic/invite_code.dart';
 import 'package:play_hub/logic/payments.dart';
 import 'package:play_hub/logic/player_stats.dart';
+import 'package:play_hub/logic/scorecard.dart';
 import 'package:play_hub/logic/tournament_stats.dart';
 import 'package:play_hub/models/registration.dart';
 import 'package:play_hub/models/sport.dart';
+import 'package:play_hub/models/team.dart';
 import 'package:play_hub/models/tournament.dart';
+import 'package:play_hub/models/tournament_match.dart';
 import 'package:play_hub/providers/providers.dart';
 
 /// First tab of a tournament: invite code, registration (hosted
@@ -157,112 +160,137 @@ class _StatsCard extends ConsumerWidget {
 }
 
 // ======================================================================
-// Leaders (football)
+// Leaders (football and cricket)
 // ======================================================================
 
-/// Top scorers, assists and discipline, from the events organizers record.
+class _LeaderRow {
+  const _LeaderRow(this.name, this.team, this.value);
+
+  final String name;
+  final String team;
+  final String value;
+}
+
+class _LeaderSection {
+  const _LeaderSection(this.title, this.icon, this.rows);
+
+  final String title;
+  final IconData icon;
+  final List<_LeaderRow> rows;
+}
+
+/// Top players, from the events and scorecards organizers record.
 class _LeadersCard extends ConsumerWidget {
   const _LeadersCard({required this.tournament});
 
   final Tournament tournament;
 
+  List<_LeaderSection> _football(
+    List<TournamentMatch> matches,
+    List<Team> teams,
+  ) {
+    final all = PlayerStats.compute(matches: matches, teams: teams);
+    return [
+      _LeaderSection(
+        'Top scorers',
+        Icons.sports_soccer_rounded,
+        [
+          for (final p in PlayerStats.topScorers(all))
+            _LeaderRow(
+              p.name,
+              p.teamName,
+              p.penaltyGoals > 0
+                  ? '${p.goals} (${p.penaltyGoals} pen)'
+                  : '${p.goals}',
+            ),
+        ],
+      ),
+      _LeaderSection(
+        'Most assists',
+        Icons.handshake_outlined,
+        [
+          for (final p in PlayerStats.topAssists(all))
+            _LeaderRow(p.name, p.teamName, '${p.assists}'),
+        ],
+      ),
+      _LeaderSection(
+        'Discipline',
+        Icons.style_rounded,
+        [
+          for (final p in PlayerStats.discipline(all))
+            _LeaderRow(
+              p.name,
+              p.teamName,
+              [
+                if (p.yellowCards > 0) '${p.yellowCards} Y',
+                if (p.redCards > 0) '${p.redCards} R',
+              ].join('  '),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  List<_LeaderSection> _cricket(
+    List<TournamentMatch> matches,
+    List<Team> teams,
+  ) {
+    final all = CricketStats.compute(matches: matches, teams: teams);
+    String sr(double? v) => v == null ? '-' : v.toStringAsFixed(1);
+    return [
+      _LeaderSection(
+        'Most runs',
+        Icons.sports_cricket_rounded,
+        [
+          for (final p in CricketStats.topBatters(all))
+            _LeaderRow(
+              p.name,
+              '${p.teamName} · HS ${p.highestText} · SR ${sr(p.strikeRate)}',
+              '${p.runs}',
+            ),
+        ],
+      ),
+      _LeaderSection(
+        'Most wickets',
+        Icons.sports_baseball_rounded,
+        [
+          for (final p in CricketStats.topBowlers(all))
+            _LeaderRow(
+              p.name,
+              '${p.teamName} · best ${p.bestFigures} · '
+                  'econ ${sr(p.economy)}',
+              '${p.wickets}',
+            ),
+        ],
+      ),
+      _LeaderSection(
+        'Most sixes',
+        Icons.rocket_launch_outlined,
+        [
+          for (final p in CricketStats.mostSixes(all))
+            _LeaderRow(p.name, p.teamName, '${p.sixes}'),
+        ],
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = tournament;
-    if (t.sport != Sport.football) return const SizedBox.shrink();
+    if (t.sport == Sport.badminton) return const SizedBox.shrink();
 
     final matches = ref.watch(matchesProvider(t.id)).valueOrNull;
     final teams = ref.watch(teamsProvider(t.id)).valueOrNull;
     if (matches == null || teams == null) return const SizedBox.shrink();
 
-    final all = PlayerStats.compute(matches: matches, teams: teams);
-    final scorers = PlayerStats.topScorers(all);
-    final assists = PlayerStats.topAssists(all);
-    final cards = PlayerStats.discipline(all);
-    if (scorers.isEmpty && assists.isEmpty && cards.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final sections = (t.sport == Sport.football
+            ? _football(matches, teams)
+            : _cricket(matches, teams))
+        .where((s) => s.rows.isNotEmpty)
+        .toList();
+    if (sections.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
-
-    Widget section(
-      String title,
-      IconData icon,
-      List<PlayerStat> rows,
-      String Function(PlayerStat) value,
-    ) {
-      if (rows.isEmpty) return const SizedBox.shrink();
-      return Padding(
-        padding: const EdgeInsets.only(top: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 18, color: t.sport.color),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            for (var i = 0; i < rows.length; i++)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 24,
-                      child: Text(
-                        '${i + 1}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            rows[i].name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          if (rows[i].teamName.isNotEmpty)
-                            Text(
-                              rows[i].teamName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      value(rows[i]),
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: t.sport.color,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      );
-    }
 
     return Padding(
       padding: const EdgeInsets.only(top: 14),
@@ -284,29 +312,80 @@ class _LeadersCard extends ConsumerWidget {
                   ),
                 ],
               ),
-              section(
-                'Top scorers',
-                Icons.sports_soccer_rounded,
-                scorers,
-                (p) => p.penaltyGoals > 0
-                    ? '${p.goals} (${p.penaltyGoals} pen)'
-                    : '${p.goals}',
-              ),
-              section(
-                'Most assists',
-                Icons.handshake_outlined,
-                assists,
-                (p) => '${p.assists}',
-              ),
-              section(
-                'Discipline',
-                Icons.style_rounded,
-                cards,
-                (p) => [
-                  if (p.yellowCards > 0) '${p.yellowCards} Y',
-                  if (p.redCards > 0) '${p.redCards} R',
-                ].join('  '),
-              ),
+              for (final section in sections)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(section.icon, size: 18, color: t.sport.color),
+                          const SizedBox(width: 8),
+                          Text(
+                            section.title,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      for (var i = 0; i < section.rows.length; i++)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                child: Text(
+                                  '${i + 1}',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      section.rows[i].name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    if (section.rows[i].team.isNotEmpty)
+                                      Text(
+                                        section.rows[i].team,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: theme
+                                              .colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                section.rows[i].value,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  color: t.sport.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 12),
             ],
           ),

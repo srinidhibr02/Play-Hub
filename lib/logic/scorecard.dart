@@ -18,16 +18,18 @@ class Scorecard {
   static String? validate({
     required MatchScore score,
     required int oversPerSide,
+    String nameA = 'Side A',
+    String nameB = 'Side B',
   }) {
     return _validateSide(
-          label: 'Side A batting',
+          label: '$nameA batting',
           batters: score.battersA,
           teamRuns: score.runsA,
           teamWickets: score.wicketsA,
           teamBalls: score.ballsA,
         ) ??
         _validateSide(
-          label: 'Side B batting',
+          label: '$nameB batting',
           batters: score.battersB,
           teamRuns: score.runsB,
           teamWickets: score.wicketsB,
@@ -35,7 +37,7 @@ class Scorecard {
         ) ??
         // Side A's bowlers bowl at side B's innings, and the other way round.
         _validateBowlers(
-          label: 'Side A bowling',
+          label: '$nameA bowling',
           bowlers: score.bowlersA,
           againstWickets: score.wicketsB,
           againstBalls: score.ballsB,
@@ -43,7 +45,7 @@ class Scorecard {
           oversPerSide: oversPerSide,
         ) ??
         _validateBowlers(
-          label: 'Side B bowling',
+          label: '$nameB bowling',
           bowlers: score.bowlersB,
           againstWickets: score.wicketsA,
           againstBalls: score.ballsA,
