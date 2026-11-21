@@ -88,7 +88,7 @@ Sign-in: Email/Password and Google. Enable Email/Password in the console
 
 ```
 flutter pub get
-flutter test
+flutter test        # includes repository tests against a fake Firestore
 flutter run --flavor dev --dart-define=FLAVOR=dev
 ```
 
