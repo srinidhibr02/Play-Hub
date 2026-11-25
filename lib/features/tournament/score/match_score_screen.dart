@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:play_hub/core/utils/share.dart';
 import 'package:play_hub/core/widgets/entrance.dart';
 import 'package:play_hub/features/tournament/score/lineup_sheet.dart';
 import 'package:play_hub/features/tournament/score/match_event_sheet.dart';
@@ -9,6 +10,7 @@ import 'package:play_hub/features/tournament/score/scorecard_sheets.dart';
 import 'package:play_hub/logic/match_events.dart';
 import 'package:play_hub/logic/match_rules.dart';
 import 'package:play_hub/logic/scorecard.dart';
+import 'package:play_hub/logic/share_text.dart';
 import 'package:play_hub/models/sport.dart';
 import 'package:play_hub/models/tournament.dart';
 import 'package:play_hub/models/tournament_match.dart';
@@ -365,6 +367,16 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
+          // Shares what is saved, so save the score first.
+          IconButton(
+            tooltip: 'Share saved result',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => shareText(
+              context,
+              ShareText.match(tournament: _t, match: _m),
+              subject: _t.name,
+            ),
+          ),
           PopupMenuButton<String>(
             onSelected: (value) {
               switch (value) {

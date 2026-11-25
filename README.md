@@ -44,6 +44,7 @@ Rewrite of the previous Play Hub (club booking) app on branch
 | 6b | Cricket scorecards (batters and bowlers per innings), run, wicket and six leaders, read-only match detail screen for everyone | Done, **not yet compiled or run** |
 | 6c | Football lineups and substitutions (checked against who is on the pitch), appearances in player stats | Done, **not yet compiled or run** |
 | 6d | Badminton player records for singles and doubles (most wins, best point difference) | Done, **not yet compiled or run** |
+| 6e | Share results and the table as text (WhatsApp-ready) | Done, **not yet compiled or run** |
 | 7 | Release prep, online payments (needs a backend) | Planned |
 
 ## Architecture
@@ -52,7 +53,7 @@ Rewrite of the previous Play Hub (club booking) app on branch
 lib/
   core/        theme, shared animated widgets, helpers
   models/      Sport, Tournament, Team, Registration, TournamentMatch
-  logic/       pure Dart: FixtureGenerator, MatchRules, MatchEvents, PlayerStats, Scorecard, Standings, TournamentStats, InviteCode, Payments
+  logic/       pure Dart: FixtureGenerator, MatchRules, MatchEvents, PlayerStats, Scorecard, ShareText, Standings, TournamentStats, InviteCode, Payments
   services/    AuthService, TournamentRepository (all Firestore access)
   providers/   Riverpod providers (streams for live updates)
   features/    auth, home, tournament/{create,detail,registration,score}

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:play_hub/core/utils/formatters.dart';
+import 'package:play_hub/core/utils/share.dart';
 import 'package:play_hub/logic/match_events.dart';
 import 'package:play_hub/logic/match_rules.dart';
+import 'package:play_hub/logic/share_text.dart';
 import 'package:play_hub/models/sport.dart';
 import 'package:play_hub/models/tournament.dart';
 import 'package:play_hub/models/tournament_match.dart';
@@ -30,7 +32,21 @@ class MatchDetailScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(match?.roundLabel ?? 'Match')),
+      appBar: AppBar(
+        title: Text(match?.roundLabel ?? 'Match'),
+        actions: [
+          if (match != null)
+            IconButton(
+              tooltip: 'Share',
+              icon: const Icon(Icons.share_outlined),
+              onPressed: () => shareText(
+                context,
+                ShareText.match(tournament: tournament, match: match!),
+                subject: tournament.name,
+              ),
+            ),
+        ],
+      ),
       body: match == null
           ? const Center(child: CircularProgressIndicator())
           : _Body(tournament: tournament, match: match),

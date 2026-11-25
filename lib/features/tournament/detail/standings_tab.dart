@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:play_hub/core/utils/share.dart';
 import 'package:play_hub/core/widgets/empty_state.dart';
 import 'package:play_hub/core/widgets/entrance.dart';
+import 'package:play_hub/logic/share_text.dart';
 import 'package:play_hub/logic/standings.dart';
 import 'package:play_hub/models/sport.dart';
 import 'package:play_hub/models/tournament.dart';
@@ -56,6 +58,20 @@ class StandingsTab extends ConsumerWidget {
       key: const PageStorageKey('standings'),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
       children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: anyPlayed
+                ? () => shareText(
+                      context,
+                      ShareText.table(tournament: t, rows: rows),
+                      subject: '${t.name} table',
+                    )
+                : null,
+            icon: const Icon(Icons.share_outlined, size: 18),
+            label: const Text('Share table'),
+          ),
+        ),
         _TableCard(
           sport: t.sport,
           rows: rows,
