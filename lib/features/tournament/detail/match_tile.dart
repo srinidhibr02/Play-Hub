@@ -15,11 +15,15 @@ class MatchTile extends StatelessWidget {
     required this.match,
     required this.sport,
     this.onTap,
+    this.onSchedule,
   });
 
   final TournamentMatch match;
   final Sport sport;
   final VoidCallback? onTap;
+
+  /// Organizers: opens the date, time and venue sheet.
+  final VoidCallback? onSchedule;
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +98,37 @@ class MatchTile extends StatelessWidget {
                           ),
                         ),
                       ],
+                      if (onSchedule != null && !match.isCompleted) ...[
+                        const SizedBox(height: 2),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: onSchedule,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.edit_calendar_rounded,
+                                  size: 16,
+                                  color: sport.color,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  match.scheduledAt == null
+                                      ? 'Schedule'
+                                      : 'Change',
+                                  style: TextStyle(
+                                    color: sport.color,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                       if (onTap != null) ...[
                         const SizedBox(height: 6),
                         Icon(
@@ -108,6 +143,30 @@ class MatchTile extends StatelessWidget {
                   ),
                 ],
               ),
+              if (match.venue.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.place_outlined,
+                      size: 15,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        match.venue,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (summary != null) ...[
                 const SizedBox(height: 10),
                 Text(

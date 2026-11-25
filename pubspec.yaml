@@ -2,7 +2,7 @@ name: play_hub
 description: "Sports Event & Tournament Manager - host and track local badminton, cricket and football tournaments."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 2.0.0+14
 
 environment:
   sdk: ^3.9.2
@@ -25,7 +25,12 @@ dependencies:
   flutter_animate: ^4.5.2
   intl: ^0.20.2
 
+  # Sharing invites and opening UPI apps
+  share_plus: ^11.0.0
+  url_launcher: ^6.3.1
+
 dev_dependencies:
+  fake_cloud_firestore: ^4.0.0
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0

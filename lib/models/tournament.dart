@@ -314,6 +314,9 @@ class Tournament {
     TournamentSettings? settings,
     bool? isPublic,
     bool? registrationOpen,
+    String? upiId,
+    bool? acceptCash,
+    String? contactPhone,
   }) {
     return Tournament(
       id: id,
@@ -338,10 +341,10 @@ class Tournament {
       registrationOpen: registrationOpen ?? this.registrationOpen,
       registrationDeadline: registrationDeadline,
       entryFee: entryFee,
-      upiId: upiId,
+      upiId: upiId ?? this.upiId,
       payeeName: payeeName,
-      acceptCash: acceptCash,
-      contactPhone: contactPhone,
+      acceptCash: acceptCash ?? this.acceptCash,
+      contactPhone: contactPhone ?? this.contactPhone,
     );
   }
 

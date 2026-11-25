@@ -38,8 +38,13 @@ Rewrite of the previous Play Hub (club booking) app on branch
 | 2 | Manual scoring for football, cricket and badminton; knockout advancement | Done |
 | 2.5 | Friendly vs hosted, invite codes, registrations, approval, manual payment tracking, logo restored | Done, **not yet compiled or run** |
 | 3 | Standings table (points, goal difference, net run rate, game/point difference) and knockout bracket with champion banner | Done, **not yet compiled or run** |
-| 4 | Scheduling, edit tournament, share sheet, UPI deep links | Next |
-| 5 | Player stats, polish, offline behaviour, online payments, release | Planned |
+| 4 | Match scheduling (date, time, venue), edit tournament details, share sheet for invites, open UPI app to pay | Done, **not yet compiled or run** |
+| 5 | Tournament stats on the overview (totals, averages, biggest win, highest score) | Done, **not yet compiled or run** |
+| 6a | Football match events (scorers, assists, penalties, own goals, cards) and player leaders (top scorers, assists, discipline) | Done, **not yet compiled or run** |
+| 6b | Cricket scorecards (batters and bowlers per innings), run, wicket and six leaders, read-only match detail screen for everyone | Done, **not yet compiled or run** |
+| 6c | Football lineups and substitutions (checked against who is on the pitch), appearances in player stats | Done, **not yet compiled or run** |
+| 6d | Badminton player records for singles and doubles (most wins, best point difference) | Done, **not yet compiled or run** |
+| 7 | Release prep, online payments (needs a backend) | Planned |
 
 ## Architecture
 
@@ -47,7 +52,7 @@ Rewrite of the previous Play Hub (club booking) app on branch
 lib/
   core/        theme, shared animated widgets, helpers
   models/      Sport, Tournament, Team, Registration, TournamentMatch
-  logic/       pure Dart: FixtureGenerator, MatchRules, Standings, InviteCode, Payments
+  logic/       pure Dart: FixtureGenerator, MatchRules, MatchEvents, PlayerStats, Scorecard, Standings, TournamentStats, InviteCode, Payments
   services/    AuthService, TournamentRepository (all Firestore access)
   providers/   Riverpod providers (streams for live updates)
   features/    auth, home, tournament/{create,detail,registration,score}
@@ -83,7 +88,7 @@ Sign-in: Email/Password and Google. Enable Email/Password in the console
 
 ```
 flutter pub get
-flutter test
+flutter test        # includes repository tests against a fake Firestore
 flutter run --flavor dev --dart-define=FLAVOR=dev
 ```
 

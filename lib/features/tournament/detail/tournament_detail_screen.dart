@@ -5,6 +5,7 @@ import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/widgets/empty_state.dart';
 import 'package:play_hub/core/widgets/status_pill.dart';
 import 'package:play_hub/features/tournament/detail/bracket_tab.dart';
+import 'package:play_hub/features/tournament/detail/edit_tournament_sheet.dart';
 import 'package:play_hub/features/tournament/detail/fixtures_tab.dart';
 import 'package:play_hub/features/tournament/detail/overview_tab.dart';
 import 'package:play_hub/features/tournament/detail/standings_tab.dart';
@@ -53,6 +54,20 @@ class _TournamentView extends ConsumerWidget {
   const _TournamentView({required this.tournament});
 
   final Tournament tournament;
+
+  Future<void> _edit(BuildContext context, WidgetRef ref) async {
+    final updated = await showEditTournamentSheet(context, tournament);
+    if (updated == null || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(tournamentRepositoryProvider).updateTournament(updated);
+      messenger.showSnackBar(const SnackBar(content: Text('Details saved.')));
+    } catch (e) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not save. Try again.')),
+      );
+    }
+  }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
@@ -149,9 +164,11 @@ class _TournamentView extends ConsumerWidget {
                   PopupMenuButton<String>(
                     iconColor: Colors.white,
                     onSelected: (value) {
+                      if (value == 'edit') _edit(context, ref);
                       if (value == 'delete') _confirmDelete(context, ref);
                     },
                     itemBuilder: (context) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Edit details')),
                       PopupMenuItem(
                         value: 'delete',
                         child: Text('Delete tournament'),

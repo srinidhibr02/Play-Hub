@@ -60,4 +60,21 @@ class Payments {
     if (t.acceptCash) return 'Cash';
     return '';
   }
+
+  /// A `upi://pay` link that opens the person's UPI app with the payee,
+  /// amount and note filled in. Returns null if the UPI ID is not valid.
+  static String? upiPayLink({
+    required String upiId,
+    required String payeeName,
+    required int amount,
+    required String note,
+  }) {
+    final id = upiId.trim();
+    if (!isValidUpiId(id) || amount <= 0) return null;
+    String enc(String v) => Uri.encodeComponent(v).replaceAll('%40', '@');
+    final name = payeeName.trim();
+    return 'upi://pay?pa=${enc(id)}'
+        '${name.isEmpty ? '' : '&pn=${enc(name)}'}'
+        '&am=$amount&cu=INR&tn=${enc(note.trim())}';
+  }
 }

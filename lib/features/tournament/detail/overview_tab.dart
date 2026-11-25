@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:play_hub/core/navigation/app_route.dart';
 import 'package:play_hub/core/utils/errors.dart';
@@ -8,10 +9,17 @@ import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/widgets/entrance.dart';
 import 'package:play_hub/features/tournament/registration/payment_sheet.dart';
 import 'package:play_hub/features/tournament/registration/register_screen.dart';
+import 'package:play_hub/logic/badminton_stats.dart';
 import 'package:play_hub/logic/invite_code.dart';
 import 'package:play_hub/logic/payments.dart';
+import 'package:play_hub/logic/player_stats.dart';
+import 'package:play_hub/logic/scorecard.dart';
+import 'package:play_hub/logic/tournament_stats.dart';
 import 'package:play_hub/models/registration.dart';
+import 'package:play_hub/models/sport.dart';
+import 'package:play_hub/models/team.dart';
 import 'package:play_hub/models/tournament.dart';
+import 'package:play_hub/models/tournament_match.dart';
 import 'package:play_hub/providers/providers.dart';
 
 /// First tab of a tournament: invite code, registration (hosted
@@ -42,12 +50,378 @@ class OverviewTab extends ConsumerWidget {
                   : _MyRegistrationCard(tournament: t))
               .entrance(index: 1),
         ],
+        _StatsCard(tournament: t),
+        _LeadersCard(tournament: t),
         const SizedBox(height: 14),
         _DetailsCard(
           tournament: t,
           showContact: isOwner || registered,
-        ).entrance(index: 2),
+        ).entrance(index: 3),
       ],
+    );
+  }
+}
+
+// ======================================================================
+// Stats
+// ======================================================================
+
+/// Headline numbers from the results entered so far. Hidden until a match
+/// has been completed.
+class _StatsCard extends ConsumerWidget {
+  const _StatsCard({required this.tournament});
+
+  final Tournament tournament;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = tournament;
+    final matches = ref.watch(matchesProvider(t.id)).valueOrNull;
+    if (matches == null) return const SizedBox.shrink();
+
+    final lines = TournamentStats.compute(sport: t.sport, matches: matches);
+    if (lines.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.insights_rounded, color: t.sport.color),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Tournament stats',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${t.completedCount}/${t.matchCount} played',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              for (final line in lines)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              line.label,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (line.detail.isNotEmpty)
+                              Text(
+                                line.detail,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        line.value,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: t.sport.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ======================================================================
+// Leaders (football and cricket)
+// ======================================================================
+
+class _LeaderRow {
+  const _LeaderRow(this.name, this.team, this.value);
+
+  final String name;
+  final String team;
+  final String value;
+}
+
+class _LeaderSection {
+  const _LeaderSection(this.title, this.icon, this.rows);
+
+  final String title;
+  final IconData icon;
+  final List<_LeaderRow> rows;
+}
+
+/// Top players, from the events and scorecards organizers record.
+class _LeadersCard extends ConsumerWidget {
+  const _LeadersCard({required this.tournament});
+
+  final Tournament tournament;
+
+  List<_LeaderSection> _football(
+    List<TournamentMatch> matches,
+    List<Team> teams,
+  ) {
+    final all = PlayerStats.compute(matches: matches, teams: teams);
+    return [
+      _LeaderSection(
+        'Top scorers',
+        Icons.sports_soccer_rounded,
+        [
+          for (final p in PlayerStats.topScorers(all))
+            _LeaderRow(
+              p.name,
+              p.teamName,
+              p.penaltyGoals > 0
+                  ? '${p.goals} (${p.penaltyGoals} pen)'
+                  : '${p.goals}',
+            ),
+        ],
+      ),
+      _LeaderSection(
+        'Most assists',
+        Icons.handshake_outlined,
+        [
+          for (final p in PlayerStats.topAssists(all))
+            _LeaderRow(p.name, p.teamName, '${p.assists}'),
+        ],
+      ),
+      _LeaderSection(
+        'Discipline',
+        Icons.style_rounded,
+        [
+          for (final p in PlayerStats.discipline(all))
+            _LeaderRow(
+              p.name,
+              p.teamName,
+              [
+                if (p.yellowCards > 0) '${p.yellowCards} Y',
+                if (p.redCards > 0) '${p.redCards} R',
+              ].join('  '),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  List<_LeaderSection> _cricket(
+    List<TournamentMatch> matches,
+    List<Team> teams,
+  ) {
+    final all = CricketStats.compute(matches: matches, teams: teams);
+    String sr(double? v) => v == null ? '-' : v.toStringAsFixed(1);
+    return [
+      _LeaderSection(
+        'Most runs',
+        Icons.sports_cricket_rounded,
+        [
+          for (final p in CricketStats.topBatters(all))
+            _LeaderRow(
+              p.name,
+              '${p.teamName} · HS ${p.highestText} · SR ${sr(p.strikeRate)}',
+              '${p.runs}',
+            ),
+        ],
+      ),
+      _LeaderSection(
+        'Most wickets',
+        Icons.sports_baseball_rounded,
+        [
+          for (final p in CricketStats.topBowlers(all))
+            _LeaderRow(
+              p.name,
+              '${p.teamName} · best ${p.bestFigures} · '
+                  'econ ${sr(p.economy)}',
+              '${p.wickets}',
+            ),
+        ],
+      ),
+      _LeaderSection(
+        'Most sixes',
+        Icons.rocket_launch_outlined,
+        [
+          for (final p in CricketStats.mostSixes(all))
+            _LeaderRow(p.name, p.teamName, '${p.sixes}'),
+        ],
+      ),
+    ];
+  }
+
+  List<_LeaderSection> _badminton(
+    List<TournamentMatch> matches,
+    List<Team> teams,
+  ) {
+    final all = BadmintonStats.compute(matches: matches, teams: teams);
+    return [
+      _LeaderSection(
+        'Most wins',
+        Icons.emoji_events_outlined,
+        [
+          for (final p in BadmintonStats.mostWins(all))
+            _LeaderRow(
+              p.name,
+              '${p.teamName} · ${p.won} of ${p.played} won',
+              '${p.won}',
+            ),
+        ],
+      ),
+      _LeaderSection(
+        'Best point difference',
+        Icons.trending_up_rounded,
+        [
+          for (final p in BadmintonStats.bestPointDifference(all))
+            _LeaderRow(p.name, p.teamName, '+${p.pointDifference}'),
+        ],
+      ),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = tournament;
+
+    final matches = ref.watch(matchesProvider(t.id)).valueOrNull;
+    final teams = ref.watch(teamsProvider(t.id)).valueOrNull;
+    if (matches == null || teams == null) return const SizedBox.shrink();
+
+    final sections = (switch (t.sport) {
+      Sport.football => _football(matches, teams),
+      Sport.cricket => _cricket(matches, teams),
+      Sport.badminton => _badminton(matches, teams),
+    })
+        .where((s) => s.rows.isNotEmpty)
+        .toList();
+    if (sections.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.military_tech_rounded, color: t.sport.color),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Player leaders',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              for (final section in sections)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(section.icon, size: 18, color: t.sport.color),
+                          const SizedBox(width: 8),
+                          Text(
+                            section.title,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      for (var i = 0; i < section.rows.length; i++)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                child: Text(
+                                  '${i + 1}',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      section.rows[i].name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    if (section.rows[i].team.isNotEmpty)
+                                      Text(
+                                        section.rows[i].team,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: theme
+                                              .colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                section.rows[i].value,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  color: t.sport.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -81,6 +455,20 @@ class _InviteCardState extends ConsumerState<_InviteCard> {
   Future<void> _copy(String text, String what) async {
     await Clipboard.setData(ClipboardData(text: text));
     _toast('$what copied');
+  }
+
+  Future<void> _share() async {
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: buildInviteMessage(_t),
+          subject: 'Join ${_t.name} on Play Hub',
+        ),
+      );
+    } catch (e) {
+      // No share sheet available: fall back to the clipboard.
+      await _copy(buildInviteMessage(_t), 'Invite message');
+    }
   }
 
   Future<void> _createCode() async {
@@ -175,12 +563,9 @@ class _InviteCardState extends ConsumerState<_InviteCard> {
                       foregroundColor: _t.sport.colorDark,
                       minimumSize: const Size(0, 46),
                     ),
-                    onPressed: () => _copy(
-                      buildInviteMessage(_t),
-                      'Invite message',
-                    ),
+                    onPressed: _share,
                     icon: const Icon(Icons.share_outlined, size: 18),
-                    label: const Text('Copy invite message'),
+                    label: const Text('Share invite'),
                   ),
                 ),
               ],

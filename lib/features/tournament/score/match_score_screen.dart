@@ -3,7 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:play_hub/core/widgets/entrance.dart';
+import 'package:play_hub/features/tournament/score/lineup_sheet.dart';
+import 'package:play_hub/features/tournament/score/match_event_sheet.dart';
+import 'package:play_hub/features/tournament/score/scorecard_sheets.dart';
+import 'package:play_hub/logic/match_events.dart';
 import 'package:play_hub/logic/match_rules.dart';
+import 'package:play_hub/logic/scorecard.dart';
 import 'package:play_hub/models/sport.dart';
 import 'package:play_hub/models/tournament.dart';
 import 'package:play_hub/models/tournament_match.dart';
@@ -58,6 +63,9 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
   int _goalsB = 0;
   int _pensA = 0;
   int _pensB = 0;
+  List<MatchEvent> _events = [];
+  List<String> _lineupA = [];
+  List<String> _lineupB = [];
 
   // Cricket
   bool _battedFirstA = true;
@@ -68,6 +76,10 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
   int _wicketsA = 0;
   int _wicketsB = 0;
   String? _tieBreakId;
+  List<BatterLine> _battersA = [];
+  List<BatterLine> _battersB = [];
+  List<BowlerLine> _bowlersA = [];
+  List<BowlerLine> _bowlersB = [];
 
   // Badminton
   final List<_GameInput> _games = [];
@@ -92,6 +104,9 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
       _goalsB = s.goalsB;
       _pensA = s.penaltiesA ?? 0;
       _pensB = s.penaltiesB ?? 0;
+      _events = [...s.events];
+      _lineupA = [...s.lineupA];
+      _lineupB = [...s.lineupB];
 
       _battedFirstA = s.battedFirstA;
       _runsA.text = s.runsA == 0 && s.ballsA == 0 ? '' : '${s.runsA}';
@@ -101,6 +116,10 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
       _wicketsA = s.wicketsA;
       _wicketsB = s.wicketsB;
       if (s.runsA == s.runsB) _tieBreakId = _m.winnerId;
+      _battersA = [...s.battersA];
+      _battersB = [...s.battersB];
+      _bowlersA = [...s.bowlersA];
+      _bowlersB = [...s.bowlersB];
 
       for (final g in s.games) {
         _games.add(_GameInput(a: g.a, b: g.b));
@@ -138,6 +157,9 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
           goalsB: _goalsB,
           penaltiesA: usePens ? _pensA : null,
           penaltiesB: usePens ? _pensB : null,
+          events: _events,
+          lineupA: _lineupA,
+          lineupB: _lineupB,
         );
       case Sport.cricket:
         final ballsA = MatchRules.parseOvers(
@@ -160,6 +182,10 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
           wicketsB: _wicketsB,
           ballsB: ballsB,
           battedFirstA: _battedFirstA,
+          battersA: _battersA,
+          battersB: _battersB,
+          bowlersA: _bowlersA,
+          bowlersB: _bowlersB,
         );
       case Sport.badminton:
         final games = <GameScore>[];
@@ -179,14 +205,40 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
     final tieBreak = tied ? _tieBreakId : null;
 
     final error = MatchRules.validate(
-      sport: _sport,
-      settings: _t.settings,
-      score: score,
-      knockout: _knockout,
-      teamAId: teamA,
-      teamBId: teamB,
-      tieBreakWinnerId: tieBreak,
-    );
+          sport: _sport,
+          settings: _t.settings,
+          score: score,
+          knockout: _knockout,
+          teamAId: teamA,
+          teamBId: teamB,
+          tieBreakWinnerId: tieBreak,
+        ) ??
+        (_sport == Sport.football
+            ? MatchEvents.validate(
+                events: score.events,
+                goalsA: score.goalsA,
+                goalsB: score.goalsB,
+                teamAId: teamA,
+                teamBId: teamB,
+              )
+            : null) ??
+        (_sport == Sport.football
+            ? MatchEvents.validateLineups(
+                lineupA: score.lineupA,
+                lineupB: score.lineupB,
+                events: score.events,
+                teamAId: teamA,
+                teamBId: teamB,
+              )
+            : null) ??
+        (_sport == Sport.cricket
+            ? Scorecard.validate(
+                score: score,
+                oversPerSide: _t.settings.overs,
+                nameA: _nameA,
+                nameB: _nameB,
+              )
+            : null);
     final winner = MatchRules.winnerId(
       sport: _sport,
       score: score,
@@ -488,7 +540,212 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
                 )
               : const SizedBox(width: double.infinity),
         ),
+        const SizedBox(height: 14),
+        _buildLineups(),
+        const SizedBox(height: 14),
+        _buildEvents(),
       ],
+    );
+  }
+
+  // ----------------------------------------------------------- football events
+
+  List<String> _squadOf(String? teamId) {
+    final teams = ref.read(teamsProvider(_t.id)).valueOrNull ?? const [];
+    for (final team in teams) {
+      if (team.id == teamId) return team.players;
+    }
+    return const [];
+  }
+
+  String _teamName(String teamId) =>
+      teamId == _m.teamAId ? _nameA : _nameB;
+
+  Future<void> _editLineup(bool sideA) async {
+    final result = await showLineupSheet(
+      context,
+      teamName: sideA ? _nameA : _nameB,
+      squad: _squadOf(sideA ? _m.teamAId : _m.teamBId),
+      initial: sideA ? _lineupA : _lineupB,
+      accent: _sport.color,
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      if (sideA) {
+        _lineupA = result;
+      } else {
+        _lineupB = result;
+      }
+    });
+  }
+
+  Widget _buildLineups() {
+    final theme = Theme.of(context);
+
+    Widget row(bool sideA) {
+      final name = sideA ? _nameA : _nameB;
+      final lineup = sideA ? _lineupA : _lineupB;
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+        title: Text(
+          name,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          lineup.isEmpty ? 'Not set' : lineup.join(', '),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: TextButton(
+          onPressed: () => _editLineup(sideA),
+          child: Text(lineup.isEmpty ? 'Set' : 'Edit'),
+        ),
+        onTap: () => _editLineup(sideA),
+      );
+    }
+
+    return _Panel(
+      title: 'Lineups',
+      subtitle: 'Optional. With a lineup, substitutions are checked against '
+          'who is on the pitch, and players get appearances.',
+      child: Column(
+        children: [
+          row(true),
+          Divider(
+            height: 1,
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+          ),
+          row(false),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editEvent({MatchEvent? existing, int? index}) async {
+    final event = await showMatchEventSheet(
+      context,
+      teamAId: _m.teamAId!,
+      teamBId: _m.teamBId!,
+      nameA: _nameA,
+      nameB: _nameB,
+      squadA: _squadOf(_m.teamAId),
+      squadB: _squadOf(_m.teamBId),
+      accent: _sport.color,
+      initial: existing,
+    );
+    if (event == null || !mounted) return;
+
+    setState(() {
+      if (index == null) {
+        _events = [..._events, event];
+      } else {
+        _events = [..._events]..[index] = event;
+      }
+      // Keep the scoreline in step: if the events now credit more goals than
+      // the score shows, raise the score to match.
+      final (a, b) = MatchEvents.credited(_events, _m.teamAId!, _m.teamBId!);
+      if (a > _goalsA) _goalsA = a;
+      if (b > _goalsB) _goalsB = b;
+    });
+  }
+
+  void _removeEvent(int index) {
+    setState(() => _events = [..._events]..removeAt(index));
+  }
+
+  Widget _buildEvents() {
+    final theme = Theme.of(context);
+    final ordered = MatchEvents.sorted(_events);
+    final (ca, cb) = MatchEvents.credited(_events, _m.teamAId!, _m.teamBId!);
+    final missing = (_goalsA - ca) + (_goalsB - cb);
+
+    IconData iconOf(MatchEventType t) => switch (t) {
+          MatchEventType.goal => Icons.sports_soccer_rounded,
+          MatchEventType.penaltyGoal => Icons.adjust_rounded,
+          MatchEventType.ownGoal => Icons.replay_rounded,
+          MatchEventType.yellowCard => Icons.style_rounded,
+          MatchEventType.redCard => Icons.style_rounded,
+          MatchEventType.substitution => Icons.swap_vert_rounded,
+        };
+    Color colorOf(MatchEventType t) => switch (t) {
+          MatchEventType.yellowCard => const Color(0xFFEAB308),
+          MatchEventType.redCard => const Color(0xFFDC2626),
+          _ => _sport.color,
+        };
+
+    return _Panel(
+      title: 'Match events',
+      subtitle: 'Scorers, assists and cards. Optional, but they feed the '
+          'top scorer and discipline tables.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (ordered.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'No events recorded yet.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          for (final e in ordered)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              leading: Icon(iconOf(e.type), color: colorOf(e.type)),
+              title: Text(
+                e.type.isSubstitution
+                    ? '${e.player} on, ${e.playerOff} off'
+                    : e.player,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                [
+                  '${e.type.label} · ${_teamName(e.teamId)}',
+                  if (e.assist.isNotEmpty) 'assist ${e.assist}',
+                ].join(' · '),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (e.minute != null)
+                    Text(
+                      "${e.minute}'",
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  IconButton(
+                    tooltip: 'Remove',
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => _removeEvent(_events.indexOf(e)),
+                  ),
+                ],
+              ),
+              onTap: () => _editEvent(
+                existing: e,
+                index: _events.indexOf(e),
+              ),
+            ),
+          if (missing > 0 && _events.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '$missing ${missing == 1 ? 'goal has' : 'goals have'} no '
+                'scorer recorded.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          OutlinedButton.icon(
+            onPressed: _editEvent,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add goal or card'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -613,6 +870,8 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
         firstInnings,
         const SizedBox(height: 14),
         secondInnings,
+        const SizedBox(height: 14),
+        _buildScorecard(),
         AnimatedSize(
           duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutCubic,
@@ -644,6 +903,243 @@ class _MatchScoreScreenState extends ConsumerState<MatchScoreScreen> {
               : const SizedBox(width: double.infinity),
         ),
       ],
+    );
+  }
+
+  // ------------------------------------------------------- cricket scorecard
+
+  List<String> _squadFor(bool sideA) {
+    final id = sideA ? _m.teamAId : _m.teamBId;
+    final teams = ref.read(teamsProvider(_t.id)).valueOrNull ?? const [];
+    for (final team in teams) {
+      if (team.id == id) return team.players;
+    }
+    return const [];
+  }
+
+  Future<void> _editBatter(bool sideA, {int? index}) async {
+    final list = sideA ? _battersA : _battersB;
+    final existing = index == null ? null : list[index];
+    final taken = {
+      for (var i = 0; i < list.length; i++)
+        if (i != index) list[i].name.trim().toLowerCase(),
+    };
+    final line = await showBatterSheet(
+      context,
+      teamName: sideA ? _nameA : _nameB,
+      squad: _squadFor(sideA),
+      taken: taken,
+      accent: _sport.color,
+      initial: existing,
+    );
+    if (line == null || !mounted) return;
+    setState(() {
+      final next = [...list];
+      if (index == null) {
+        next.add(line);
+      } else {
+        next[index] = line;
+      }
+      if (sideA) {
+        _battersA = next;
+      } else {
+        _battersB = next;
+      }
+    });
+  }
+
+  Future<void> _editBowler(bool sideA, {int? index}) async {
+    final list = sideA ? _bowlersA : _bowlersB;
+    final existing = index == null ? null : list[index];
+    final taken = {
+      for (var i = 0; i < list.length; i++)
+        if (i != index) list[i].name.trim().toLowerCase(),
+    };
+    final line = await showBowlerSheet(
+      context,
+      teamName: sideA ? _nameA : _nameB,
+      squad: _squadFor(sideA),
+      taken: taken,
+      accent: _sport.color,
+      initial: existing,
+    );
+    if (line == null || !mounted) return;
+    setState(() {
+      final next = [...list];
+      if (index == null) {
+        next.add(line);
+      } else {
+        next[index] = line;
+      }
+      if (sideA) {
+        _bowlersA = next;
+      } else {
+        _bowlersB = next;
+      }
+    });
+  }
+
+  void _removeBatter(bool sideA, int index) => setState(() {
+        if (sideA) {
+          _battersA = [..._battersA]..removeAt(index);
+        } else {
+          _battersB = [..._battersB]..removeAt(index);
+        }
+      });
+
+  void _removeBowler(bool sideA, int index) => setState(() {
+        if (sideA) {
+          _bowlersA = [..._bowlersA]..removeAt(index);
+        } else {
+          _bowlersB = [..._bowlersB]..removeAt(index);
+        }
+      });
+
+  Widget _buildScorecard() {
+    final theme = Theme.of(context);
+    final order = _battedFirstA ? [true, false] : [false, true];
+
+    Widget side(bool sideA) {
+      final name = sideA ? _nameA : _nameB;
+      final batters = sideA ? _battersA : _battersB;
+      final bowlers = sideA ? _bowlersA : _bowlersB;
+      final teamRuns = _intOf(sideA ? _runsA : _runsB);
+      final extras = Scorecard.extras(teamRuns, batters);
+
+      Widget heading(String text) => Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 4),
+            child: Text(
+              text,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: _sport.color,
+              ),
+            ),
+          );
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            name,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          heading('Batting'),
+          if (batters.isEmpty)
+            Text(
+              'No batters added.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          for (var i = 0; i < batters.length; i++)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(
+                batters[i].name,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                batters[i].out
+                    ? (batters[i].dismissal.isEmpty
+                        ? 'out'
+                        : batters[i].dismissal)
+                    : 'not out',
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${batters[i].runs}'
+                    '${batters[i].balls > 0 ? ' (${batters[i].balls})' : ''}'
+                    '${batters[i].fours > 0 ? '  ${batters[i].fours}x4' : ''}'
+                    '${batters[i].sixes > 0 ? '  ${batters[i].sixes}x6' : ''}',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  IconButton(
+                    tooltip: 'Remove',
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => _removeBatter(sideA, i),
+                  ),
+                ],
+              ),
+              onTap: () => _editBatter(sideA, index: i),
+            ),
+          if (batters.isNotEmpty && extras > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                'Extras and unlisted runs: $extras',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          TextButton.icon(
+            onPressed: () => _editBatter(sideA),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add batter'),
+          ),
+          heading('Bowling'),
+          if (bowlers.isEmpty)
+            Text(
+              'No bowlers added.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          for (var i = 0; i < bowlers.length; i++)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(
+                bowlers[i].name,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                '${MatchRules.oversText(bowlers[i].balls)} ov'
+                '${bowlers[i].maidens > 0 ? ' · ${bowlers[i].maidens} maiden' : ''}',
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${bowlers[i].wickets}/${bowlers[i].runs}',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  IconButton(
+                    tooltip: 'Remove',
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => _removeBowler(sideA, i),
+                  ),
+                ],
+              ),
+              onTap: () => _editBowler(sideA, index: i),
+            ),
+          TextButton.icon(
+            onPressed: () => _editBowler(sideA),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add bowler'),
+          ),
+        ],
+      );
+    }
+
+    return _Panel(
+      title: 'Scorecard',
+      subtitle: 'Optional. Names, runs, wickets and overs feed the run and '
+          'wicket leaders. Totals above must stay consistent with them.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          side(order[0]),
+          const Divider(height: 28),
+          side(order[1]),
+        ],
+      ),
     );
   }
 

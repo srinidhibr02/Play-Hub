@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:play_hub/models/parse_utils.dart';
+import 'package:play_hub/models/scorecard_lines.dart';
+
+export 'package:play_hub/models/scorecard_lines.dart';
 
 enum MatchStatus {
   scheduled,
@@ -30,6 +33,81 @@ class GameScore {
       GameScore(parseInt(map['a']), parseInt(map['b']));
 }
 
+enum MatchEventType {
+  goal,
+  penaltyGoal,
+  ownGoal,
+  yellowCard,
+  redCard,
+  substitution;
+
+  String get label => switch (this) {
+        MatchEventType.goal => 'Goal',
+        MatchEventType.penaltyGoal => 'Penalty goal',
+        MatchEventType.ownGoal => 'Own goal',
+        MatchEventType.yellowCard => 'Yellow card',
+        MatchEventType.redCard => 'Red card',
+        MatchEventType.substitution => 'Substitution',
+      };
+
+  bool get isGoal =>
+      this == goal || this == penaltyGoal || this == ownGoal;
+
+  bool get isCard => this == yellowCard || this == redCard;
+
+  bool get isSubstitution => this == substitution;
+
+  static MatchEventType fromName(Object? name) =>
+      parseEnum(MatchEventType.values, name, MatchEventType.goal);
+}
+
+/// Something that happened in a football match.
+///
+/// [teamId] is always the team of the player named in [player]. For an own
+/// goal that is the team that conceded it, so the goal counts for the other
+/// side.
+class MatchEvent {
+  const MatchEvent({
+    required this.type,
+    required this.teamId,
+    required this.player,
+    this.assist = '',
+    this.playerOff = '',
+    this.minute,
+  });
+
+  final MatchEventType type;
+  final String teamId;
+  final String player;
+
+  /// Goals only. Not used for penalties or own goals.
+  final String assist;
+
+  /// Substitutions only: [player] comes on and [playerOff] goes off.
+  final String playerOff;
+
+  /// 1-based match minute, or null if not recorded.
+  final int? minute;
+
+  Map<String, dynamic> toMap() => {
+        'type': type.name,
+        'teamId': teamId,
+        'player': player,
+        'assist': assist,
+        'playerOff': playerOff,
+        'minute': minute,
+      };
+
+  factory MatchEvent.fromMap(Map<String, dynamic> map) => MatchEvent(
+        type: MatchEventType.fromName(map['type']),
+        teamId: parseString(map['teamId']),
+        player: parseString(map['player']),
+        assist: parseString(map['assist']),
+        playerOff: parseString(map['playerOff']),
+        minute: map['minute'] is num ? parseInt(map['minute']) : null,
+      );
+}
+
 /// The score of a match. One shape covers all three sports; only the fields
 /// for the match's sport are used.
 ///
@@ -50,6 +128,13 @@ class MatchScore {
     this.ballsB = 0,
     this.battedFirstA = true,
     this.games = const [],
+    this.events = const [],
+    this.lineupA = const [],
+    this.lineupB = const [],
+    this.battersA = const [],
+    this.battersB = const [],
+    this.bowlersA = const [],
+    this.bowlersB = const [],
     this.note = '',
   });
 
@@ -70,6 +155,22 @@ class MatchScore {
 
   final List<GameScore> games;
 
+  /// Football: goals and cards with the players involved.
+  final List<MatchEvent> events;
+
+  /// Football: names of the starting players for each side. Empty means
+  /// the lineup was not recorded.
+  final List<String> lineupA;
+  final List<String> lineupB;
+
+  /// Cricket scorecard. "A" lists belong to side A: its batters, and the
+  /// bowlers it used against side B. Any list may be empty (scorecards are
+  /// optional).
+  final List<BatterLine> battersA;
+  final List<BatterLine> battersB;
+  final List<BowlerLine> bowlersA;
+  final List<BowlerLine> bowlersB;
+
   /// Free text such as "Won by 5 wickets" or "Walkover".
   final String note;
 
@@ -86,6 +187,13 @@ class MatchScore {
         'ballsB': ballsB,
         'battedFirstA': battedFirstA,
         'games': games.map((g) => g.toMap()).toList(),
+        'events': events.map((e) => e.toMap()).toList(),
+        'lineupA': lineupA,
+        'lineupB': lineupB,
+        'battersA': battersA.map((b) => b.toMap()).toList(),
+        'battersB': battersB.map((b) => b.toMap()).toList(),
+        'bowlersA': bowlersA.map((b) => b.toMap()).toList(),
+        'bowlersB': bowlersB.map((b) => b.toMap()).toList(),
         'note': note,
       };
 
@@ -109,10 +217,31 @@ class MatchScore {
               .map(GameScore.fromMap)
               .toList()
           : const [],
+      events: map['events'] is List
+          ? (map['events'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(MatchEvent.fromMap)
+              .toList()
+          : const [],
+      lineupA: _names(map['lineupA']),
+      lineupB: _names(map['lineupB']),
+      battersA: _list(map['battersA'], BatterLine.fromMap),
+      battersB: _list(map['battersB'], BatterLine.fromMap),
+      bowlersA: _list(map['bowlersA'], BowlerLine.fromMap),
+      bowlersB: _list(map['bowlersB'], BowlerLine.fromMap),
       note: parseString(map['note']),
     );
   }
 }
+
+List<String> _names(Object? raw) => raw is List
+    ? raw.whereType<String>().where((n) => n.trim().isNotEmpty).toList()
+    : <String>[];
+
+List<T> _list<T>(Object? raw, T Function(Map<String, dynamic>) build) =>
+    raw is List
+        ? raw.whereType<Map<String, dynamic>>().map(build).toList()
+        : <T>[];
 
 /// A single fixture. Named `TournamentMatch` to avoid clashing with
 /// `dart:core`'s `Match`.
