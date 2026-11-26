@@ -7,6 +7,7 @@ import 'package:play_hub/core/navigation/app_route.dart';
 import 'package:play_hub/core/utils/errors.dart';
 import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/widgets/entrance.dart';
+import 'package:play_hub/features/tournament/detail/invite_qr_dialog.dart';
 import 'package:play_hub/features/tournament/registration/payment_sheet.dart';
 import 'package:play_hub/features/tournament/registration/register_screen.dart';
 import 'package:play_hub/logic/badminton_stats.dart';
@@ -553,6 +554,17 @@ class _InviteCardState extends ConsumerState<_InviteCard> {
                     icon: const Icon(Icons.copy_rounded, size: 18),
                     label: const Text('Code'),
                   ),
+                ),
+                const SizedBox(width: 10),
+                IconButton.outlined(
+                  tooltip: 'Show QR code',
+                  style: IconButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white70),
+                    minimumSize: const Size(46, 46),
+                  ),
+                  onPressed: () => showInviteQrDialog(context, _t),
+                  icon: const Icon(Icons.qr_code_2_rounded),
                 ),
                 const SizedBox(width: 10),
                 Expanded(

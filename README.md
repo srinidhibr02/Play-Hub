@@ -46,6 +46,7 @@ Rewrite of the previous Play Hub (club booking) app on branch
 | 6d | Badminton player records for singles and doubles (most wins, best point difference) | Done, **not yet compiled or run** |
 | 6e | Share results and the table as text (WhatsApp-ready) | Done, **not yet compiled or run** |
 | 6f | PDF export of table, fixtures, results and leaders (Latin text only) | Done, **not yet compiled or run** |
+| 6g | QR code for the invite code | Done, **not yet compiled or run** |
 | 7 | Release prep, online payments (needs a backend) | Planned |
 
 ## Architecture

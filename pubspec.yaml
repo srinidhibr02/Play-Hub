@@ -28,6 +28,7 @@ dependencies:
   # Sharing invites and opening UPI apps
   share_plus: ^11.0.0
   pdf: ^3.11.3
+  qr_flutter: ^4.1.0
   printing: ^5.14.2
   url_launcher: ^6.3.1
 
