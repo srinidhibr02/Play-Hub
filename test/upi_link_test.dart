@@ -35,14 +35,14 @@ void main() {
       );
       expect(
         Payments.upiPayLink(
-            upiId: 'a@bank', payeeName: 'A', amount: 0, note: 'x'),
+            upiId: 'ab@bank', payeeName: 'A', amount: 0, note: 'x'),
         isNull,
       );
     });
 
     test('escapes characters that would break the link', () {
       final link = Payments.upiPayLink(
-        upiId: 'a@bank',
+        upiId: 'ab@bank',
         payeeName: 'A&B',
         amount: 10,
         note: 'x=y',
