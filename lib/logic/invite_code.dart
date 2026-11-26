@@ -36,6 +36,19 @@ class InviteCode {
     return true;
   }
 
+  /// Pulls an invite code out of whatever a QR scanner read: the bare code,
+  /// or text that contains one such as "Join with code K7M-2QX". Returns the
+  /// normalized code, or null if there is no valid code in it.
+  static String? fromScan(String raw) {
+    final text = raw.trim().toUpperCase();
+    if (isValid(text) && text.length <= length + 1) return normalize(text);
+    for (final m in RegExp(r'\b[A-Z0-9]{3}-?[A-Z0-9]{3}\b').allMatches(text)) {
+      final candidate = normalize(m.group(0)!);
+      if (isValid(candidate)) return candidate;
+    }
+    return null;
+  }
+
   /// "K7M2QX" -> "K7M-2QX" for display.
   static String format(String code) {
     if (code.length != length) return code;

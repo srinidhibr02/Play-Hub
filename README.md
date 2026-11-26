@@ -48,6 +48,7 @@ Rewrite of the previous Play Hub (club booking) app on branch
 | 6f | PDF export of table, fixtures, results and leaders (Latin text only) | Done, **not yet compiled or run** |
 | 6g | QR code for the invite code | Done, **not yet compiled or run** |
 | 6h | Team profile sheet: rank, form, squad, match history | Done, **not yet compiled or run** |
+| 6i | Scan the invite QR code from the Join dialog (camera) | Done, **not yet compiled or run** |
 | 7 | Release prep, online payments (needs a backend) | Planned |
 
 ## Architecture

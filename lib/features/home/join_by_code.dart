@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:play_hub/core/navigation/app_route.dart';
 import 'package:play_hub/core/utils/errors.dart';
+import 'package:play_hub/features/home/scan_code_screen.dart';
 import 'package:play_hub/features/tournament/detail/tournament_detail_screen.dart';
 import 'package:play_hub/logic/invite_code.dart';
 import 'package:play_hub/providers/providers.dart';
@@ -49,6 +50,15 @@ class _JoinDialogState extends ConsumerState<_JoinDialog> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _scan() async {
+    final code = await Navigator.of(context).push<String>(
+      appRoute(const ScanCodeScreen()),
+    );
+    if (code == null || !mounted) return;
+    _controller.text = InviteCode.format(code);
+    await _submit();
   }
 
   Future<void> _submit() async {
@@ -122,6 +132,11 @@ class _JoinDialogState extends ConsumerState<_JoinDialog> {
             textAlign: TextAlign.center,
             decoration: InputDecoration(
               hintText: 'K7M-2QX',
+              suffixIcon: IconButton(
+                tooltip: 'Scan QR code',
+                icon: const Icon(Icons.qr_code_scanner_rounded),
+                onPressed: _busy ? null : _scan,
+              ),
               errorText: _error,
               errorMaxLines: 3,
             ),
