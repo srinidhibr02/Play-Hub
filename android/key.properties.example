@@ -1,0 +1,5 @@
+# Copy to android/key.properties (git-ignored) and fill in your real values.
+storeFile=/absolute/path/to/your-release-key.jks
+storePassword=CHANGE_ME
+keyAlias=CHANGE_ME
+keyPassword=CHANGE_ME

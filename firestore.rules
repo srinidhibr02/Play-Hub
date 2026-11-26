@@ -1,0 +1,152 @@
+rules_version = '2';
+
+// =====================================================================
+// Rules for the Sports Event & Tournament Manager
+// =====================================================================
+//
+// READ THIS BEFORE DEPLOYING
+//
+// Firebase keeps ONE ruleset per project. Deploying this file replaces
+// whatever rules are live now. If this Firebase project (play-hub02) still
+// serves the previous version of the app (bookings, clubs, payments...),
+// replacing the rules would break it.
+//
+// Safe options:
+//   * Project is only used by this app now: deploy this file as it is.
+//   * Project is shared with the old app: open the current rules in the
+//     Firebase console and ADD the three blocks below
+//     (sportsTournaments, sportsInviteCodes, sportsUsers) next to your
+//     existing blocks. Do not replace the file.
+//
+// firebase.json deliberately does not point at this file, so a plain
+// `firebase deploy` will not touch your rules. To deploy it on purpose:
+//   firebase deploy --only firestore:rules --config <config with rules path>
+// or paste it into the console.
+//
+// What the rules do
+//   * Tournaments: any signed-in user can open one if they know its id (the
+//     invite code leads there). Lists only return listed tournaments and
+//     your own. Only the owner can change a tournament, its teams and its
+//     matches.
+//   * Registrations: the team that registered and the organizer can read
+//     them. A team can register once (the document id is its user id), can
+//     report a payment and can withdraw while pending. Only the organizer
+//     can approve, reject or confirm a payment.
+//   * Limits such as capacity and the registration deadline are checked in
+//     the app and when the organizer approves a team, not here.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // -------------------------------------------------------------------
+    // Tournaments, with teams, matches and registrations underneath
+    // -------------------------------------------------------------------
+    match /sportsTournaments/{tournamentId} {
+
+      // Is the person making this request the owner of this tournament
+      // document? (Only valid directly on the tournament document.)
+      function isOwner() {
+        return signedIn() && resource.data.ownerId == request.auth.uid;
+      }
+
+      // The tournament document, for rules on documents underneath it.
+      function parent() {
+        return get(/databases/$(database)/documents/sportsTournaments/$(tournamentId)).data;
+      }
+
+      function isParentOwner() {
+        return signedIn() && parent().ownerId == request.auth.uid;
+      }
+
+      allow get: if signedIn();
+
+      // A query may only return listed tournaments, or the caller's own.
+      allow list: if signedIn()
+        && (resource.data.isPublic == true
+            || resource.data.ownerId == request.auth.uid);
+
+      // The creator must be recorded as the owner.
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid;
+
+      // Ownership can never be transferred.
+      allow update: if isOwner()
+        && request.resource.data.ownerId == resource.data.ownerId;
+
+      allow delete: if isOwner();
+
+      match /teams/{teamId} {
+        allow read: if signedIn();
+        allow write: if isParentOwner();
+      }
+
+      match /matches/{matchId} {
+        allow read: if signedIn();
+        allow write: if isParentOwner();
+      }
+
+      // The document id is the registrant's user id: one registration per
+      // person per tournament.
+      match /registrations/{regId} {
+
+        allow get: if signedIn()
+          && (regId == request.auth.uid || isParentOwner());
+
+        // Only the organizer can list everyone who registered.
+        allow list: if isParentOwner();
+
+        allow create: if signedIn()
+          && regId == request.auth.uid
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && request.resource.data.paymentStatus in ['notRequired', 'unpaid']
+          && parent().kind == 'hosted'
+          && parent().registrationOpen == true;
+
+        allow update: if isParentOwner()
+          || (signedIn()
+              && regId == request.auth.uid
+              && resource.data.userId == request.auth.uid
+              && resource.data.status in ['pending', 'approved']
+              && resource.data.paymentStatus != 'paid'
+              // A team may only report its payment, nothing else.
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['paymentStatus', 'paymentMethod', 'paymentRef', 'updatedAt'])
+              && request.resource.data.paymentStatus in ['unpaid', 'submitted']);
+
+        // A team can withdraw until the organizer has acted on it.
+        allow delete: if isParentOwner()
+          || (signedIn()
+              && regId == request.auth.uid
+              && resource.data.status == 'pending');
+      }
+    }
+
+    // -------------------------------------------------------------------
+    // Invite code -> tournament lookup
+    // -------------------------------------------------------------------
+    match /sportsInviteCodes/{code} {
+      // You can only look up a code you already know; the list cannot be
+      // browsed.
+      allow get: if signedIn();
+      allow list: if false;
+
+      // Codes are claimed once and never reassigned.
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------------
+    // Tournaments a person has registered for (their own list)
+    // -------------------------------------------------------------------
+    match /sportsUsers/{uid}/joined/{tournamentId} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}
