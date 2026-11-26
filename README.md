@@ -49,6 +49,7 @@ Rewrite of the previous Play Hub (club booking) app on branch
 | 6g | QR code for the invite code | Done, **not yet compiled or run** |
 | 6h | Team profile sheet: rank, form, squad, match history | Done, **not yet compiled or run** |
 | 6i | Scan the invite QR code from the Join dialog (camera) | Done, **not yet compiled or run** |
+| 6j | Head to head on the match page (earlier meetings of the same teams) | Done, **not yet compiled or run** |
 | 7 | Release prep, online payments (needs a backend) | Planned |
 
 ## Architecture

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/utils/share.dart';
+import 'package:play_hub/logic/head_to_head.dart';
 import 'package:play_hub/logic/match_events.dart';
 import 'package:play_hub/logic/match_rules.dart';
 import 'package:play_hub/logic/share_text.dart';
@@ -49,16 +50,27 @@ class MatchDetailScreen extends ConsumerWidget {
       ),
       body: match == null
           ? const Center(child: CircularProgressIndicator())
-          : _Body(tournament: tournament, match: match),
+          : _Body(
+              tournament: tournament,
+              match: match,
+              meetings: HeadToHead.otherMeetings(match, matches ?? const []),
+            ),
     );
   }
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.tournament, required this.match});
+  const _Body({
+    required this.tournament,
+    required this.match,
+    required this.meetings,
+  });
 
   final Tournament tournament;
   final TournamentMatch match;
+
+  /// Earlier finished matches between the same two teams.
+  final List<TournamentMatch> meetings;
 
   Sport get _sport => tournament.sport;
 
@@ -175,7 +187,69 @@ class _Body extends StatelessWidget {
             Sport.cricket => _cricket(context, score),
             Sport.badminton => _badminton(context, score),
           },
+        if (meetings.isNotEmpty) _headToHead(context),
       ],
+    );
+  }
+
+  // --------------------------------------------------------- head to head
+
+  Widget _headToHead(BuildContext context) {
+    final theme = Theme.of(context);
+    final m = match;
+    final record = HeadToHead.record(m.teamAId!, meetings);
+    final a = m.teamAName ?? 'Side A';
+    final b = m.teamBName ?? 'Side B';
+
+    String scoreFor(TournamentMatch x) {
+      final sameOrder = x.teamAId == m.teamAId;
+      final s = x.score!;
+      final mine = MatchRules.sideScore(
+        sport: _sport,
+        score: s,
+        sideA: sameOrder,
+      );
+      final theirs = MatchRules.sideScore(
+        sport: _sport,
+        score: s,
+        sideA: !sameOrder,
+      );
+      return '$mine - $theirs';
+    }
+
+    return _Section(
+      title: 'Head to head',
+      trailing: '${record.winsA} - ${record.draws} - ${record.winsB}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '$a wins, draws, $b wins this season',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final x in meetings)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      x.roundLabel,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Text(
+                    '$a ${scoreFor(x)} $b',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
