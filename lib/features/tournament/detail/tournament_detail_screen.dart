@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:printing/printing.dart';
 
 import 'package:play_hub/core/utils/formatters.dart';
 import 'package:play_hub/core/widgets/empty_state.dart';
@@ -13,6 +14,7 @@ import 'package:play_hub/features/tournament/detail/teams_tab.dart';
 import 'package:play_hub/features/tournament/registration/registrations_tab.dart';
 import 'package:play_hub/models/tournament.dart';
 import 'package:play_hub/providers/providers.dart';
+import 'package:play_hub/services/pdf_export.dart';
 
 class TournamentDetailScreen extends ConsumerWidget {
   const TournamentDetailScreen({super.key, required this.tournamentId});
@@ -54,6 +56,30 @@ class _TournamentView extends ConsumerWidget {
   const _TournamentView({required this.tournament});
 
   final Tournament tournament;
+
+  Future<void> _exportPdf(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final teams = await ref.read(teamsProvider(tournament.id).future);
+      final matches = await ref.read(matchesProvider(tournament.id).future);
+      final bytes = await PdfExport.build(
+        tournament: tournament,
+        teams: teams,
+        matches: matches,
+      );
+      final safeName = tournament.name
+          .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_')
+          .replaceAll(RegExp(r'^_+|_+$'), '');
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: '${safeName.isEmpty ? 'tournament' : safeName}.pdf',
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not create the PDF. Try again.')),
+      );
+    }
+  }
 
   Future<void> _edit(BuildContext context, WidgetRef ref) async {
     final updated = await showEditTournamentSheet(context, tournament);
@@ -160,6 +186,12 @@ class _TournamentView extends ConsumerWidget {
                 ),
               ),
               actions: [
+                IconButton(
+                  tooltip: 'Export PDF',
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  color: Colors.white,
+                  onPressed: () => _exportPdf(context, ref),
+                ),
                 if (isOwner)
                   PopupMenuButton<String>(
                     iconColor: Colors.white,
