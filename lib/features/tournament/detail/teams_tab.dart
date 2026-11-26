@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:play_hub/core/widgets/empty_state.dart';
 import 'package:play_hub/core/widgets/entrance.dart';
 import 'package:play_hub/features/tournament/detail/team_editor_sheet.dart';
+import 'package:play_hub/features/tournament/detail/team_profile_sheet.dart';
 import 'package:play_hub/models/team.dart';
 import 'package:play_hub/models/tournament.dart';
 import 'package:play_hub/providers/providers.dart';
@@ -293,6 +294,12 @@ class TeamsTab extends ConsumerWidget {
                     team: teams[i],
                     position: i + 1,
                     canEdit: _canEdit,
+                    onOpen: () => showTeamProfileSheet(
+                      context,
+                      tournament: tournament,
+                      team: teams[i],
+                      teams: teams,
+                    ),
                     onEdit: () => _editTeam(context, ref, teams, teams[i]),
                     onDelete: () => _deleteTeam(context, ref, teams[i]),
                   ).entrance(index: i),
@@ -309,6 +316,7 @@ class _TeamTile extends StatelessWidget {
     required this.team,
     required this.position,
     required this.canEdit,
+    required this.onOpen,
     required this.onEdit,
     required this.onDelete,
   });
@@ -316,6 +324,7 @@ class _TeamTile extends StatelessWidget {
   final Team team;
   final int position;
   final bool canEdit;
+  final VoidCallback onOpen;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -325,7 +334,10 @@ class _TeamTile extends StatelessWidget {
     final color = Color(team.colorValue);
 
     return Card(
-      child: Padding(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
         child: Row(
           children: [
@@ -393,6 +405,7 @@ class _TeamTile extends StatelessWidget {
               const SizedBox(width: 12),
           ],
         ),
+      ),
       ),
     );
   }
